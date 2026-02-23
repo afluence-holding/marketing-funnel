@@ -1,0 +1,8 @@
+
+> @nutrition-crm/email@1.0.0 prebuild
+> find src -type f \( -name '*.js' -o -name '*.d.ts' -o -name '*.js.map' -o -name '*.d.ts.map' \) -delete || true
+
+
+> @nutrition-crm/email@1.0.0 build
+> tsc
+
