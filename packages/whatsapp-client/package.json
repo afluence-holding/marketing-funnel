@@ -1,0 +1,20 @@
+{
+  "name": "@marketing-funnel/whatsapp-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "WhatsApp Cloud API client (direct send, no queues)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kapso/whatsapp-cloud-api": "^0.0.11",
+    "@marketing-funnel/config": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "typescript": "^5.9.3"
+  }
+}

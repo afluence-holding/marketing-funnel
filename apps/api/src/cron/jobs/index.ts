@@ -1,9 +1,7 @@
 import { registerJob } from '../scheduler';
+import './follow-up-calls';
 
 /**
- * Register all cron jobs here.
- * Each job is a { name, schedule, handler, enabled? } object.
- *
  * Schedule reference (cron expression):
  *   ┌──────────── minute (0-59)
  *   │ ┌────────── hour (0-23)
@@ -11,11 +9,6 @@ import { registerJob } from '../scheduler';
  *   │ │ │ ┌────── month (1-12)
  *   │ │ │ │ ┌──── day of week (0-7, 0 and 7 = Sunday)
  *   * * * * *
- *
- * Examples:
- *   '* /5 * * * *'  → every 5 minutes (remove the space)
- *   '0 * * * *'     → every hour
- *   '0 9 * * 1'     → every Monday at 9am
  */
 
 // Example: workflow step processor (disabled until workflows are built)

@@ -12,6 +12,21 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1),
   RESEND_API_KEY: z.string().min(1),
+
+  // WhatsApp (optional — only needed when using whatsapp-client)
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_WEBHOOK_TOKEN: z.string().optional(),
+  WHATSAPP_BUSINESS_ID: z.string().optional(),
+  WHATSAPP_API_VERSION: z.string().optional(),
+  WHATSAPP_BASE_URL: z.string().optional(),
+
+  // ElevenLabs (optional — only needed when using elevenlabs package)
+  ELEVENLABS_API_KEY: z.string().optional(),
+  ELEVENLABS_AGENT_ID: z.string().optional(),
+  ELEVENLABS_PHONE_NUMBER_ID: z.string().optional(),
+  ELEVENLABS_WEBHOOK_SECRET: z.string().optional(),
+
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });

@@ -1,9 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { env } from './config/env';
+import { env } from '@marketing-funnel/config';
 import { errorHandler } from './middleware/error-handler';
 import ingestionRoutes from './routes/ingestion.routes';
 import leadsRoutes from './routes/leads.routes';
+import elevenLabsRoutes from './routes/elevenlabs.routes';
 import { startAll as startCron, getRegisteredJobs } from './cron';
 
 const app = express();
@@ -17,6 +18,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api', ingestionRoutes);
 app.use('/api', leadsRoutes);
+app.use('/api/elevenlabs', elevenLabsRoutes);
 
 app.use(errorHandler);
 

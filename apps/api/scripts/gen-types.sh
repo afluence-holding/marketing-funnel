@@ -4,7 +4,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 API_DIR="$(dirname "$SCRIPT_DIR")"
 ROOT_DIR="$(dirname "$(dirname "$API_DIR")")"
-OUTPUT="$API_DIR/src/db/types.ts"
+OUTPUT="$ROOT_DIR/packages/db/src/types.ts"
 
 # Load .env and .env.local from root (.env.local takes precedence)
 if [ -f "$ROOT_DIR/.env" ]; then
@@ -35,4 +35,4 @@ npx supabase gen types typescript \
   --schema marketing \
   > "$OUTPUT"
 
-echo "Done! Types written to src/db/types.ts"
+echo "Done! Types written to packages/db/src/types.ts"

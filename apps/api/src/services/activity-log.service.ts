@@ -1,5 +1,5 @@
-import { supabaseAdmin } from '../db/supabase';
-import type { Json } from '../db/types';
+import { supabaseAdmin } from '@marketing-funnel/db';
+import type { Json } from '@marketing-funnel/db';
 
 export async function logActivity(
   organizationId: string,

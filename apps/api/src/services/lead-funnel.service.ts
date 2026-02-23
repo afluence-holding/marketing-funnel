@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../db/supabase';
+import { supabaseAdmin } from '@marketing-funnel/db';
 import type { RoutingDecision } from '../types';
 
 interface CreateEntryInput {
