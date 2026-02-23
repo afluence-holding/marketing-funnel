@@ -1,0 +1,19 @@
+{
+  "name": "marketing-funnel",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @marketing-funnel/api",
+    "dev:web": "npm run dev -w @marketing-funnel/web",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/afluence-holding/marketing-funnel.git"
+  },
+  "license": "ISC"
+}
