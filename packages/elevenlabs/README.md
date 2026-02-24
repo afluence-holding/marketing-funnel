@@ -1,8 +1,8 @@
-# @marketing-funnel/elevenlabs
+# @marketing-pipeline/elevenlabs
 
-AI phone call package for the marketing funnel. Wraps [ElevenLabs Conversational AI](https://elevenlabs.io/docs/conversational-ai/overview) to make outbound calls to leads as part of your funnel workflows.
+AI phone call package for the marketing pipeline. Wraps [ElevenLabs Conversational AI](https://elevenlabs.io/docs/conversational-ai/overview) to make outbound calls to leads as part of your pipeline sequences.
 
-This package is the `ai_call` workflow node — when a lead enters a funnel stage, the system can automatically phone them with a personalized AI agent.
+This package is the `ai_call` sequence step — when a lead is enrolled in a sequence, the system can automatically phone them with a personalized AI agent.
 
 ---
 
@@ -15,10 +15,10 @@ Landing page form
 POST /api/ingest  ──→  Lead created in DB
       │
       ▼
-Routing engine assigns lead to funnel stage
+Routing engine assigns lead to pipeline stage
       │
       ▼
-Workflow triggers "ai_call" step
+Sequence executes "ai_call" step
       │
       ▼
 callLead() in apps/api ──→ makeCall() in this package
@@ -77,14 +77,14 @@ All four are optional in the Zod schema (the API won't crash if you haven't set 
 
 ## Real-world example: Project-1 follow-up call
 
-Your funnel for Project-1 works like this: a lead fills out a landing page form, enters the "New Lead" stage, and you want to call them within minutes to qualify them.
+Your pipeline for Project-1 works like this: a lead fills out a landing page form, enters the "New Lead" stage, and you want to call them within minutes to qualify them.
 
 ### Step 1: Create your agent (one-time)
 
 You can do this in the ElevenLabs Dashboard, or programmatically:
 
 ```typescript
-import { createAgent } from '@marketing-funnel/elevenlabs';
+import { createAgent } from '@marketing-pipeline/elevenlabs';
 
 const agent = await createAgent({
   name: 'Project-1 Follow-up Agent',
@@ -112,15 +112,15 @@ The `{{lead_name}}` and `{{lead_source}}` are **dynamic variables** — they get
 
 ### Step 2: Call a single lead
 
-When a lead enters your funnel and you want to call them immediately:
+When a lead enters your pipeline and you want to call them immediately:
 
 ```typescript
 import { callLead } from '../services/call.service';
 
-// After lead ingestion in your route handler or workflow executor:
+// After lead ingestion in your route handler or sequence executor:
 const result = await callLead(lead.id, {
   orgId: IDS.ORG_ID,
-  funnelEntryId: entry.id,
+  pipelineEntryId: entry.id,
   firstMessage: 'Hi {{lead_name}}, this is Ana. You just signed up on our landing page — do you have a quick minute?',
   dynamicVariables: {
     campaign: 'project-1-landing',
@@ -163,7 +163,7 @@ const activities = await getActivityForLead(leadId);
 ### Step 4: Review the transcript
 
 ```typescript
-import { getConversation } from '@marketing-funnel/elevenlabs';
+import { getConversation } from '@marketing-pipeline/elevenlabs';
 
 const conversation = await getConversation(conversationId);
 
@@ -184,7 +184,7 @@ for (const msg of conversation.transcript) {
 When you have many leads to call at once — for example a Monday morning follow-up for all leads that came in over the weekend:
 
 ```typescript
-import { makeBatchCalls } from '@marketing-funnel/elevenlabs';
+import { makeBatchCalls } from '@marketing-pipeline/elevenlabs';
 
 const result = await makeBatchCalls({
   callName: 'Weekend leads follow-up — Feb 24',
@@ -223,7 +223,7 @@ curl -X POST http://localhost:3000/api/elevenlabs/call \
   -d '{
     "leadId": "uuid-of-lead",
     "orgId": "uuid-of-org",
-    "funnelEntryId": "uuid-of-funnel-entry",
+    "pipelineEntryId": "uuid-of-pipeline-entry",
     "firstMessage": "Hi {{lead_name}}, quick follow-up...",
     "agentId": "optional-override-agent-id"
   }'
@@ -246,7 +246,7 @@ Receives post-call events from ElevenLabs. **You don't call this** — ElevenLab
 ### Calls
 
 ```typescript
-import { makeCall, makeBatchCalls } from '@marketing-funnel/elevenlabs';
+import { makeCall, makeBatchCalls } from '@marketing-pipeline/elevenlabs';
 
 // Single call
 const result = await makeCall({
@@ -278,7 +278,7 @@ const batch = await makeBatchCalls({
 ### Conversations
 
 ```typescript
-import { getConversation, listConversations, getConversationAudio } from '@marketing-funnel/elevenlabs';
+import { getConversation, listConversations, getConversationAudio } from '@marketing-pipeline/elevenlabs';
 
 // Get full transcript + metadata for a completed call
 const convo = await getConversation('conv_id');
@@ -294,7 +294,7 @@ const audioStream = await getConversationAudio('conv_id');
 ### Agents
 
 ```typescript
-import { createAgent, getAgent, updateAgent, deleteAgent, listAgents } from '@marketing-funnel/elevenlabs';
+import { createAgent, getAgent, updateAgent, deleteAgent, listAgents } from '@marketing-pipeline/elevenlabs';
 
 const agent = await createAgent({
   name: 'Sales Follow-up',
@@ -317,7 +317,7 @@ await deleteAgent('agent_id');
 ### Phone numbers
 
 ```typescript
-import { listPhoneNumbers, getPhoneNumber, updatePhoneNumber } from '@marketing-funnel/elevenlabs';
+import { listPhoneNumbers, getPhoneNumber, updatePhoneNumber } from '@marketing-pipeline/elevenlabs';
 
 const numbers = await listPhoneNumbers();
 const number = await getPhoneNumber('pn_123');
@@ -327,7 +327,7 @@ await updatePhoneNumber('pn_123', { agentId: 'new_agent_id' });
 ### Webhooks (for custom Express routes)
 
 ```typescript
-import { verifyElevenLabsWebhook, parseWebhookEvent } from '@marketing-funnel/elevenlabs';
+import { verifyElevenLabsWebhook, parseWebhookEvent } from '@marketing-pipeline/elevenlabs';
 
 // Middleware — verifies HMAC signature
 router.post('/my-webhook', verifyElevenLabsWebhook('your-secret'), (req, res) => {
@@ -361,9 +361,9 @@ Every call creates activity log entries in `marketing.activity_logs`:
 
 ---
 
-## Workflow integration (future)
+## Sequence integration (future)
 
-This package maps to the `ai_call` step type in the workflow engine (see `docs/VISION-ARCHITECTURE.md`). When the workflow executor reaches an `ai_call` step, the `workflow_steps.config` JSONB looks like:
+This package maps to the `ai_call` step type in the sequence engine (see `docs/VISION-ARCHITECTURE.md`). When the sequence executor reaches an `ai_call` step, the `sequence_steps.config` JSONB looks like:
 
 ```json
 {
@@ -375,13 +375,13 @@ This package maps to the `ai_call` step type in the workflow engine (see `docs/V
     "dynamicVariableMapping": {
       "lead_name": "lead.first_name",
       "lead_source": "lead.source",
-      "campaign": "workflow.name"
+      "campaign": "sequence.name"
     }
   }
 }
 ```
 
-The workflow executor resolves the dynamic variables from the lead record, then calls `callLead()` from `apps/api/src/services/call.service.ts`.
+The sequence executor resolves the dynamic variables from the lead record, then calls `callLead()` from `apps/api/src/services/call.service.ts`.
 
 ---
 

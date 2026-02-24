@@ -1,882 +1,544 @@
-# MVP Marketing SaaS - Arquitectura Minima para Probar
+# v0 - Estado Actual del Codebase
 
-> Referencia completa: [VISION-ARCHITECTURE.md](VISION-ARCHITECTURE.md) (scope maximo)
-
----
-
-## 1. Que incluye el MVP vs que NO
-
-| Feature | MVP | Vision | Notas |
-|---|---|---|---|
-| Lead ingestion (POST /api/ingest) | SI | SI | Igual |
-| Lead storage + custom fields | SI | SI | Igual |
-| Funnels + stages | SI | SI | Igual |
-| Routing engine (codigo) | SI | SI | MVP: routing sobre data cruda del lead (custom fields). Sin ICP scores |
-| Mover lead de stage | SI | SI | Igual |
-| Lead stage history | SI | SI | Igual |
-| Activity logs | SI | SI | Igual |
-| UTM tracking | SI | SI | Igual |
-| Workflows (lineales) | SI | SI (con branches) | MVP: step1 -> step2 -> step3. Sin bifurcaciones |
-| Tests automatizados | SI | SI | Unit + Integration (Testcontainers) + E2E + CI |
-| ICP scoring engine | NO | SI | Se agrega despues. Routing funciona sin scores |
-| ICP tables (icps, criteria, scores) | NO | SI | Se agrega despues |
-| Landing pages en DB | NO | SI | Las landing pages son externas. POSTean a /api/ingest |
-| Channels en DB (WhatsApp) | NO | SI | Se agrega despues. Webhooks se configuran directamente |
-| Workflow branches | NO | SI | Se agrega despues |
-| funnel_icp_assignments | NO | SI | Reporting, no operacional |
-| Swagger | NO | SI | Se agrega despues |
-| Email integration | NO | SI | Fase 3 |
-| ElevenLabs AI calls | NO | SI | Fase 3 |
-| WhatsApp outbound | NO | SI | Fase 3 |
-| Admin UI | NO | SI | Fase 3 |
+> Referencia de vision futura: [VISION-ARCHITECTURE.md](VISION-ARCHITECTURE.md)
 
 ---
 
-## 2. Decisiones de Diseno MVP
+## 1. Que es v0
 
-| Decision | Valor |
-|---|---|
-| **Tech stack** | Express (TypeScript) + PostgreSQL + Drizzle ORM + drizzle-zod |
-| **Validacion** | Zod (via drizzle-zod). Sin DTOs, sin decoradores |
-| **Multi-tenancy** | No activo, `organization_id` en todas las tablas |
-| **Funnel** | Entidad independiente, pertenece a una BU |
-| **Lead** | Solo identidad (email, nombre, telefono). Todo lo demas en custom fields |
-| **Email requerido** | Si, unique por org. Identificador para deduplicacion |
-| **Routing** | Codigo puro en `orgs/<org>/routing.ts`. Evalua custom fields del lead directamente (sin ICP scores) |
-| **Landing pages** | Externas (Webflow, HTML, etc). POSTean a /api/ingest. Sin tablas en DB |
-| **Channels (WhatsApp)** | Sin tabla en DB. Si se necesita webhook, se configura directo en codigo contra /api/ingest |
-| **ICP scoring** | No existe en MVP. Se agrega despues. Routing decide con data cruda |
-| **Lead status** | Campo `status` en leads (ej: new, contacted, engaged, MQL, SQL). Valores libres (varchar), no enum. Se definen por configuracion despues |
-| **Arquitectura repo** | Monorepo: `shared/` (schemas, services, middleware) + `orgs/<nombre>/` (app deployable por org). Cada org importa de shared y define su routing, handlers y config. Deploy independiente en Railway |
-| **Testing** | Vitest + Supertest + Testcontainers (PostgreSQL efimero). Unit, Integration, E2E. CI con GitHub Actions |
-| **Workflows MVP** | Lineales (next_step_id). Sin branches |
+Es el punto de partida. Todo se configura a mano. La meta es **lanzar el primer producto (AI Faktory), aprender que funciona, y despues automatizar**.
+
+No hay UI de admin, no hay builders, no hay templates. Hay codigo, una API, y Supabase.
 
 ---
 
-## 3. Diagrama de Bloques MVP
+## 2. Que esta construido vs que falta
 
-### Arquitectura Monorepo
+### Implementado
 
-```mermaid
-flowchart TB
-    subgraph shared ["shared/ (libreria comun)"]
-        DB["DB Schemas (13 tablas)"]
-        Services["Services (Lead, Funnel, Workflow, etc.)"]
-        MW["Middleware (auth, validation, errors)"]
-        Events["Event Bus"]
-        Types["Types / Interfaces"]
-    end
-
-    subgraph org1 ["orgs/ai-factory/ (deployable)"]
-        App1["app.ts + server.ts"]
-        Routing1["routing.ts"]
-        Handlers1["handlers.ts"]
-        Config1["config.ts"]
-    end
-
-    subgraph org2 ["orgs/influencer-brand/ (deployable)"]
-        App2["app.ts + server.ts"]
-        Routing2["routing.ts"]
-        Handlers2["handlers.ts"]
-        Config2["config.ts"]
-    end
-
-    org1 -->|"import"| shared
-    org2 -->|"import"| shared
-
-    subgraph deploy ["Railway"]
-        R1["Service: ai-factory"]
-        R2["Service: influencer-brand"]
-    end
-
-    org1 --> R1
-    org2 --> R2
-```
-
-### Diagrama de Dominio
-
-```mermaid
-flowchart TB
-    subgraph core ["Core Domain"]
-        Org["Organization"]
-        BU["Business Unit"]
-        Funnel["Funnel"]
-        FunnelStage["Funnel Stage"]
-    end
-
-    subgraph leads ["Lead Management"]
-        Lead["Lead"]
-        LeadFunnelEntry["Lead Funnel Entry"]
-        LeadStageHistory["Lead Stage History"]
-        CustomFieldDef["Custom Field Definition"]
-        CustomFieldVal["Custom Field Value"]
-    end
-
-    subgraph automation ["Automation (lineal)"]
-        Workflow["Workflow"]
-        WorkflowStep["Workflow Step"]
-        WorkflowExecution["Workflow Execution"]
-    end
-
-    subgraph capture ["Lead Capture (externo)"]
-        ExtLP["Landing Pages (externas)"]
-        ExtWA["WhatsApp (externo)"]
-    end
-
-    subgraph orchestration ["Orchestration"]
-        Ingestion["LeadIngestionService"]
-        RoutingEng["RoutingEngine (codigo por org)"]
-    end
-
-    subgraph activity ["Tracking"]
-        ActivityLog["Activity Log"]
-    end
-
-    Org --> BU
-    BU --> Funnel
-    Funnel --> FunnelStage
-    Funnel --> Workflow
-    Workflow --> WorkflowStep
-    Workflow --> WorkflowExecution
-    Lead --> LeadFunnelEntry
-    LeadFunnelEntry --> LeadStageHistory
-    Lead --> CustomFieldVal
-    LeadFunnelEntry --> FunnelStage
-    Lead --> ActivityLog
-    CustomFieldDef --> CustomFieldVal
-    ExtLP -->|"POST /api/ingest"| Ingestion
-    ExtWA -->|"POST /api/ingest"| Ingestion
-    Ingestion --> Lead
-    Ingestion --> RoutingEng
-    RoutingEng --> LeadFunnelEntry
-```
-
----
-
-## 4. Base de Datos MVP (13 tablas)
-
-Tablas eliminadas vs Vision (8 tablas menos):
-- ~~icps~~ (ICP scoring no existe en MVP)
-- ~~icp_criteria~~ (idem)
-- ~~lead_icp_scores~~ (idem)
-- ~~landing_pages~~ (landing pages son externas)
-- ~~landing_page_fields~~ (idem)
-- ~~channels~~ (webhooks se configuran directo en codigo)
-- ~~funnel_icp_assignments~~ (solo reporting)
-- ~~workflow_step_branches~~ (sin bifurcaciones)
-
-```mermaid
-erDiagram
-    organizations ||--o{ business_units : "1:N"
-    business_units ||--o{ funnels : "1:N"
-    funnels ||--o{ funnel_stages : "1:N"
-    funnels ||--o{ workflows : "1:N"
-    organizations ||--o{ leads : "1:N"
-    leads ||--o{ lead_funnel_entries : "1:N"
-    lead_funnel_entries ||--o{ lead_stage_history : "1:N"
-    funnel_stages ||--o{ lead_stage_history : "1:N"
-    funnels ||--o{ lead_funnel_entries : "1:N"
-    funnel_stages ||--o{ lead_funnel_entries : "1:N"
-    organizations ||--o{ custom_field_definitions : "1:N"
-    custom_field_definitions ||--o{ custom_field_values : "1:N"
-    leads ||--o{ custom_field_values : "1:N"
-    workflows ||--o{ workflow_steps : "1:N"
-    workflows ||--o{ workflow_executions : "1:N"
-    leads ||--o{ workflow_executions : "1:N"
-    lead_funnel_entries ||--o{ workflow_executions : "1:N"
-    workflow_steps ||--o{ workflow_executions : "1:N"
-    leads ||--o{ activity_logs : "1:N"
-    lead_funnel_entries ||--o{ activity_logs : "1:N"
-
-    organizations {
-        uuid id PK
-        varchar name
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    business_units {
-        uuid id PK
-        uuid organization_id FK
-        varchar name
-        text description
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    funnels {
-        uuid id PK
-        uuid business_unit_id FK
-        varchar name
-        text description
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    funnel_stages {
-        uuid id PK
-        uuid funnel_id FK
-        varchar name
-        integer position
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    leads {
-        uuid id PK
-        uuid organization_id FK
-        varchar email "unique por org"
-        varchar first_name
-        varchar last_name
-        varchar phone
-        varchar source
-        varchar status "new contacted engaged MQL SQL etc"
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    lead_funnel_entries {
-        uuid id PK
-        uuid lead_id FK
-        uuid funnel_id FK
-        uuid current_stage_id FK
-        varchar channel "inbound o outbound"
-        varchar trigger_type "manual o automatic"
-        varchar source_type "manual api webhook"
-        uuid source_id "nullable"
-        jsonb utm_data
-        timestamp entered_at
-        timestamp updated_at
-    }
-
-    lead_stage_history {
-        uuid id PK
-        uuid lead_funnel_entry_id FK
-        uuid from_stage_id FK "nullable"
-        uuid to_stage_id FK
-        timestamp changed_at
-    }
-
-    custom_field_definitions {
-        uuid id PK
-        uuid organization_id FK
-        varchar entity_type
-        varchar field_key
-        varchar field_label
-        varchar field_type
-        jsonb options
-        boolean required
-        timestamp created_at
-    }
-
-    custom_field_values {
-        uuid id PK
-        varchar entity_type
-        uuid entity_id
-        uuid field_definition_id FK
-        text value
-        timestamp created_at
-    }
-
-    workflows {
-        uuid id PK
-        uuid funnel_id FK
-        varchar name
-        varchar trigger_on
-        jsonb trigger_conditions
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    workflow_steps {
-        uuid id PK
-        uuid workflow_id FK
-        varchar step_type
-        jsonb config
-        uuid next_step_id FK "nullable"
-        boolean is_entry_point
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    workflow_executions {
-        uuid id PK
-        uuid workflow_id FK
-        uuid lead_id FK
-        uuid lead_funnel_entry_id FK
-        uuid current_step_id FK
-        varchar status
-        timestamp started_at
-        timestamp completed_at
-        timestamp updated_at
-    }
-
-    activity_logs {
-        uuid id PK
-        uuid organization_id FK
-        uuid lead_id FK
-        uuid lead_funnel_entry_id FK "nullable"
-        varchar action
-        jsonb metadata
-        timestamp created_at
-    }
-
-```
-
----
-
-## 5. Flujo Principal MVP: Ingestion End-to-End
-
-```mermaid
-flowchart TD
-    Entry["Lead llega (LP externa / WhatsApp / API)"]
-    Entry --> Ingest["POST /api/ingest"]
-    Ingest --> S1["1. LeadService.createOrUpdate()"]
-    S1 --> S2["2. CustomFieldService.saveValues()"]
-    S2 --> S3["3. RoutingEngine.route() - CODIGO"]
-    S3 --> S3a["Evalua custom fields del lead directamente"]
-    S3a --> S4["4. LeadFunnelService.createEntry()"]
-    S4 --> S4a["Registrar lead_stage_history"]
-    S4a --> S5["5. eventBus.emit('lead.ingested')"]
-    S5 --> S5a["WorkflowService: activar workflows"]
-    S5 --> S5b["ActivityLogService: registrar"]
-```
-
-Sin ICP scoring: el routing engine (definido en `orgs/<org>/routing.ts`) evalua los custom fields directamente. Ver ejemplo en seccion 9.
-
-### Flujo de Lead Update
-
-```mermaid
-flowchart TD
-    Edit["PUT /api/leads/:id (con custom fields opcionales)"]
-    Edit --> U1["1. LeadService.update()"]
-    U1 --> U2{"Custom fields cambiaron?"}
-    U2 -->|Si| U3["2. CustomFieldService.saveValues()"]
-    U2 -->|No| U4["3. eventBus.emit('lead.updated')"]
-    U3 --> U4
-    U4 --> U4a["WorkflowService: evaluar workflows con trigger_on=lead_updated"]
-    U4 --> U4b["ActivityLogService: registrar cambios"]
-```
-
-El `PUT /api/leads/:id` acepta tanto campos core (first_name, last_name, phone) como custom fields. Si los custom fields cambian, se actualizan y el evento `lead.updated` permite que workflows reaccionen (ej: si el lead ahora cumple criterios de un funnel distinto, un workflow puede re-routearlo).
-
-### Flujo de Workflow Lineal MVP
-
-```mermaid
-flowchart TD
-    Trigger["Evento: lead.ingested / lead.updated / lead.status_changed / lead.stage_changed"]
-    Trigger --> Find["Buscar workflows activos con trigger_on matching"]
-    Find --> Cond["Evaluar trigger_conditions"]
-    Cond --> Match{"Cumple?"}
-    Match -->|No| Skip["No activar"]
-    Match -->|Si| Create["Crear workflow_execution"]
-    Create --> Step1["Ejecutar step 1 (is_entry_point=true)"]
-    Step1 --> Next1{"next_step_id?"}
-    Next1 -->|Si| Step2["Ejecutar step 2"]
-    Step2 --> Next2{"next_step_id?"}
-    Next2 -->|Si| Step3["Ejecutar step 3"]
-    Step3 --> Next3{"next_step_id?"}
-    Next3 -->|null| Done["workflow_execution.status = completed"]
-```
-
----
-
-## 6. Services MVP (10 servicios + 1 orquestador)
-
-Eliminados vs Vision:
-- ~~ICPService~~ (no hay tablas ICP)
-- ~~ICPScoringService~~ (no hay scoring)
-- ~~LandingPageService~~ (no hay tablas de LP)
-- ~~ChannelService~~ (no hay tabla channels)
-
-```mermaid
-flowchart TB
-    subgraph orchestration ["Orchestration"]
-        LeadIngestion["LeadIngestionService"]
-    end
-
-    subgraph coreServices ["Core"]
-        OrgService["OrganizationService"]
-        BUService["BusinessUnitService"]
-        FunnelService["FunnelService"]
-    end
-
-    subgraph leadServices ["Leads"]
-        LeadService["LeadService"]
-        LeadFunnelService["LeadFunnelService"]
-        CustomFieldService["CustomFieldService"]
-    end
-
-    subgraph routingLayer ["Routing (por org)"]
-        RoutingEngine["RoutingEngine (orgs/<org>/routing.ts)"]
-    end
-
-    subgraph automationServices ["Automation"]
-        WorkflowService["WorkflowService"]
-        WorkflowRunner["WorkflowExecutionService (lineal)"]
-    end
-
-    subgraph trackingServices ["Tracking"]
-        ActivityService["ActivityLogService"]
-    end
-
-    LeadIngestion --> LeadService
-    LeadIngestion --> CustomFieldService
-    LeadIngestion --> RoutingEngine
-    LeadIngestion --> LeadFunnelService
-    LeadIngestion --> ActivityService
-    LeadFunnelService --> ActivityService
-    WorkflowRunner --> ActivityService
-```
-
-| Servicio | Tablas | Que hace en MVP |
+| Componente | Status | Donde |
 |---|---|---|
-| **LeadIngestionService** | - | Orquesta: crear lead, custom fields, routing, entry, eventos |
-| **OrganizationService** | organizations | CRUD orgs |
-| **BusinessUnitService** | business_units | CRUD BUs |
-| **FunnelService** | funnels, funnel_stages | CRUD funnels + stages |
-| **LeadService** | leads | CRUD leads, deduplicacion por email |
-| **LeadFunnelService** | lead_funnel_entries, lead_stage_history | Crear entries, mover stage, historial |
-| **CustomFieldService** | custom_field_definitions, custom_field_values | Definir y guardar campos |
-| **RoutingEngine** | - | Codigo por org (`orgs/<org>/routing.ts`): evalua custom fields, decide funnel |
-| **WorkflowService** | workflows, workflow_steps | CRUD workflows + steps lineales |
-| **WorkflowExecutionService** | workflow_executions | Ejecutar workflows lineales |
-| **ActivityLogService** | activity_logs | Registrar acciones |
+| Monorepo (NPM workspaces) | Listo | `apps/*`, `packages/*` |
+| API Express | Listo | `apps/api/` |
+| Web Next.js (placeholder) | Esqueleto | `apps/web/` |
+| Supabase DB (11 tablas, schema `marketing`) | Listo | `packages/db/` |
+| Types generados de Supabase | Listo | `packages/db/src/types.ts` |
+| Config con Zod validation | Listo | `packages/config/` |
+| Lead ingestion (POST /api/ingest) | Listo | `core/services/ingestion.service.ts` |
+| Lead CRUD (create, update, dedup por email) | Listo | `core/services/lead.service.ts` |
+| Custom fields (save + read) | Listo | `core/services/custom-field.service.ts` |
+| Pipeline entries + stage history | Listo | `core/services/lead-pipeline.service.ts` |
+| Activity logging | Listo | `core/services/activity-log.service.ts` |
+| Routing engine por org (codigo puro) | Listo | `orgs/afluence/company-1/routing.ts` |
+| Org config (IDs, statuses) | Listo | `orgs/afluence/company-1/config.ts` |
+| Seed script (crear org/BU/pipeline/stages/fields) | Listo | `orgs/afluence/company-1/seed.ts` |
+| ElevenLabs client (AI calls) | Listo | `packages/elevenlabs/` |
+| ElevenLabs webhook + manual call trigger | Listo | `core/routes/elevenlabs.routes.ts` |
+| AI call service (call lead, handle completed/failed) | Listo | `core/services/call.service.ts` |
+| WhatsApp Cloud API client | Listo | `packages/whatsapp-client/` |
+| Email client (Resend + React Email) | Listo | `packages/email/` |
+| Code-first sequences (TS definitions) | Listo | `orgs/afluence/company-1/sequences/` |
+| Code-first workflows (TS definitions) | Listo | `orgs/afluence/company-1/workflows/` |
+| Org registry (aggregates all BU sequences/workflows) | Listo | `orgs/index.ts` |
+| Event bus (PipelineEventBus) | Listo | `core/engine/event-bus.ts` |
+| Sequence executor (cron, processes enrollments) | Listo | `core/engine/sequence-executor.ts` |
+| Step handlers (whatsapp, email, ai_call, wait, manual) | Listo | `core/engine/step-handlers/` |
+| Workflow engine (event-driven, matches code workflows) | Listo | `core/engine/workflow-engine.ts` |
+| Action handlers (move_stage, update_status, enroll, etc) | Listo | `core/engine/action-handlers/` |
+| Enrollment service (enroll, unenroll, pause, resume) | Listo | `core/services/enrollment.service.ts` |
+| Enrollment endpoints (CRUD) | Listo | `core/routes/enrollment.routes.ts` |
+| Move stage endpoint (PUT) | Listo | `core/routes/leads.routes.ts` |
+| Cron job (sequence-step-processor, enabled) | Listo | `core/cron/jobs/index.ts` |
+| List leads (GET /api/leads) | Listo | `core/routes/leads.routes.ts` |
+| Lead detail (GET /api/leads/:id) | Listo | `core/routes/leads.routes.ts` |
+| Zod validation middleware | Listo | `core/middleware/validate.ts` |
+| Error handler middleware | Listo | `core/middleware/error-handler.ts` |
+
+### No implementado todavia
+
+| Componente | Prioridad | Notas |
+|---|---|---|
+| Asignar lead a pipeline manual (POST) | Alta | Falta endpoint |
+| CRUD pipelines/stages via API | Media | Solo se crean via seed |
+| CRUD custom field definitions via API | Media | Solo se crean via seed |
+| Multi-BU routing (org registry for routes) | Media | Routes hardcodean company-1, resolver con segundo BU |
+| Admin UI (apps/web) | Baja | Solo placeholder |
+| Auth/API key middleware | Baja | No hay auth todavia |
+| Paginacion en endpoints | Baja | Falta implementar |
 
 ---
 
-## 7. API Endpoints MVP
+## 3. Decisiones de Diseno
 
-### Setup (configurar el sistema)
+| Decision | Valor | Por que |
+|---|---|---|
+| **DB** | Supabase (PostgreSQL managed, schema `marketing`) | Sin ops, types auto-generados, escala sin esfuerzo |
+| **ORM** | Supabase client directo (no Drizzle) | Simple, tipado gratis con gen-types, sin capas extra |
+| **API** | Express 5 + TypeScript | Ligero, conocido, rapido de iterar |
+| **Monorepo** | NPM workspaces (`apps/*` + `packages/*`) | Sin Turbo/Nx, minima complejidad |
+| **Routing** | Codigo puro en `orgs/<org>/<bu>/routing.ts` | Maximo control. Cambiar = PR + deploy |
+| **Config por org** | `orgs/<org>/<bu>/config.ts` con IDs hardcoded (de env vars) | Cada org/BU tiene sus IDs de pipeline/stages. El seed los crea, se copian al .env |
+| **Custom fields** | Polimorficos (entity_type + entity_id, sin FK real) | Flexibilidad: un lead puede tener cualquier campo extra |
+| **Email** | Unique por org. Dedup automatica en ingestion | Un email = un lead dentro de una org |
+| **Landing pages** | Externas (Webflow, HTML, etc). POSTean a /api/ingest | No hay builder. Las LP son cualquier form que haga POST |
+| **WhatsApp** | Client directo, sin colas | Suficiente para v0. Colas despues |
+| **Workflows** | Code-first: definidos en TypeScript en `orgs/<org>/<bu>/workflows/` | Event-driven: cuando pasa X, hacer Y. Workflow engine escucha event bus |
+| **Sequences** | Code-first: definidos en TypeScript en `orgs/<org>/<bu>/sequences/` | Cadencias de outreach: send, wait, call. Cron ejecuta enrollments cada minuto |
+| **Automations** | "Si un humano lo escribe → codigo. Si el sistema lo genera → DB" | Definiciones en codigo, runtime (enrollments) en DB |
+| **Un solo deploy** | Una API sirve todos los orgs | No hay un servicio por org. Solo un routing que apunta al org correcto |
 
-```
-POST   /api/organizations                      Crear org
-GET    /api/organizations/:id                   Obtener org
+---
 
-POST   /api/business-units                      Crear BU
-GET    /api/business-units                      Listar BUs
-GET    /api/business-units/:id                  Obtener BU
-PUT    /api/business-units/:id                  Actualizar BU
-DELETE /api/business-units/:id                  Eliminar BU
-
-POST   /api/funnels                             Crear funnel
-GET    /api/funnels                             Listar funnels
-GET    /api/funnels/:id                         Obtener funnel con stages
-PUT    /api/funnels/:id                         Actualizar funnel
-DELETE /api/funnels/:id                         Eliminar funnel
-POST   /api/funnels/:id/stages                  Agregar stage
-PUT    /api/funnels/:id/stages/:sid             Actualizar stage
-DELETE /api/funnels/:id/stages/:sid             Eliminar stage
-
-POST   /api/custom-fields                       Crear definicion de campo
-GET    /api/custom-fields                       Listar definiciones
-PUT    /api/custom-fields/:id                   Actualizar definicion
-DELETE /api/custom-fields/:id                   Eliminar definicion
-```
-
-### Operacion (uso diario)
+## 4. API Endpoints (implementados)
 
 ```
+GET    /api/health                              Health check + cron status
+
 POST   /api/ingest                              Entrada principal de leads
+                                                 → crea/actualiza lead
+                                                 → guarda custom fields
+                                                 → routing engine decide pipeline
+                                                 → crea pipeline entry + stage history
+                                                 → registra activity logs
+                                                 → emite evento lead_created/lead_updated
+                                                 → workflow engine puede auto-enrollar en secuencia
 
-POST   /api/leads                               Crear lead manual
-GET    /api/leads                               Listar leads (paginado, filtros)
-GET    /api/leads/:id                           Detalle lead completo
-PUT    /api/leads/:id                           Actualizar lead (core + custom fields)
-DELETE /api/leads/:id                           Eliminar lead
-GET    /api/leads/:id/funnels                   En que funnels esta
-POST   /api/leads/:id/funnels                   Asignar a funnel manual
-PUT    /api/leads/:id/funnels/:eid              Mover de stage
-DELETE /api/leads/:id/funnels/:eid              Sacar de funnel
-GET    /api/leads/:id/activity                  Actividad del lead
+GET    /api/leads                               Lista leads de la org (afluence/company-1)
+GET    /api/leads/:id                           Detalle: lead + custom fields + entries + activity + enrollments
+
+PUT    /api/leads/:leadId/pipeline-entries/:entryId/stage
+                                                 Mover lead entre stages (emite stage_entered/exited)
+
+POST   /api/enrollments                         Enrollar lead en una secuencia
+GET    /api/enrollments/:id                     Detalle de enrollment
+DELETE /api/enrollments/:id                     Unenrollar lead
+PATCH  /api/enrollments/:id/pause               Pausar enrollment
+PATCH  /api/enrollments/:id/resume              Resumir enrollment
+GET    /api/leads/:id/enrollments               Enrollments de un lead
+
+POST   /api/elevenlabs/webhook                  Webhook de ElevenLabs (post-call events)
+POST   /api/elevenlabs/call                     Trigger manual de AI call a un lead
 ```
 
-### Automation
+### Payload de /api/ingest
 
-```
-POST   /api/workflows                           Crear workflow
-GET    /api/workflows                           Listar workflows
-GET    /api/workflows/:id                       Obtener con steps
-PUT    /api/workflows/:id                       Actualizar workflow
-DELETE /api/workflows/:id                       Eliminar workflow
-POST   /api/workflows/:id/steps                 Agregar step
-PUT    /api/workflows/:id/steps/:sid            Actualizar step
-DELETE /api/workflows/:id/steps/:sid            Eliminar step
-GET    /api/workflow-executions                  Listar ejecuciones
-GET    /api/workflow-executions/:id              Estado de ejecucion
+```json
+{
+  "email": "juan@empresa.com",
+  "firstName": "Juan",
+  "lastName": "Perez",
+  "phone": "+5491155554444",
+  "source": "landing_page",
+  "channel": "inbound",
+  "sourceType": "landing_page",
+  "sourceId": "uuid-opcional",
+  "utmData": {
+    "utm_source": "google",
+    "utm_medium": "cpc",
+    "utm_campaign": "black_friday_2026"
+  },
+  "customFields": {
+    "company": "TechCorp",
+    "role": "CTO",
+    "company_size": "150",
+    "interest": "AI tools"
+  }
+}
 ```
 
-### Tracking e Infra
+### Payload de /api/elevenlabs/call
 
-```
-GET    /api/activity                            Listar actividad
-GET    /api/health                              Health check
+```json
+{
+  "leadId": "uuid-del-lead",
+  "orgId": "uuid-de-la-org",
+  "pipelineEntryId": "uuid-opcional",
+  "firstMessage": "Hola Juan, te llamo de AI Faktory...",
+  "dynamicVariables": { "offer": "descuento 30%" },
+  "agentId": "agent-id-opcional"
+}
 ```
 
 ---
 
-## 8. Event System MVP
+## 5. Flujo de Ingestion (implementado)
 
-| Evento | Emitido por | Consumido por |
+```mermaid
+flowchart TD
+    Entry["Lead llega (LP externa, WhatsApp, API, manual)"]
+    Entry --> POST["POST /api/ingest"]
+    POST --> S1["1. createOrUpdateLead()"]
+    S1 --> S1a["Busca lead por email+org"]
+    S1a --> S1b{"Existe?"}
+    S1b -->|Si| S1c["Update campos (merge)"]
+    S1b -->|No| S1d["Insert nuevo lead (status='new')"]
+    S1c --> S2["2. saveCustomFieldValues()"]
+    S1d --> S2
+    S2 --> S2a["Busca field definitions de la org"]
+    S2a --> S2b["Delete valores viejos, insert nuevos"]
+    S2b --> S3["3. getCustomFieldValues()"]
+    S3 --> S3a["Lee todos los custom fields del lead"]
+    S3a --> S4["4. routingEngine()"]
+    S4 --> S4a["Codigo en orgs/afluence/company-1/routing.ts"]
+    S4a --> S4b["Devuelve: [{pipelineId, initialStageId, channel}]"]
+    S4b --> S5["5. createPipelineEntry() — por cada decision"]
+    S5 --> S5a["Insert lead_pipeline_entries"]
+    S5a --> S5b["Insert lead_stage_history (null → stage)"]
+    S5b --> S6["6. logActivity() — registrar todo"]
+    S6 --> S7["7. eventBus.emit('lead_created')"]
+    S7 --> WF["Workflow Engine matchea workflows"]
+    WF --> Enroll["Action: enroll_sequence → crea enrollment"]
+    S7 --> Done["Response: { lead, entries, decisions }"]
+```
+
+---
+
+## 6. Flujo de AI Call (implementado)
+
+```mermaid
+flowchart TD
+    Trigger["POST /api/elevenlabs/call (manual)"]
+    Trigger --> S1["callLead()"]
+    S1 --> S1a["getLeadById() — verificar que existe y tiene phone"]
+    S1a --> S1b["Armar dynamic variables (nombre, email, source)"]
+    S1b --> S1c["makeCall() via ElevenLabs client"]
+    S1c --> S1d["logActivity('ai_call_initiated')"]
+    S1d --> Response["{ conversationId }"]
+
+    WH["POST /api/elevenlabs/webhook"]
+    WH --> Parse["parseWebhookEvent()"]
+    Parse --> Type{"Tipo de evento?"}
+    Type -->|"post_call_transcription"| Complete["handleCallCompleted()"]
+    Type -->|"call_initiation_failure"| Failed["handleCallFailed()"]
+    Type -->|"post_call_audio"| Audio["(no-op por ahora)"]
+    Complete --> FindLead["Buscar lead por conversationId en activity_logs"]
+    FindLead --> LogComplete["logActivity('ai_call_completed')"]
+    Failed --> FindLead2["Buscar lead por conversationId"]
+    FindLead2 --> LogFailed["logActivity('ai_call_failed')"]
+```
+
+---
+
+## 7. Code-First Automations (como funciona)
+
+### Regla: si un humano lo escribe, es codigo. Si el sistema lo genera, es database.
+
+| Que | Donde | Ejemplo |
 |---|---|---|
-| `lead.ingested` | LeadIngestionService | WorkflowService, ActivityLogService |
-| `lead.updated` | LeadService | WorkflowService, ActivityLogService |
-| `lead.status_changed` | LeadService | WorkflowService, ActivityLogService |
-| `lead.stage_changed` | LeadFunnelService | WorkflowService, ActivityLogService |
-| `workflow.step_completed` | WorkflowExecutionService | ActivityLogService |
-| `workflow.completed` | WorkflowExecutionService | ActivityLogService |
+| Sequence definitions | Codigo (`orgs/<org>/<bu>/sequences/*.ts`) | Pasos: send_whatsapp → wait 48h → send_email → ai_call |
+| Workflow definitions | Codigo (`orgs/<org>/<bu>/workflows/*.ts`) | "Cuando lead_created → enroll en welcome sequence" |
+| Prompts, mensajes, templates | Codigo (dentro del step definition) | `{ message: "Hola {{lead_name}}..." }` |
+| Routing logic | Codigo (`orgs/<org>/<bu>/routing.ts`) | "Todo lead → Pipeline Main, stage New Lead" |
+| Pipeline/stages structure | DB (creado por seed, una vez) | Pipeline "Main", stages: New Lead → Contacted → ... |
+| Leads, enrollments, logs | DB (el sistema los genera en runtime) | Lead juan@email.com, enrollment en "welcome", activity logs |
 
-Implementacion: EventEmitter de Node.js tipado en `src/events/event-bus.ts`.
+### Flujo de una secuencia
+
+```mermaid
+flowchart TD
+    WF["Workflow action: enroll_sequence"]
+    WF --> Insert["INSERT sequence_enrollments: key='welcome', step_index=0, next_step_at=now"]
+    Insert --> Cron["Cron (cada minuto): SELECT WHERE next_step_at <= now"]
+    Cron --> Lookup["Buscar sequence en codigo: sequenceRegistry[key]"]
+    Lookup --> Step["Obtener steps[current_step_index]"]
+    Step --> Handler["stepHandlerMap[step.type] ejecuta el paso"]
+    Handler --> Advance["Avanzar: step_index++, next_step_at = now + delay"]
+    Advance --> Check{"Mas steps?"}
+    Check -->|Si| Cron
+    Check -->|No| Complete["status='completed', emit sequence_completed"]
+```
+
+### Para cambiar un prompt o mensaje
+
+Editar el archivo `.ts` en `orgs/<org>/<bu>/sequences/`, push, deploy. No hay que tocar la DB, no hay frontend, no hay CRUD.
 
 ---
 
-## 9. Estructura del Proyecto MVP (Monorepo)
+## 8. Services Implementados
+
+| Service | Archivo | Que hace |
+|---|---|---|
+| **ingestion** | `core/services/ingestion.service.ts` | Orquesta: lead → custom fields → routing → pipeline → logs → emit evento |
+| **lead** | `core/services/lead.service.ts` | `createOrUpdateLead()` (dedup por email), `getLeadById()`, `getLeadsByOrg()` |
+| **lead-pipeline** | `core/services/lead-pipeline.service.ts` | `createPipelineEntry()`, `moveStage()` (+ history + events), `getEntriesForLead()` |
+| **custom-field** | `core/services/custom-field.service.ts` | `saveCustomFieldValues()` (upsert), `getCustomFieldValues()` |
+| **activity-log** | `core/services/activity-log.service.ts` | `logActivity()`, `getActivityForLead()` |
+| **call** | `core/services/call.service.ts` | `callLead()`, `handleCallCompleted()`, `handleCallFailed()` + emite eventos |
+| **enrollment** | `core/services/enrollment.service.ts` | `enrollLead()`, `unenrollLead()`, `pauseEnrollment()`, `resumeEnrollment()` |
+
+### Engine (core/engine/)
+
+| Componente | Archivo | Que hace |
+|---|---|---|
+| **event-bus** | `core/engine/event-bus.ts` | EventEmitter tipado. Services emiten, workflow engine escucha |
+| **workflow-engine** | `core/engine/workflow-engine.ts` | Escucha eventos, matchea workflows del registry, ejecuta actions |
+| **sequence-executor** | `core/engine/sequence-executor.ts` | Cron lo llama, procesa enrollments con `next_step_at <= now()` |
+| **step-handlers** | `core/engine/step-handlers/` | send_whatsapp, send_email, ai_call, wait, manual_task |
+| **action-handlers** | `core/engine/action-handlers/` | move_stage, update_status, enroll_sequence, unenroll_sequence, log, notify |
+
+---
+
+## 9. Packages
+
+| Package | Path | Que hace |
+|---|---|---|
+| **@marketing-pipeline/config** | `packages/config/` | Lee `.env` + `.env.local`, valida con Zod, exporta `env` tipado |
+| **@marketing-pipeline/db** | `packages/db/` | Supabase client (`supabaseAnon`, `supabaseAdmin`), types generados |
+| **@marketing-pipeline/elevenlabs** | `packages/elevenlabs/` | Client de ElevenLabs Conversational AI: calls, agents, conversations, webhooks |
+| **@marketing-pipeline/whatsapp-client** | `packages/whatsapp-client/` | WhatsApp Cloud API: send messages, webhook verification/parsing |
+| **@marketing-pipeline/email** | `packages/email/` | Resend: send emails, React Email templates, bulk sending |
+
+---
+
+## 10. Como agregar un nuevo producto (proceso manual v0)
+
+### Paso 1: Crear la carpeta de org/BU
+
+Estructura: `apps/api/src/orgs/<org-name>/<bu-name>/` con archivos de config + automations:
+
+```
+orgs/afluence/faktory-creators/
+├── config.ts                    IDs + org settings
+├── routing.ts                   Routing logic
+├── seed.ts                      Crear org/BU/pipeline/stages en DB
+├── sequences/
+│   ├── index.ts                 Exporta todas las secuencias
+│   └── welcome-creators.ts     Secuencia de bienvenida
+└── workflows/
+    ├── index.ts                 Exporta todos los workflows
+    └── auto-enroll.ts           Auto-enroll en secuencia al crear lead
+```
+
+### Paso 2: Definir secuencias (TypeScript)
+
+```typescript
+// sequences/welcome-creators.ts
+import type { SequenceDef } from '../../../../core/types';
+
+export const welcomeCreators: SequenceDef = {
+  key: 'welcome-creators',
+  name: 'Welcome Creators',
+  steps: [
+    { type: 'send_whatsapp', message: 'Hola {{lead_name}}, bienvenido a Faktory...' },
+    { type: 'wait', hours: 48 },
+    { type: 'send_email', template: 'creators-followup', subject: 'No te pierdas esto' },
+    { type: 'wait', hours: 24 },
+    { type: 'ai_call', agentId: 'xxx', firstMessage: 'Hola {{lead_name}}...' },
+  ],
+};
+```
+
+### Paso 3: Definir workflows (TypeScript)
+
+```typescript
+// workflows/auto-enroll.ts
+import type { WorkflowDef } from '../../../../core/types';
+
+export const autoEnroll: WorkflowDef = {
+  key: 'creators-auto-enroll',
+  name: 'Auto-enroll new creators',
+  trigger: { event: 'lead_created', conditions: { source: 'landing_creators' } },
+  actions: [{ type: 'enroll_sequence', sequenceKey: 'welcome-creators' }],
+};
+```
+
+### Paso 4: Registrar en el registry
+
+Agregar al `orgs/index.ts`:
+```typescript
+import { sequences as creatorsSeqs } from './afluence/faktory-creators/sequences';
+import { workflows as creatorsWfs } from './afluence/faktory-creators/workflows';
+// ...spread into sequenceRegistry and workflowRegistry
+```
+
+### Paso 5: Ejecutar seed + configurar env
+
+```bash
+npx ts-node src/orgs/afluence/faktory-creators/seed.ts
+# Copiar los IDs al .env.local
+```
+
+### Paso 6: Conectar la landing page
+
+Cualquier form que haga POST a `/api/ingest` con el payload correcto. La secuencia y los workflows se ejecutan automaticamente.
+
+---
+
+## 11. DB: Schema y Types
+
+Las tablas viven en Supabase bajo el schema `marketing`. Los types se generan automaticamente:
+
+```bash
+# Desde apps/api:
+npm run gen-types
+# Esto corre supabase gen types y genera packages/db/src/types.ts
+```
+
+El archivo `packages/db/src/types.ts` contiene tipos `Row`, `Insert`, `Update` para cada tabla. Todos los services usan estos tipos via el Supabase client (tipado automatico).
+
+### Tablas existentes (11)
+
+> Sequence/workflow **definitions** viven en codigo TypeScript. La DB solo guarda runtime data.
+
+| Tabla | Campos clave | Tipo |
+|---|---|---|
+| **organizations** | id, name | Estructura (seed) |
+| **business_units** | organization_id, name, description | Estructura (seed) |
+| **pipelines** | business_unit_id, name, description, is_active | Estructura (seed) |
+| **pipeline_stages** | pipeline_id, name, position | Estructura (seed) |
+| **custom_field_definitions** | organization_id, entity_type, field_key, field_label, field_type | Estructura (seed) |
+| **leads** | organization_id, email (unique), first_name, last_name, phone, source, status | Runtime |
+| **lead_pipeline_entries** | lead_id, pipeline_id, current_stage_id, channel, trigger_type, utm_data | Runtime |
+| **lead_stage_history** | lead_pipeline_entry_id, from_stage_id, to_stage_id, changed_at | Runtime |
+| **custom_field_values** | entity_type, entity_id, field_definition_id, value | Runtime |
+| **sequence_enrollments** | sequence_key, organization_id, lead_id, current_step_index, status, next_step_at | Runtime |
+| **activity_logs** | organization_id, lead_id, lead_pipeline_entry_id, action, metadata | Runtime |
+
+---
+
+## 12. Estructura Completa del Proyecto
 
 ```
 marketing-funnel/
-├── package.json                             Monorepo root (workspaces)
-├── tsconfig.base.json                       Config TS compartida
-├── docker-compose.yml                       PostgreSQL
+├── package.json                          workspaces: ["packages/*", "apps/*"]
+├── tsconfig.base.json
+├── .env.example
+├── .env.local
 │
-├── shared/                                  LIBRERIA COMUN (importada por cada org)
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── drizzle.config.ts
-│   │
-│   ├── db/
-│   │   ├── schema/                          SOURCE OF TRUTH (13 tablas)
-│   │   │   ├── core.schema.ts               organizations, BUs, funnels, stages
-│   │   │   ├── leads.schema.ts              leads, entries, stage_history, custom fields
-│   │   │   ├── automation.schema.ts         workflows, steps, executions
-│   │   │   ├── tracking.schema.ts           activity logs
-│   │   │   └── index.ts
-│   │   └── client.ts                        Conexion PostgreSQL + Drizzle
-│   │
-│   ├── services/
-│   │   ├── core/
-│   │   │   ├── organization.service.ts
-│   │   │   ├── business-unit.service.ts
-│   │   │   └── funnel.service.ts
-│   │   ├── leads/
-│   │   │   ├── lead.service.ts
-│   │   │   ├── lead-funnel.service.ts
-│   │   │   └── custom-field.service.ts
-│   │   ├── automation/
-│   │   │   ├── workflow.service.ts
-│   │   │   └── workflow-execution.service.ts
-│   │   ├── tracking/
-│   │   │   └── activity-log.service.ts
-│   │   └── ingestion/
-│   │       └── lead-ingestion.service.ts
-│   │
-│   ├── routes/
-│   │   ├── core.routes.ts                   orgs, BUs, funnels
-│   │   ├── leads.routes.ts                  leads, entries, custom fields
-│   │   ├── automation.routes.ts             workflows, steps, executions
-│   │   ├── tracking.routes.ts               activity logs
-│   │   ├── ingestion.routes.ts              POST /api/ingest
-│   │   └── index.ts
-│   │
-│   ├── middleware/
-│   │   ├── error-handler.ts
-│   │   ├── auth.ts
-│   │   ├── validate.ts
-│   │   └── pagination.ts
-│   │
-│   ├── events/
-│   │   ├── event-bus.ts
-│   │   └── listeners.ts
-│   │
-│   ├── types/
-│   │   ├── routing.types.ts                 RoutingDecision, SourceInfo, etc.
-│   │   ├── handlers.types.ts                WorkflowStepHandler interface
-│   │   └── config.types.ts                  OrgConfig interface
-│   │
-│   └── index.ts                             Re-export todo
-│
-├── orgs/                                    UNA CARPETA POR ORGANIZACION
-│   ├── ai-factory/                          Deploy independiente en Railway
-│   │   ├── package.json                     Depende de "shared"
-│   │   ├── tsconfig.json
-│   │   ├── .env                             DB_URL, API_KEY, PORT
-│   │   ├── Dockerfile
+├── apps/
+│   ├── api/                              @marketing-funnel/api
+│   │   ├── package.json
+│   │   ├── scripts/
+│   │   │   └── gen-types.sh              Genera types desde Supabase
 │   │   └── src/
-│   │       ├── app.ts                       Express app (importa routes de shared)
-│   │       ├── server.ts                    Entry point
-│   │       ├── routing.ts                   Reglas de routing de AI Factory
-│   │       ├── handlers.ts                  Handlers de workflow steps
-│   │       └── config.ts                    Statuses, defaults, settings
+│   │       ├── index.ts                  Express app + startup (cron + workflow engine)
+│   │       │
+│   │       ├── core/                     ← Plataforma compartida
+│   │       │   ├── types/
+│   │       │   │   └── index.ts          RoutingEngine, SequenceDef, WorkflowDef, PipelineEvent
+│   │       │   ├── routes/
+│   │       │   │   ├── ingestion.routes.ts   POST /api/ingest
+│   │       │   │   ├── leads.routes.ts       Leads CRUD + move stage
+│   │       │   │   ├── enrollment.routes.ts  Enrollment CRUD
+│   │       │   │   └── elevenlabs.routes.ts  Webhook + manual call
+│   │       │   ├── services/
+│   │       │   │   ├── ingestion.service.ts  Orquestador + emit lead_created
+│   │       │   │   ├── lead.service.ts       CRUD leads + dedup
+│   │       │   │   ├── lead-pipeline.service.ts  Entries + moveStage + events
+│   │       │   │   ├── enrollment.service.ts Enroll/unenroll/pause/resume
+│   │       │   │   ├── custom-field.service.ts
+│   │       │   │   ├── activity-log.service.ts
+│   │       │   │   └── call.service.ts       AI calls + emit events
+│   │       │   ├── engine/               ← Automation engine
+│   │       │   │   ├── event-bus.ts          PipelineEventBus (EventEmitter tipado)
+│   │       │   │   ├── workflow-engine.ts    Escucha eventos, matchea workflows
+│   │       │   │   ├── sequence-executor.ts  Procesa enrollments (cron)
+│   │       │   │   ├── step-handlers/        send_whatsapp, send_email, ai_call, wait, manual_task
+│   │       │   │   └── action-handlers/      move_stage, update_status, enroll/unenroll, log, notify
+│   │       │   ├── middleware/
+│   │       │   │   ├── validate.ts
+│   │       │   │   └── error-handler.ts
+│   │       │   └── cron/
+│   │       │       ├── index.ts
+│   │       │       ├── scheduler.ts
+│   │       │       └── jobs/index.ts         sequence-step-processor (enabled, every minute)
+│   │       │
+│   │       └── orgs/                     ← Config + automations por org/BU
+│   │           ├── index.ts              Registry (agrega sequences + workflows de todos los BUs)
+│   │           └── afluence/
+│   │               └── company-1/
+│   │                   ├── config.ts     IDs + org settings
+│   │                   ├── routing.ts    Routing logic
+│   │                   ├── seed.ts       DB seed script
+│   │                   ├── sequences/    Sequence definitions (TS)
+│   │                   │   ├── index.ts
+│   │                   │   └── welcome.ts
+│   │                   └── workflows/    Workflow definitions (TS)
+│   │                       ├── index.ts
+│   │                       └── auto-enroll.ts
 │   │
-│   └── influencer-brand/                    Otro deploy independiente
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── .env
-│       ├── Dockerfile
-│       └── src/
-│           ├── app.ts
-│           ├── server.ts
-│           ├── routing.ts                   Logica distinta (por seguidores, etc.)
-│           ├── handlers.ts
-│           └── config.ts
+│   └── web/                              @marketing-funnel/web (Next.js 15, placeholder)
 │
-└── drizzle/
-    └── migrations/
-```
-
-### Que va en cada org (3 archivos clave + wiring)
-
-**`routing.ts`** - Reglas de routing de la org:
-```typescript
-import { RoutingEngine } from '@shared/types/routing.types';
-
-export const routingEngine: RoutingEngine = (lead, customFields, source) => {
-  const role = customFields['role'];
-  const companySize = parseInt(customFields['company_size'] || '0');
-
-  if (['CTO', 'VP Eng'].includes(role) && companySize >= 50) {
-    return [{ funnelId: 'enterprise-b2b-id', initialStageId: 'qualify-id', channel: 'inbound' }];
-  }
-  return [];
-};
-```
-
-**`handlers.ts`** - Que hace cada tipo de workflow step:
-```typescript
-import { StepHandlerMap } from '@shared/types/handlers.types';
-
-export const stepHandlers: StepHandlerMap = {
-  email: async (step, lead) => { /* enviar email */ },
-  wait: async (step, lead) => { /* programar delay */ },
-  task: async (step, lead) => { /* crear tarea manual */ },
-};
-```
-
-**`config.ts`** - Settings de la org:
-```typescript
-import { OrgConfig } from '@shared/types/config.types';
-
-export const config: OrgConfig = {
-  defaultLeadStatus: 'new',
-  validStatuses: ['new', 'contacted', 'engaged', 'MQL', 'SQL'],
-  timezone: 'America/Lima',
-};
-```
-
-**`app.ts`** - Wiring (importa shared + inyecta lo custom):
-```typescript
-import { createApp } from '@shared';
-import { routingEngine } from './routing';
-import { stepHandlers } from './handlers';
-import { config } from './config';
-
-const app = createApp({ routingEngine, stepHandlers, config });
-export default app;
+├── packages/
+│   ├── config/                           Env vars + Zod validation
+│   ├── db/                               Supabase client + generated types
+│   ├── elevenlabs/                       ElevenLabs Conversational AI
+│   ├── whatsapp-client/                  WhatsApp Cloud API
+│   └── email/                            Resend + React Email
+│
+├── supabase/
+│   └── migrations/                       SQL migrations
+│
+└── docs/
+    ├── VISION-ARCHITECTURE.md
+    └── MVP-ARCHITECTURE.md               Este archivo
 ```
 
 ---
 
-## 10. Fases de Ejecucion MVP
-
-### Fase 1 - Fundacion
-1. Monorepo root (workspaces, tsconfig base, docker-compose)
-2. Drizzle schemas (13 tablas, source of truth)
-3. DB client + migraciones
-4. Middleware comun (auth, validation, errors, pagination)
-
-### Fase 2 - Services + Routes
-1. Services core (Org, BU, Funnel)
-2. Services leads (Lead, LeadFunnel, CustomField)
-3. Services automation (Workflow, WorkflowExecution lineal)
-4. Service tracking (ActivityLog)
-5. Service ingestion (orquestador)
-6. Event system (EventEmitter tipado + listeners)
-7. Routes (core, leads, automation, tracking, ingestion)
-
-### Fase 3 - Types + createApp + Primera Org
-1. Types/interfaces (RoutingEngine, StepHandlerMap, OrgConfig)
-2. createApp() factory que wirea todo
-3. orgs/ai-factory/ (routing, handlers, config, app, server)
-4. Validar que deploya en Railway
-
-### Fase 4 - Testing
-1. Vitest setup (config global, Testcontainers)
-2. Tests unitarios de services
-3. Tests de integracion (flujos con DB real)
-4. Tests E2E por org
-5. GitHub Actions CI pipeline
-
----
-
-## 11. Que falta para llegar a la Vision
-
-Despues de validar el MVP, agregar iterativamente:
-
-1. **Channels en DB**: Agregar tabla `channels` + ChannelService para gestionar webhooks de WhatsApp y otros canales
-2. **ICP scoring**: Agregar tablas `icps`, `icp_criteria`, `lead_icp_scores` + ICPService + ICPScoringService. El routing engine pasa a usar scores ademas de data cruda
-3. **Landing pages en DB**: Agregar tablas `landing_pages`, `landing_page_fields` + LandingPageService + builder/render
-4. **Workflow branches**: Agregar tabla `workflow_step_branches` + logica de bifurcacion
-5. **funnel_icp_assignments**: Tabla para reporting
-6. **Swagger**: swagger-jsdoc + swagger-ui-express
-7. **Job Queue**: BullMQ + Redis para workflows async con delays
-8. **Email integration**: Provider de email
-9. **WhatsApp outbound**: Enviar mensajes via WhatsApp Business API
-10. **ElevenLabs**: AI calls como workflow step
-11. **Admin UI**: Frontend
-
----
-
-## 11. Testing Automatizado
-
-### Herramientas
-
-| Herramienta | Para que |
-|---|---|
-| **Vitest** | Test runner (rapido, TS nativo, compatible Jest API) |
-| **Supertest** | HTTP assertions contra Express app sin levantar server |
-| **Testcontainers** | PostgreSQL efimero para integration/E2E (sin instalar nada local) |
-| **@faker-js/faker** | Generar data de prueba |
-| **GitHub Actions** | CI: lint + typecheck + tests en cada push/PR |
-
-### Estructura de tests
+## 13. Ejemplo End-to-End (lo que funciona hoy)
 
 ```
-shared/
-  __tests__/
-    unit/                              Tests rapidos con mocks
-      lead.service.test.ts
-      funnel.service.test.ts
-      custom-field.service.test.ts
-      workflow.service.test.ts
-      workflow-execution.service.test.ts
-      lead-funnel.service.test.ts
-      event-bus.test.ts
-    integration/                       Tests con DB real (Testcontainers)
-      ingestion-flow.test.ts
-      lead-update-flow.test.ts
-      stage-change-flow.test.ts
-      workflow-execution.test.ts
-      crud-endpoints.test.ts
-      error-handling.test.ts
-    helpers/
-      setup.ts                         Testcontainers PostgreSQL + migraciones
-      factories.ts                     Factories para crear data de prueba
-
-orgs/ai-factory/
-  __tests__/
-    e2e/
-      full-lifecycle.test.ts           Setup -> ingest -> route -> workflow -> verify
-```
-
-### Unit Tests (shared/__tests__/unit/)
-
-Tests rapidos con mocks de DB. Verifican logica de negocio aislada:
-
-| Test | Que verifica |
-|---|---|
-| LeadService | Crear lead, dedup por email, update campos, cambio de status emite `lead.status_changed` |
-| FunnelService | Crear funnel, agregar stages, validar posiciones unicas |
-| CustomFieldService | Crear definitions, guardar values, validar field_type |
-| WorkflowService | Crear workflow, agregar steps lineales, validar entry point unico |
-| WorkflowExecutionService | Ejecutar step, avanzar next_step_id, completar cuando null |
-| LeadFunnelService | Crear entry con stage history, mover stage, registrar history |
-| Event bus | Emitir evento, listener recibe payload correcto, tipos compilados |
-
-### Integration Tests (shared/__tests__/integration/)
-
-Tests con DB real (PostgreSQL via Testcontainers). Verifican flujos completos a traves de la API:
-
-| Test | Que verifica |
-|---|---|
-| **Ingestion flow** | `POST /api/ingest` -> lead creado -> custom fields guardados -> routing -> funnel entry creada -> stage history -> eventos emitidos |
-| **Lead update flow** | `PUT /api/leads/:id` -> campos actualizados -> `lead.updated` emitido -> workflow triggered |
-| **Stage change flow** | `PUT /api/leads/:id/funnels/:eid` -> stage cambiado -> history registrada -> `lead.stage_changed` emitido |
-| **Workflow execution** | Crear workflow 3 steps -> trigger -> step 1 -> step 2 -> step 3 -> status completed |
-| **CRUD endpoints** | Cada endpoint crea, lee, actualiza, elimina, lista con paginacion |
-| **Error handling** | Zod rechaza payloads invalidos, auth rechaza sin API key, 404 en recursos inexistentes |
-
-### E2E Tests (orgs/ai-factory/__tests__/e2e/)
-
-Tests que simulan uso real de la org completa:
-
-| Test | Que verifica |
-|---|---|
-| **Setup completo** | Crear org -> BU -> funnel -> stages -> custom fields -> workflow |
-| **Lead lifecycle** | Ingest lead -> routing correcto -> mover stages -> history completa |
-| **Workflow trigger** | Lead ingested -> workflow se activa -> steps ejecutan en orden |
-| **Lead update trigger** | Actualizar custom fields -> workflow con `trigger_on=lead_updated` se activa |
-| **Status change** | Cambiar status -> `lead.status_changed` -> workflow reacciona |
-| **Deduplicacion** | Ingest mismo email 2 veces -> 1 lead, datos actualizados |
-
-### CI Pipeline (GitHub Actions)
-
-```yaml
-# .github/workflows/ci.yml
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - checkout
-      - setup node 20
-      - install dependencies
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:unit
-      - run: npm run test:integration    # Testcontainers levanta PostgreSQL
-```
-
----
-
-## 12. Ejemplo End-to-End MVP
-
-```
-0. DEPLOY:
-   - Crear carpeta orgs/ai-factory/ con routing.ts, handlers.ts, config.ts
-   - En routing.ts: si role=CTO y company_size>=50 -> Funnel Enterprise B2B
-   - Deploy a Railway como servicio "ai-factory"
-
-1. SETUP (via API):
-   POST /api/organizations          -> Crear "AI Factory"
-   POST /api/business-units         -> Crear "SaaS Product"
-   POST /api/custom-fields          -> Definir campos: company, role, company_size, industry
-   POST /api/funnels                -> Crear "Enterprise B2B"
-   POST /api/funnels/:id/stages     -> Qualify (pos 1), Demo (pos 2), Proposal (pos 3), Close (pos 4)
-   POST /api/workflows              -> Crear workflow trigger_on=lead_created
-   POST /api/workflows/:id/steps    -> Step 1: email bienvenida (is_entry_point=true)
-   POST /api/workflows/:id/steps    -> Step 2: wait 3 dias
-   POST /api/workflows/:id/steps    -> Step 3: email follow-up
+1. SETUP PREVIO (ya hecho para afluence/company-1):
+   - Seed crea: Organization "Afluence" + BU "Company-1" + Pipeline "Main Pipeline"
+     + Stages: New Lead → Contacted → Qualified → Converted
+     + Custom fields: company, role, company_size, industry, interest
+   - IDs en .env: PROJECT1_ORG_ID, PROJECT1_PIPELINE_ID, PROJECT1_STAGE_*
 
 2. LEAD LLEGA:
-   Landing page EXTERNA envia:
+   Landing page externa envia:
    POST /api/ingest {
-     email: "juan@techcorp.com",
-     firstName: "Juan",
-     source: "api",
-     channel: "inbound",
-     utmData: { utm_campaign: "black_friday" },
-     customFields: { company: "TechCorp", role: "CTO", company_size: "150" }
+     "email": "juan@techcorp.com",
+     "firstName": "Juan",
+     "phone": "+5491155554444",
+     "source": "landing_page",
+     "channel": "inbound",
+     "utmData": { "utm_campaign": "black_friday" },
+     "customFields": { "company": "TechCorp", "role": "CTO", "company_size": "150" }
    }
 
 3. SISTEMA PROCESA:
-   LeadIngestionService:
-   -> Crea lead "Juan" (dedup por email)
-   -> Guarda custom fields (company=TechCorp, role=CTO, company_size=150)
-   -> RoutingEngine: role=CTO + company_size=150 -> Funnel "Enterprise B2B", stage "Qualify"
-   -> Crea lead_funnel_entry + lead_stage_history (null -> Qualify)
-   -> eventBus.emit('lead.ingested')
-   -> WorkflowService detecta workflow, crea execution, ejecuta step 1
-   -> ActivityLogService registra todo
+   → createOrUpdateLead(): busca por email, no existe → crea lead (status=new)
+   → saveCustomFieldValues(): guarda company, role, company_size
+   → routingEngine(): afluence/company-1 routing → Pipeline "Main Pipeline", stage "New Lead"
+   → createPipelineEntry(): entry + stage history (null → New Lead)
+   → logActivity(): 'lead.routed_to_pipeline' + 'lead.created'
+   → eventBus.emit({ type: 'lead_created', ... })
 
-4. VERIFICAR:
-   GET /api/leads/:id          -> Juan con funnels y custom fields
-   GET /api/leads/:id/activity -> toda la traza
-   GET /api/workflow-executions -> workflow en ejecucion
+4. WORKFLOW ENGINE REACCIONA:
+   → Detecta evento 'lead_created'
+   → Matchea workflow 'company1-auto-enroll' (trigger: lead_created)
+   → Ejecuta action: enroll_sequence('company1-welcome')
+   → Crea sequence_enrollment: lead + sequence, step_index=0, next_step_at=now
 
-5. OPERAR:
-   PUT /api/leads/:id/funnels/:eid { stageId: "demo-id" }
-   -> Mueve Juan de Qualify a Demo
-   -> lead_stage_history registra (Qualify -> Demo)
-   -> eventBus.emit('lead.stage_changed')
+5. CRON EJECUTA SECUENCIA (cada minuto):
+   → Encuentra enrollment con next_step_at <= now
+   → Step 0: send_whatsapp → envia WhatsApp al lead
+   → Avanza a step 1 (wait 48h) → next_step_at = now + 48h
+   → ...48h despues...
+   → Step 2: send_email → envia email
+   → Step 3: wait 24h
+   → Step 4: ai_call → ElevenLabs llama al lead
+   → Secuencia completada → emite 'sequence_completed'
+
+6. VERIFICAR:
+   GET /api/leads/:id
+   → { lead, customFields, pipelineEntries, activity, enrollments }
+
+7. MOVER STAGE (manual o via workflow):
+   PUT /api/leads/:leadId/pipeline-entries/:entryId/stage { "stageId": "uuid" }
+   → Mueve lead de New Lead → Contacted
+   → Emite stage_exited + stage_entered (otro workflow puede reaccionar)
 ```
+
+---
+
+## 14. Proximos pasos inmediatos
+
+1. **Aplicar migration** — Correr `20250224100000_code_first_automations.sql` en Supabase + regenerar types
+2. **Segundo BU real** — Crear `orgs/afluence/faktory-creators/` con secuencias y workflows reales
+3. **Multi-BU routing** — Resolver wiring para que multiples BUs funcionen en paralelo
+4. **Admin UI minimo** — Vista de leads + pipelines + enrollments en `apps/web`
+5. **Email templates** — Crear templates reales en `packages/email/` para las secuencias
+6. **Testing** — Test end-to-end del flujo: ingest → workflow → sequence → WhatsApp/email/call
+7. **Auth/API keys** — Proteger endpoints

@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "ts-node src/index.ts",
-    "seed": "ts-node src/orgs/project-1/seed.ts",
+    "seed": "ts-node src/orgs/afluence/company-1/seed.ts",
     "gen-types": "bash scripts/gen-types.sh",
     "build": "tsc",
     "start": "node dist/index.js",

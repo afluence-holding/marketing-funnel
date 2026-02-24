@@ -1,7 +1,7 @@
 // Client
 export { getElevenLabsClient } from './client';
 
-// Calls (core workflow node)
+// Calls (core sequence step)
 export { makeCall, makeBatchCalls } from './calls';
 
 // Conversations

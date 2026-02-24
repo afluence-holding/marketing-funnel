@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Marketing Funnel',
-  description: 'Lead capture & funnel management',
+  title: 'Marketing Pipeline',
+  description: 'Lead capture & pipeline management',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
