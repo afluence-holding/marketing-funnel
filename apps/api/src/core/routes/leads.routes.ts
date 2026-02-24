@@ -6,7 +6,7 @@ import { getEntriesForLead, moveStage } from '../services/lead-pipeline.service'
 import { getActivityForLead } from '../services/activity-log.service';
 import { getEnrollmentsForLead } from '../services/enrollment.service';
 import { validate } from '../middleware/validate';
-import { IDS } from '../../orgs/afluence/company-1/config';
+import { IDS } from '../../orgs/afluence/business-unit-1/config';
 
 const router = Router();
 

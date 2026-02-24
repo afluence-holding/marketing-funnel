@@ -9,7 +9,7 @@ import {
   getEnrollmentById,
   getEnrollmentsForLead,
 } from '../services/enrollment.service';
-import { IDS } from '../../orgs/afluence/company-1/config';
+import { IDS } from '../../orgs/afluence/business-unit-1/config';
 
 const router = Router();
 

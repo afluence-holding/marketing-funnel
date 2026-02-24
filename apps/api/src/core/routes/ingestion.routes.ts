@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
 import { ingestLead } from '../services/ingestion.service';
-import { IDS } from '../../orgs/afluence/company-1/config';
-import { routingEngine } from '../../orgs/afluence/company-1/routing';
+import { IDS } from '../../orgs/afluence/business-unit-1/config';
+import { routingEngine } from '../../orgs/afluence/business-unit-1/routing';
 
 const router = Router();
 

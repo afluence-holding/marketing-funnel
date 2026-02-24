@@ -19,8 +19,8 @@
 import type { SequenceDef, WorkflowDef } from '../core/types';
 
 // -- Afluence / Company-1 -----------------------------------------------------
-import { sequences as company1Sequences } from './afluence/company-1/sequences';
-import { workflows as company1Workflows } from './afluence/company-1/workflows';
+import { sequences as company1Sequences } from './afluence/business-unit-1/sequences';
+import { workflows as company1Workflows } from './afluence/business-unit-1/workflows';
 
 // -- Add new BUs here ---------------------------------------------------------
 // import { sequences as myBuSequences } from './my-company/my-bu/sequences';
