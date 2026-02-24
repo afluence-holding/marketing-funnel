@@ -2,34 +2,29 @@ import { GoogleTagManager } from '@/components/tracking/gtm';
 import { MetaPixel } from '@/components/tracking/meta-pixel';
 import { GoogleAnalytics } from '@/components/tracking/google-analytics';
 import { Clarity } from '@/components/tracking/clarity';
+import { TikTokPixel } from '@/components/tracking/tiktok-pixel';
 import { gtmId, clarityId } from '@/lib/config/pixels';
 
 /**
  * Shared layout for all landing pages.
  *
- * Injects tracking scripts (GTM, Meta Pixel, GA4, Clarity) so every
- * landing under (landings)/ gets them automatically — zero config per page.
+ * Loads org-wide tracking scripts so every landing gets them for free:
+ * - GTM (Google Tag Manager) — manages all tags
+ * - Clarity (Microsoft) — free heatmaps + session recordings
+ * - Default Meta Pixel — org-wide pixel (if configured)
+ * - Default GA4 — org-wide analytics (if configured)
+ * - Default TikTok Pixel — org-wide TikTok tracking (if configured)
  *
- * Per-BU pixels (Meta, GA4) can be passed via page-level metadata or
- * by the landing itself. The global GTM and Clarity are always loaded.
- *
- * NOTE: BU-specific Meta Pixel and GA4 are injected at the page level
- * when needed (see LeadForm or individual pages). This layout handles
- * the org-wide / deployment-wide scripts.
+ * Individual landings add BU-specific pixels via <MetaPixelInit>, <GoogleAnalytics>, etc.
  */
 export default function LandingsLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <GoogleTagManager id={gtmId} />
       <Clarity id={clarityId} />
-
-      {/*
-        Default Meta Pixel and GA4 from env vars.
-        Individual landings can add BU-specific pixels via their own components.
-      */}
       <MetaPixel id={process.env.NEXT_PUBLIC_META_PIXEL_DEFAULT} />
       <GoogleAnalytics id={process.env.NEXT_PUBLIC_GA4_DEFAULT} />
-
+      <TikTokPixel id={process.env.NEXT_PUBLIC_TIKTOK_PIXEL_DEFAULT} />
       {children}
     </>
   );

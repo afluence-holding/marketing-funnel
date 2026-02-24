@@ -2,23 +2,94 @@
 
 import { type FormEvent, useState, Suspense } from 'react';
 import { useUtm, type UtmParams } from '@/lib/tracking/use-utm';
-import { trackEvent } from '@/lib/tracking/events';
+import { trackEvent, trackEventForPixel, type TrackEventOptions } from '@/lib/tracking/events';
 
-interface LeadFormProps {
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** A custom input field definition. Rendered in order. */
+export interface ExtraField {
+  name: string;
+  type?: 'text' | 'email' | 'tel' | 'number' | 'url' | 'select' | 'textarea';
+  placeholder?: string;
+  label?: string;
+  required?: boolean;
+  /** Only for type='select' */
+  options?: { value: string; label: string }[];
+}
+
+export interface ConversionConfig {
+  /** Meta Pixel standard event name. Default: 'Lead' */
+  event?: string;
+  /** Extra data to send with the event. */
+  data?: TrackEventOptions;
+  /**
+   * If set, fires only to this specific Meta Pixel ID (trackSingle).
+   * If omitted, fires to ALL initialized pixels.
+   */
+  pixelId?: string;
+}
+
+export interface LeadFormProps {
   /** Landing source identifier, e.g. "landing-faktory-creators-v1" */
   source: string;
   /** API base URL. Defaults to NEXT_PUBLIC_API_URL env var. */
   apiUrl?: string;
-  /** Extra custom fields to send alongside the form data. */
-  customFields?: Record<string, string>;
-  /** Fields to show in the form. Defaults to email + firstName. */
+  /**
+   * Standard fields to show. Default: ['email', 'firstName'].
+   * Set to [] to show ONLY extraFields.
+   */
   fields?: ('email' | 'firstName' | 'lastName' | 'phone')[];
+  /**
+   * Arbitrary extra inputs. Each rendered as an input with its config.
+   * Values are sent as `customFields` to the API.
+   *
+   * @example
+   *   extraFields={[
+   *     { name: 'instagram', placeholder: '@handle', required: true },
+   *     { name: 'followers', type: 'number', placeholder: 'Followers' },
+   *     { name: 'role', type: 'select', options: [
+   *       { value: 'creator', label: 'Creator' },
+   *       { value: 'brand', label: 'Brand' },
+   *     ]},
+   *   ]}
+   */
+  extraFields?: ExtraField[];
+  /**
+   * Hidden key-value pairs sent as `customFields`. Not visible to the user.
+   * Useful for landing version, campaign ID, internal tags, etc.
+   *
+   * @example hiddenFields={{ landing_version: 'v2', campaign: 'black-friday' }}
+   */
+  hiddenFields?: Record<string, string>;
+  /**
+   * Conversion event config. Controls which pixel event fires on success.
+   * Default: { event: 'Lead' } which fires to all initialized pixels.
+   *
+   * @example
+   *   conversion={{ event: 'CompleteRegistration', data: { value: 0, currency: 'USD' } }}
+   *   conversion={{ event: 'Lead', pixelId: '123456789' }}
+   */
+  conversion?: ConversionConfig;
+  /**
+   * URL to redirect to after successful submission.
+   * If omitted, shows the successMessage inline.
+   *
+   * @example onSuccessRedirect="/thank-you"
+   * @example onSuccessRedirect="https://wa.me/56912345678?text=Hi"
+   */
+  onSuccessRedirect?: string;
+  /** Callback fired after successful submission (before redirect). */
+  onSuccess?: () => void;
   /** Submit button text. */
   submitLabel?: string;
-  /** Text shown after successful submission. */
+  /** Text shown after successful submission (when no redirect). */
   successMessage?: string;
   /** Additional class name for the form wrapper. */
   className?: string;
+  /** Override inline styles on the form. */
+  style?: React.CSSProperties;
 }
 
 type FormStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -26,17 +97,23 @@ type FormStatus = 'idle' | 'loading' | 'success' | 'error';
 const DEFAULT_FIELDS: LeadFormProps['fields'] = ['email', 'firstName'];
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-/**
- * Inner component that uses useUtm (requires Suspense boundary for useSearchParams).
- */
+// ---------------------------------------------------------------------------
+// Inner form (uses hooks that require Suspense)
+// ---------------------------------------------------------------------------
+
 function LeadFormInner({
   source,
   apiUrl = API_URL,
-  customFields,
   fields = DEFAULT_FIELDS,
+  extraFields = [],
+  hiddenFields,
+  conversion,
+  onSuccessRedirect,
+  onSuccess,
   submitLabel = 'Submit',
-  successMessage = 'Thanks! We\'ll be in touch.',
+  successMessage = "Thanks! We'll be in touch.",
   className,
+  style,
 }: LeadFormProps) {
   const utm = useUtm();
   const [status, setStatus] = useState<FormStatus>('idle');
@@ -55,15 +132,20 @@ function LeadFormInner({
     };
 
     for (const field of fields!) {
-      const value = formData.get(field);
-      if (value) body[field] = value;
+      const val = formData.get(field);
+      if (val) body[field] = val;
     }
+
+    // Build customFields from extraFields inputs + hiddenFields
+    const custom: Record<string, string> = { ...(hiddenFields ?? {}) };
+    for (const ef of extraFields) {
+      const val = formData.get(ef.name);
+      if (val) custom[ef.name] = String(val);
+    }
+    if (Object.keys(custom).length > 0) body.customFields = custom;
 
     const utmData = buildUtmData(utm);
     if (Object.keys(utmData).length > 0) body.utmData = utmData;
-    if (customFields && Object.keys(customFields).length > 0) {
-      body.customFields = customFields;
-    }
 
     try {
       const res = await fetch(`${apiUrl}/api/ingest`, {
@@ -77,15 +159,31 @@ function LeadFormInner({
         throw new Error(data.message ?? `Request failed (${res.status})`);
       }
 
+      // Fire conversion events
+      const eventName = conversion?.event ?? 'Lead';
+      const eventData: TrackEventOptions = {
+        content_name: source,
+        ...(conversion?.data ?? {}),
+      };
+      if (conversion?.pixelId) {
+        trackEventForPixel(conversion.pixelId, eventName, eventData);
+      } else {
+        trackEvent(eventName, eventData);
+      }
+
+      onSuccess?.();
       setStatus('success');
-      trackEvent('Lead', { content_name: source });
+
+      if (onSuccessRedirect) {
+        window.location.href = onSuccessRedirect;
+      }
     } catch (err) {
       setStatus('error');
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
     }
   }
 
-  if (status === 'success') {
+  if (status === 'success' && !onSuccessRedirect) {
     return (
       <div className={className} role="status">
         <p style={{ fontSize: '1.1rem', fontWeight: 600, color: '#16a34a' }}>
@@ -96,41 +194,60 @@ function LeadFormInner({
   }
 
   return (
-    <form onSubmit={handleSubmit} className={className} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <form
+      onSubmit={handleSubmit}
+      className={className}
+      style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', ...style }}
+    >
+      {/* Standard fields */}
       {fields!.includes('firstName') && (
-        <input
-          name="firstName"
-          type="text"
-          placeholder="First name"
-          required
-          style={inputStyle}
-        />
+        <input name="firstName" type="text" placeholder="First name" required style={inputStyle} />
       )}
       {fields!.includes('lastName') && (
-        <input
-          name="lastName"
-          type="text"
-          placeholder="Last name"
-          style={inputStyle}
-        />
+        <input name="lastName" type="text" placeholder="Last name" style={inputStyle} />
       )}
       {fields!.includes('email') && (
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          required
-          style={inputStyle}
-        />
+        <input name="email" type="email" placeholder="Email" required style={inputStyle} />
       )}
       {fields!.includes('phone') && (
-        <input
-          name="phone"
-          type="tel"
-          placeholder="Phone"
-          style={inputStyle}
-        />
+        <input name="phone" type="tel" placeholder="Phone" style={inputStyle} />
       )}
+
+      {/* Extra fields — arbitrary per-landing */}
+      {extraFields.map((ef) => {
+        if (ef.type === 'select' && ef.options) {
+          return (
+            <select key={ef.name} name={ef.name} required={ef.required} style={inputStyle}>
+              <option value="">{ef.placeholder ?? ef.label ?? ef.name}</option>
+              {ef.options.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          );
+        }
+        if (ef.type === 'textarea') {
+          return (
+            <textarea
+              key={ef.name}
+              name={ef.name}
+              placeholder={ef.placeholder ?? ef.label ?? ef.name}
+              required={ef.required}
+              rows={3}
+              style={inputStyle}
+            />
+          );
+        }
+        return (
+          <input
+            key={ef.name}
+            name={ef.name}
+            type={ef.type ?? 'text'}
+            placeholder={ef.placeholder ?? ef.label ?? ef.name}
+            required={ef.required}
+            style={inputStyle}
+          />
+        );
+      })}
 
       <button type="submit" disabled={status === 'loading'} style={buttonStyle}>
         {status === 'loading' ? 'Sending...' : submitLabel}
@@ -145,15 +262,22 @@ function LeadFormInner({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Public component (wraps inner in Suspense for useSearchParams)
+// ---------------------------------------------------------------------------
+
 /**
  * Reusable lead capture form.
  *
- * - Auto-captures UTM params from the URL
+ * Features:
+ * - Standard fields (email, firstName, lastName, phone) — pick which to show
+ * - Extra fields (arbitrary inputs per landing — select, textarea, number, etc.)
+ * - Hidden fields (invisible data sent as customFields)
+ * - UTM auto-capture from URL
+ * - Configurable conversion events (which Meta/GA4/TikTok event to fire, with what data)
+ * - Per-pixel targeting (fire to a specific pixel ID, not all)
+ * - Success redirect (e.g. to a thank-you page or WhatsApp link)
  * - POSTs to the API's /api/ingest endpoint
- * - Fires Meta Pixel + GA4 conversion events on success
- * - Configurable fields, labels, and custom fields
- *
- * Wrapped in Suspense because useSearchParams requires it in Next.js App Router.
  */
 export function LeadForm(props: LeadFormProps) {
   return (
@@ -162,6 +286,10 @@ export function LeadForm(props: LeadFormProps) {
     </Suspense>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function buildUtmData(utm: UtmParams): Record<string, string> {
   const data: Record<string, string> = {};
