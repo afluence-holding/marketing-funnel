@@ -6,6 +6,7 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "concurrently -n api,web \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm run dev -w @marketing-funnel/api",
     "dev:web": "npm run dev -w @marketing-funnel/web",
     "build": "npm run build --workspaces",
@@ -15,5 +16,8 @@
     "type": "git",
     "url": "git+https://github.com/afluence-holding/marketing-funnel.git"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
 }

@@ -2,8 +2,15 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
 import { ingestLead } from '../services/ingestion.service';
-import { IDS } from '../../orgs/afluence/business-unit-1/config';
-import { routingEngine } from '../../orgs/afluence/business-unit-1/routing';
+import { getBusinessUnitBinding } from '../../orgs';
+
+// ---------------------------------------------------------------------------
+// Tenant-scoped ingestion — org + BU are explicit in the URL
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Route
+// ---------------------------------------------------------------------------
 
 const router = Router();
 
@@ -20,11 +27,28 @@ const ingestSchema = z.object({
   customFields: z.record(z.string(), z.string()).optional(),
 });
 
-router.post('/ingest', validate(ingestSchema), async (req, res, next) => {
+router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (req, res, next) => {
   try {
+    const orgKey = Array.isArray(req.params.orgKey) ? req.params.orgKey[0] : req.params.orgKey;
+    const buKey = Array.isArray(req.params.buKey) ? req.params.buKey[0] : req.params.buKey;
+
+    if (!orgKey || !buKey) {
+      res.status(400).json({ error: 'Invalid org or business unit key' });
+      return;
+    }
+
+    const binding = getBusinessUnitBinding(orgKey, buKey);
+    if (!binding) {
+      res.status(404).json({
+        error: 'Business unit not found',
+        message: `Unknown ingestion target: ${orgKey}/${buKey}`,
+      });
+      return;
+    }
+
     const result = await ingestLead(
-      { ...req.body, organizationId: IDS.organizationId },
-      routingEngine,
+      { ...req.body, organizationId: binding.organizationId },
+      binding.routingEngine,
     );
 
     res.status(201).json({
@@ -36,6 +60,13 @@ router.post('/ingest', validate(ingestSchema), async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+router.post('/ingest', (_req, res) => {
+  res.status(400).json({
+    error: 'Tenant-scoped ingestion required',
+    message: 'Use /api/orgs/:orgKey/bus/:buKey/ingest and keep source metadata in the request body.',
+  });
 });
 
 export default router;

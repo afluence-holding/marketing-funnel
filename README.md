@@ -12,7 +12,8 @@ Multi-tenant marketing automation platform that captures leads from landing page
 │  │     apps/web         │    │          apps/api               │ │
 │  │   Next.js 15         │    │        Express 5                │ │
 │  │                      │    │                                 │ │
-│  │  Landing Pages       │───▶│  POST /api/ingest              │ │
+│  │  Landing Pages       │───▶│  POST /api/orgs/:orgKey/       │ │
+│  │                      │    │       bus/:buKey/ingest        │ │
 │  │  Lead Capture Forms  │    │                                 │ │
 │  │  Pixel Tracking      │    │  ┌───────────────────────────┐ │ │
 │  │  (Meta, GA4, TikTok, │    │  │    Ingestion Service      │ │ │
@@ -219,7 +220,7 @@ export const autoEnrollWorkflow: WorkflowDef = {
 ### Lead Lifecycle
 
 ```
-Landing Page → POST /api/ingest → Create/Dedup Lead → Route to Pipeline
+Landing Page → POST /api/orgs/:orgKey/bus/:buKey/ingest → Create/Dedup Lead → Route to Pipeline
                                          │
                                          ▼
                                    Emit lead_created
@@ -287,11 +288,10 @@ All orgs share the same database, API process, and cron scheduler.
 ### Lead Ingestion
 
 ```bash
-POST /api/ingest
+POST /api/orgs/:orgKey/bus/:buKey/ingest
 Content-Type: application/json
 
 {
-  "organizationId": "uuid",
   "email": "lead@example.com",
   "phone": "+1234567890",
   "firstName": "John",

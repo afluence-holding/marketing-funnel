@@ -38,16 +38,25 @@ export default function GermanRozForm() {
           <div className="gr-overlay" />
         </div>
 
-        <div className="gr-content">
-          <h1 className={`gr-heading ${serif.className}`}>German Roz</h1>
+        <h1 className={`gr-heading ${serif.className}`}>German Roz</h1>
 
+        <div className="gr-form-wrap">
           <LeadForm
             className="gr-form"
+            ingestOrgKey="german-roz"
+            ingestBuKey="main"
             source="landing-german-roz-form"
             fields={['firstName', 'email', 'phone']}
+            placeholders={{
+              firstName: 'Nombre',
+              email: 'Correo',
+              phone: 'WhatsApp',
+            }}
+            defaultValues={{ phone: '+51 ' }}
             hiddenFields={{ creator: 'german-roz' }}
             conversion={{ event: 'Lead', data: { content_name: 'german-roz-form' } }}
             submitLabel="Enviar"
+            loadingLabel="Enviando..."
             successMessage="Gracias. Te contactaremos pronto."
             style={{ gap: '1.5rem' }}
           />
@@ -64,9 +73,6 @@ const luxuryOverrides = `
     position: relative;
     min-height: 100vh;
     min-height: 100dvh;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -83,39 +89,44 @@ const luxuryOverrides = `
     inset: 0;
     background: linear-gradient(
       180deg,
-      rgba(0, 0, 0, 0) 0%,
-      rgba(0, 0, 0, 0.05) 35%,
-      rgba(0, 0, 0, 0.50) 65%,
+      rgba(0, 0, 0, 0.45) 0%,
+      rgba(0, 0, 0, 0) 20%,
+      rgba(0, 0, 0, 0) 45%,
+      rgba(0, 0, 0, 0.55) 70%,
       rgba(0, 0, 0, 0.82) 100%
     );
   }
 
-  .gr-content {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 380px;
-    padding: 0 1.5rem 3.5rem;
-  }
-
   .gr-heading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
     font-size: clamp(2.8rem, 7vw, 4.5rem);
     font-weight: 300;
     color: #fff;
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 0.3em;
-    margin-bottom: 2.5rem;
     line-height: 1.1;
+    padding: 2.5rem 1rem 0;
   }
 
-  /* --- Form: no card, floats on the image --- */
+  .gr-form-wrap {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    padding: 0 1.5rem 3.5rem;
+  }
 
   .gr-form {
     width: 100%;
+    max-width: 380px;
   }
 
   .gr-form input,
@@ -178,20 +189,51 @@ const luxuryOverrides = `
     cursor: not-allowed !important;
   }
 
-  .gr-form p[role="status"] {
-    color: #fff !important;
-    font-weight: 300 !important;
-    letter-spacing: 0.08em !important;
+  /* Success state — replaces form with centered message */
+  .gr-form[role="status"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     text-align: center !important;
+    padding: 2.5rem 1rem !important;
+    width: 100% !important;
+  }
+
+  .gr-form[role="status"] p {
+    color: #fff !important;
+    font-size: 0.95rem !important;
+    font-weight: 300 !important;
+    letter-spacing: 0.15em !important;
+    text-transform: uppercase !important;
+    line-height: 1.6 !important;
+    margin: 0 !important;
+  }
+
+  .gr-form[role="status"]::before {
+    content: "✓";
+    display: block;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin: 0 auto 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: 300;
+    color: #fff;
+    line-height: 2.5rem;
+    letter-spacing: 0;
   }
 
   @media (max-width: 480px) {
-    .gr-content {
-      padding: 0 1.25rem 2.5rem;
-      max-width: 340px;
-    }
     .gr-heading {
-      margin-bottom: 2rem;
+      padding-top: 2rem;
+    }
+    .gr-form-wrap {
+      padding: 0 1.25rem 2.5rem;
+    }
+    .gr-form {
+      max-width: 340px;
     }
   }
 `;

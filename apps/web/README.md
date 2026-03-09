@@ -29,7 +29,7 @@ apps/web/src/
       clarity.tsx                           Microsoft Clarity
       tiktok-pixel.tsx                      TikTok Pixel
     landing-config.tsx                      Per-landing pixel configuration
-    lead-form.tsx                           Lead capture form -> POST /api/ingest
+    lead-form.tsx                           Lead capture form -> POST /api/orgs/:orgKey/bus/:buKey/ingest
     html-landing.tsx                        Wrapper for raw HTML landings
   lib/
     tracking/
@@ -82,6 +82,8 @@ export default function MyLanding() {
       {/* Your landing content here */}
 
       <LeadForm
+        ingestOrgKey="afluence"
+        ingestBuKey="business-unit-1"
         source="landing-org-bu-slug"
         fields={['firstName', 'email', 'phone']}
         submitLabel="Join Now"
@@ -103,7 +105,12 @@ export default function MyLanding() {
   return (
     <main>
       <HtmlLanding html={html} />
-      <LeadForm source="landing-org-bu-slug" fields={['email']} />
+      <LeadForm
+        ingestOrgKey="afluence"
+        ingestBuKey="business-unit-1"
+        source="landing-org-bu-slug"
+        fields={['email']}
+      />
     </main>
   );
 }
@@ -137,6 +144,8 @@ Lead capture form that POSTs to the API and fires conversion events.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
+| `ingestOrgKey` | string | *required* | API org key from `apps/api/src/orgs/<org>/...` |
+| `ingestBuKey` | string | *required* | API BU key from `apps/api/src/orgs/<org>/<bu>/...` |
 | `source` | string | *required* | Landing identifier, e.g. `"landing-faktory-v1"` |
 | `fields` | array | `['email','firstName']` | Standard fields to show: `email`, `firstName`, `lastName`, `phone` |
 | `extraFields` | ExtraField[] | `[]` | Arbitrary custom inputs (see below) |

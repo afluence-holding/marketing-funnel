@@ -63,6 +63,8 @@ export default function TemplateLanding() {
       {/* ----------------------------------------------------------------- */}
       <LeadForm
         // --- REQUIRED ---
+        ingestOrgKey="<api-org-key>"
+        ingestBuKey="<api-bu-key>"
         source="landing-<org>-<bu>-<slug>"
 
         // --- STANDARD FIELDS ---
