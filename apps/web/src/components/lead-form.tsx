@@ -3,6 +3,7 @@
 import { type FormEvent, useState, Suspense } from 'react';
 import { useUtm, type UtmParams } from '@/lib/tracking/use-utm';
 import { trackEvent, trackEventForPixel, type TrackEventOptions } from '@/lib/tracking/events';
+import { normalizePhoneAndGetTimezone } from '@/lib/utils/phone';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -149,6 +150,15 @@ function LeadFormInner({
     for (const field of fields!) {
       const val = formData.get(field);
       if (val) body[field] = val;
+    }
+
+    const rawPhone = typeof body.phone === 'string' ? body.phone : undefined;
+    if (rawPhone) {
+      const normalizedPhone = normalizePhoneAndGetTimezone(rawPhone);
+      if (!normalizedPhone) {
+        throw new Error('Please enter a valid WhatsApp phone number');
+      }
+      body.phone = normalizedPhone.phone;
     }
 
     // Build customFields from extraFields inputs + hiddenFields

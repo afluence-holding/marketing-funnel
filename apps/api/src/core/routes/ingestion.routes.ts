@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { validate } from '../middleware/validate';
 import { ingestLead } from '../services/ingestion.service';
 import { getBusinessUnitBinding } from '../../orgs';
+import { normalizePhoneAndGetTimezone } from '../utils/phone';
 
 // ---------------------------------------------------------------------------
 // Tenant-scoped ingestion — org + BU are explicit in the URL
@@ -44,6 +45,17 @@ router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (re
         message: `Unknown ingestion target: ${orgKey}/${buKey}`,
       });
       return;
+    }
+
+    if (req.body.phone) {
+      const normalizedPhone = normalizePhoneAndGetTimezone(req.body.phone);
+      if (!normalizedPhone) {
+        res.status(400).json({
+          error: 'Invalid phone number',
+          message: 'Phone must be a valid international number.',
+        });
+        return;
+      }
     }
 
     const result = await ingestLead(
