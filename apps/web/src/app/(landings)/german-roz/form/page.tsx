@@ -1,12 +1,18 @@
 import Image from 'next/image';
 import { LeadForm } from '@/components/lead-form';
-import { Cormorant_Garamond } from 'next/font/google';
+import { Cormorant_Garamond, Bebas_Neue } from 'next/font/google';
 import type { Metadata } from 'next';
 import germanBg from './german.webp';
 
 const serif = Cormorant_Garamond({
   subsets: ['latin'],
   weight: ['300', '400'],
+  display: 'swap',
+});
+
+const display = Bebas_Neue({
+  subsets: ['latin'],
+  weight: '400',
   display: 'swap',
 });
 
@@ -41,6 +47,10 @@ export default function GermanRozForm() {
         <h1 className={`gr-heading ${serif.className}`}>German Roz</h1>
 
         <div className="gr-form-wrap">
+          <div className={`gr-titles ${display.className}`}>
+            <h2 className="gr-titles-main">EXCLUSIVA DE ABRIL</h2>
+            <p className="gr-titles-sub">SOLO PARA EL CÍRCULO INTERNO</p>
+          </div>
           <LeadForm
             className="gr-form"
             ingestOrgKey="german-roz"
@@ -55,7 +65,7 @@ export default function GermanRozForm() {
             defaultValues={{ phone: '+51 ' }}
             hiddenFields={{ creator: 'german-roz' }}
             conversion={{ event: 'Lead', data: { content_name: 'german-roz-form' } }}
-            submitLabel="Enviar"
+            submitLabel="Revelar mi acceso y el secreto"
             loadingLabel="Enviando..."
             successMessage="Gracias. Te contactaremos pronto."
             style={{ gap: '1.5rem' }}
@@ -120,8 +130,34 @@ const luxuryOverrides = `
     right: 0;
     z-index: 1;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
     padding: 0 1.5rem 3.5rem;
+  }
+
+  .gr-titles {
+    text-align: center;
+    margin-bottom: 1.75rem;
+  }
+
+  .gr-titles-main {
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    font-weight: 400;
+    color: #f5e6c8;
+    letter-spacing: 0.08em;
+    line-height: 1.05;
+    margin: 0 0 0.15em;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .gr-titles-sub {
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    font-weight: 400;
+    color: #fff;
+    letter-spacing: 0.25em;
+    margin: 0;
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
   }
 
   .gr-form {
@@ -231,6 +267,9 @@ const luxuryOverrides = `
     }
     .gr-form-wrap {
       padding: 0 1.25rem 2.5rem;
+    }
+    .gr-titles {
+      margin-bottom: 1.25rem;
     }
     .gr-form {
       max-width: 340px;
