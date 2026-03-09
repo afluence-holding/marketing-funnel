@@ -49,8 +49,12 @@ router.put(
   validate(moveStageSchema),
   async (req, res, next) => {
     try {
+      const entryId = Array.isArray(req.params.entryId)
+        ? req.params.entryId[0]
+        : req.params.entryId;
+
       const result = await moveStage(
-        req.params.entryId,
+        entryId,
         req.body.stageId,
         IDS.organizationId,
       );
