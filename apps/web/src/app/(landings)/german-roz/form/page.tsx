@@ -132,24 +132,23 @@ const luxuryOverrides = `
   .gr-form input,
   .gr-form select,
   .gr-form textarea {
-    background: transparent !important;
-    border: none !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.35) !important;
-    border-radius: 0 !important;
-    padding: 0.85rem 0 !important;
-    font-size: 0.85rem !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 4px !important;
+    padding: 0.85rem 1rem !important;
+    font-size: 0.9rem !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
     font-weight: 300 !important;
     letter-spacing: 0.05em !important;
     color: #fff !important;
     outline: none !important;
-    transition: border-color 0.4s ease !important;
+    transition: border-color 0.4s ease, background 0.4s ease !important;
     width: 100% !important;
   }
 
   .gr-form input::placeholder,
   .gr-form textarea::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
     font-weight: 300 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.12em !important;
@@ -159,7 +158,8 @@ const luxuryOverrides = `
   .gr-form input:focus,
   .gr-form select:focus,
   .gr-form textarea:focus {
-    border-bottom-color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255, 255, 255, 0.18) !important;
   }
 
   .gr-form button[type="submit"] {
