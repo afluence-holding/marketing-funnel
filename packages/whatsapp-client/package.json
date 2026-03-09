@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "description": "WhatsApp Cloud API client (direct send, no queues)",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"
