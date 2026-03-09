@@ -36,6 +36,8 @@ export default function FaktoryCreatorsV1() {
           Join the waitlist
         </h2>
         <LeadForm
+          ingestOrgKey="afluence"
+          ingestBuKey="business-unit-1"
           source="landing-faktory-creators-v1"
           fields={['firstName', 'email', 'phone']}
           extraFields={[

@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { z } from 'zod';
 
-const root = path.resolve(__dirname, '..', '..', '..', '..');
+const root = path.resolve(__dirname, '..', '..', '..');
 dotenv.config({ path: path.join(root, '.env.local') });
 dotenv.config({ path: path.join(root, '.env') });
 

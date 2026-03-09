@@ -106,7 +106,7 @@ Env files at monorepo root: `.env` and `.env.local` (loaded by `packages/config`
 
 ```
 GET  /api/health
-POST /api/ingest                                          # Lead ingestion
+POST /api/orgs/:orgKey/bus/:buKey/ingest                  # Lead ingestion
 GET  /api/leads                                           # List leads
 GET  /api/leads/:id                                       # Lead detail
 PUT  /api/leads/:leadId/pipeline-entries/:entryId/stage   # Move stage

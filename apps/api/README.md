@@ -22,7 +22,7 @@ Required: copy `.env.example` to `.env.local` at the repo root and fill in your 
 Lead arrives (landing page, API, WhatsApp)
        │
        ▼
-  POST /api/ingest
+  POST /api/orgs/:orgKey/bus/:buKey/ingest
        │
        ▼
   ingestion.service ──► Creates/updates lead
@@ -79,7 +79,7 @@ apps/api/src/
 │   │       └── notify.ts             ← Send notification (placeholder)
 │   │
 │   ├── routes/                       ← API endpoints
-│   │   ├── ingestion.routes.ts       ← POST /api/ingest
+│   │   ├── ingestion.routes.ts       ← POST /api/orgs/:orgKey/bus/:buKey/ingest
 │   │   ├── leads.routes.ts           ← GET /api/leads, PUT .../stage
 │   │   ├── enrollment.routes.ts      ← POST/DELETE/PATCH /api/enrollments
 │   │   └── elevenlabs.routes.ts      ← POST /api/elevenlabs/webhook, /call
@@ -128,11 +128,10 @@ apps/api/src/
 
 ### Lead Ingestion
 
-**`POST /api/ingest`** — Ingest a new lead
+**`POST /api/orgs/:orgKey/bus/:buKey/ingest`** — Ingest a new lead for a specific BU
 
 ```json
 {
-  "organizationId": "uuid",
   "email": "lead@example.com",
   "firstName": "Juan",
   "lastName": "Perez",

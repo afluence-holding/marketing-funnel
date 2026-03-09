@@ -49,10 +49,11 @@ router.put(
   validate(moveStageSchema),
   async (req, res, next) => {
     try {
-      const entryId = Array.isArray(req.params.entryId)
-        ? req.params.entryId[0]
-        : req.params.entryId;
-
+      const entryId = Array.isArray(req.params.entryId) ? req.params.entryId[0] : req.params.entryId;
+      if (!entryId) {
+        res.status(400).json({ error: 'Invalid entry ID' });
+        return;
+      }
       const result = await moveStage(
         entryId,
         req.body.stageId,

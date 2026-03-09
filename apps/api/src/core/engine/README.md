@@ -56,7 +56,7 @@ engine/
 ```
 SECOND 0:
   Lead fills form on landing page
-  → POST /api/ingest
+  → POST /api/orgs/:orgKey/bus/:buKey/ingest
   → ingestion.service creates/updates lead in DB
   → eventBus.emit('lead_created')          ← loudspeaker shouts
 

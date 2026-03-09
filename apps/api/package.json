@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "ts-node src/index.ts",
     "seed": "ts-node src/orgs/afluence/company-1/seed.ts",
+    "seed:german-roz": "ts-node src/orgs/german-roz/main/seed.ts",
     "gen-types": "bash scripts/gen-types.sh",
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "pg": "^8.13.0",
     "@marketing-funnel/config": "*",
     "@marketing-funnel/db": "*",
     "@marketing-funnel/elevenlabs": "*",
@@ -22,6 +24,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/pg": "^8.11.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",

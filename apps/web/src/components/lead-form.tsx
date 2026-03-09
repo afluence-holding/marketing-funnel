@@ -32,6 +32,10 @@ export interface ConversionConfig {
 }
 
 export interface LeadFormProps {
+  /** API org key from `apps/api/src/orgs/<org>/...` */
+  ingestOrgKey: string;
+  /** API BU key from `apps/api/src/orgs/<org>/<bu>/...` */
+  ingestBuKey: string;
   /** Landing source identifier, e.g. "landing-faktory-creators-v1" */
   source: string;
   /** API base URL. Defaults to NEXT_PUBLIC_API_URL env var. */
@@ -86,6 +90,12 @@ export interface LeadFormProps {
   submitLabel?: string;
   /** Text shown after successful submission (when no redirect). */
   successMessage?: string;
+  /** Override placeholder text for standard fields. */
+  placeholders?: Partial<Record<'firstName' | 'lastName' | 'email' | 'phone', string>>;
+  /** Default values for standard fields (e.g. phone country code). */
+  defaultValues?: Partial<Record<'firstName' | 'lastName' | 'email' | 'phone', string>>;
+  /** Loading button text. Default: "Sending..." */
+  loadingLabel?: string;
   /** Additional class name for the form wrapper. */
   className?: string;
   /** Override inline styles on the form. */
@@ -102,6 +112,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 // ---------------------------------------------------------------------------
 
 function LeadFormInner({
+  ingestOrgKey,
+  ingestBuKey,
   source,
   apiUrl = API_URL,
   fields = DEFAULT_FIELDS,
@@ -111,7 +123,10 @@ function LeadFormInner({
   onSuccessRedirect,
   onSuccess,
   submitLabel = 'Submit',
+  loadingLabel = 'Sending...',
   successMessage = "Thanks! We'll be in touch.",
+  placeholders,
+  defaultValues,
   className,
   style,
 }: LeadFormProps) {
@@ -148,11 +163,14 @@ function LeadFormInner({
     if (Object.keys(utmData).length > 0) body.utmData = utmData;
 
     try {
-      const res = await fetch(`${apiUrl}/api/ingest`, {
+      const res = await fetch(
+        `${apiUrl}/api/orgs/${encodeURIComponent(ingestOrgKey)}/bus/${encodeURIComponent(ingestBuKey)}/ingest`,
+        {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      });
+        },
+      );
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -201,16 +219,16 @@ function LeadFormInner({
     >
       {/* Standard fields */}
       {fields!.includes('firstName') && (
-        <input name="firstName" type="text" placeholder="First name" required style={inputStyle} />
+        <input name="firstName" type="text" placeholder={placeholders?.firstName ?? 'First name'} defaultValue={defaultValues?.firstName} required style={inputStyle} />
       )}
       {fields!.includes('lastName') && (
-        <input name="lastName" type="text" placeholder="Last name" style={inputStyle} />
+        <input name="lastName" type="text" placeholder={placeholders?.lastName ?? 'Last name'} defaultValue={defaultValues?.lastName} style={inputStyle} />
       )}
       {fields!.includes('email') && (
-        <input name="email" type="email" placeholder="Email" required style={inputStyle} />
+        <input name="email" type="email" placeholder={placeholders?.email ?? 'Email'} defaultValue={defaultValues?.email} required style={inputStyle} />
       )}
       {fields!.includes('phone') && (
-        <input name="phone" type="tel" placeholder="Phone" style={inputStyle} />
+        <input name="phone" type="tel" placeholder={placeholders?.phone ?? 'Phone'} defaultValue={defaultValues?.phone} style={inputStyle} />
       )}
 
       {/* Extra fields — arbitrary per-landing */}
@@ -250,7 +268,7 @@ function LeadFormInner({
       })}
 
       <button type="submit" disabled={status === 'loading'} style={buttonStyle}>
-        {status === 'loading' ? 'Sending...' : submitLabel}
+        {status === 'loading' ? loadingLabel : submitLabel}
       </button>
 
       {status === 'error' && (
@@ -277,7 +295,7 @@ function LeadFormInner({
  * - Configurable conversion events (which Meta/GA4/TikTok event to fire, with what data)
  * - Per-pixel targeting (fire to a specific pixel ID, not all)
  * - Success redirect (e.g. to a thank-you page or WhatsApp link)
- * - POSTs to the API's /api/ingest endpoint
+ * - POSTs to the API's tenant-scoped ingestion endpoint
  */
 export function LeadForm(props: LeadFormProps) {
   return (
