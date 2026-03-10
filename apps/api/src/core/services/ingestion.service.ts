@@ -47,7 +47,13 @@ export async function ingestLead(input: IngestInput, routingEngine: RoutingEngin
   }
 
   // 3. Get all custom fields for routing
-  const allCustomFields = await getCustomFieldValues('lead', lead.id);
+  const persistedCustomFields = await getCustomFieldValues('lead', lead.id);
+  // Use persisted values plus incoming payload to avoid routing gaps
+  // when a field definition is missing or newly added.
+  const allCustomFields = {
+    ...persistedCustomFields,
+    ...(input.customFields ?? {}),
+  };
 
   // 4. Run routing engine
   const decisions = routingEngine(
@@ -56,6 +62,7 @@ export async function ingestLead(input: IngestInput, routingEngine: RoutingEngin
     {
       type: input.sourceType ?? 'api',
       id: input.sourceId,
+      channel: input.channel ?? 'inbound',
       utmData: input.utmData,
     },
   );
@@ -64,6 +71,7 @@ export async function ingestLead(input: IngestInput, routingEngine: RoutingEngin
   const entries = [];
   for (const decision of decisions) {
     const entry = await createPipelineEntry({
+      organizationId: input.organizationId,
       leadId: lead.id,
       decision,
       triggerType: 'automatic',

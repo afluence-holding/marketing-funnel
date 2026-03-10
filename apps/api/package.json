@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@marketing-funnel/clickup-client": "*",
     "pg": "^8.13.0",
     "@marketing-funnel/config": "*",
     "@marketing-funnel/db": "*",

@@ -2,21 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
 import { ingestLead } from '../services/ingestion.service';
+import { resolveIngestionTargetBySource } from '../services/ingestion-source-resolver.service';
 import { getBusinessUnitBinding } from '../../orgs';
 import { normalizePhoneAndGetTimezone } from '../utils/phone';
-
-// ---------------------------------------------------------------------------
-// Tenant-scoped ingestion — org + BU are explicit in the URL
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Route
-// ---------------------------------------------------------------------------
 
 const router = Router();
 
 const ingestSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phone: z.string().optional(),
@@ -30,6 +23,45 @@ const ingestSchema = z.object({
 
 router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (req, res, next) => {
   try {
+    const source = req.body.source;
+    const formType = req.body.customFields?.form_type?.toLowerCase();
+    const email = req.body.email?.trim();
+
+    if (formType === 'partial' && !email) {
+      console.warn('[ingest] skipping partial payload without email', { source, formType });
+      return res.status(200).json({
+        skipped: true,
+        reason: 'missing_minimum_data',
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: {
+          email: ['Email is required unless customFields.form_type is "partial".'],
+        },
+      });
+    }
+
+    let target: ReturnType<typeof resolveIngestionTargetBySource>;
+    try {
+      target = resolveIngestionTargetBySource(source);
+    } catch (error) {
+      return res.status(400).json({
+        error: 'Invalid source',
+        details: {
+          source: [error instanceof Error ? error.message : 'Unknown source'],
+        },
+      });
+    }
+
+    console.info('[ingest] source resolved', {
+      source: source ?? null,
+      businessUnit: target.businessUnit,
+      organizationId: target.organizationId,
+    });
+
     const orgKey = Array.isArray(req.params.orgKey) ? req.params.orgKey[0] : req.params.orgKey;
     const buKey = Array.isArray(req.params.buKey) ? req.params.buKey[0] : req.params.buKey;
 
