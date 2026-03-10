@@ -52,7 +52,7 @@ export async function createPipelineEntry(input: CreateEntryInput) {
       channel: input.decision.channel,
       trigger_type: input.triggerType,
       source_type: input.sourceType,
-      source_id: input.sourceId,
+      source_id: input.sourceId || null,
       utm_data: input.utmData ?? null,
     })
     .select()

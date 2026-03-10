@@ -4,6 +4,7 @@ import { createPipelineEntry } from './lead-pipeline.service';
 import { logActivity } from './activity-log.service';
 import { eventBus } from '../engine/event-bus';
 import type { RoutingEngine } from '../types';
+import { normalizePhoneAndGetTimezone } from '../utils/phone';
 
 interface IngestInput {
   organizationId: string;
@@ -17,16 +18,21 @@ interface IngestInput {
   sourceId?: string;
   utmData?: Record<string, string>;
   customFields?: Record<string, string>;
+  phoneTimezone?: string;
 }
 
 export async function ingestLead(input: IngestInput, routingEngine: RoutingEngine) {
+  const normalizedPhone = input.phone
+    ? normalizePhoneAndGetTimezone(input.phone)
+    : null;
+
   // 1. Create or update lead
   const { lead, isNew } = await createOrUpdateLead({
     organizationId: input.organizationId,
     email: input.email,
     firstName: input.firstName,
     lastName: input.lastName,
-    phone: input.phone,
+    phone: normalizedPhone?.phone,
     source: input.source,
   });
 
@@ -89,7 +95,13 @@ export async function ingestLead(input: IngestInput, routingEngine: RoutingEngin
     input.organizationId,
     lead.id,
     isNew ? 'lead.created' : 'lead.updated',
-    { source: input.source, channel: input.channel, utmData: input.utmData },
+    {
+      source: input.source,
+      channel: input.channel,
+      utmData: input.utmData,
+      phone: normalizedPhone?.phone,
+      phoneTimezone: normalizedPhone?.timezone ?? input.phoneTimezone,
+    },
   );
 
   // 7. Emit event for workflow engine
@@ -97,7 +109,12 @@ export async function ingestLead(input: IngestInput, routingEngine: RoutingEngin
     type: isNew ? 'lead_created' : 'lead_updated',
     organizationId: input.organizationId,
     leadId: lead.id,
-    metadata: { source: input.source, channel: input.channel },
+    metadata: {
+      source: input.source,
+      channel: input.channel,
+      phone: normalizedPhone?.phone,
+      phoneTimezone: normalizedPhone?.timezone ?? input.phoneTimezone,
+    },
     timestamp: new Date(),
   });
 

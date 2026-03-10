@@ -1,8 +1,11 @@
 'use client';
 
 import { type FormEvent, useState, Suspense } from 'react';
+import { PhoneInput } from 'react-international-phone';
+import 'react-international-phone/style.css';
 import { useUtm, type UtmParams } from '@/lib/tracking/use-utm';
 import { trackEvent, trackEventForPixel, type TrackEventOptions } from '@/lib/tracking/events';
+import { normalizePhoneAndGetTimezone } from '@/lib/utils/phone';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,6 +35,10 @@ export interface ConversionConfig {
 }
 
 export interface LeadFormProps {
+  /** API org key from `apps/api/src/orgs/<org>/...` */
+  ingestOrgKey: string;
+  /** API BU key from `apps/api/src/orgs/<org>/<bu>/...` */
+  ingestBuKey: string;
   /** Landing source identifier, e.g. "landing-faktory-creators-v1" */
   source: string;
   /** API base URL. Defaults to NEXT_PUBLIC_API_URL env var. */
@@ -86,6 +93,14 @@ export interface LeadFormProps {
   submitLabel?: string;
   /** Text shown after successful submission (when no redirect). */
   successMessage?: string;
+  /** Override placeholder text for standard fields. */
+  placeholders?: Partial<Record<'firstName' | 'lastName' | 'email' | 'phone', string>>;
+  /** Default values for standard fields (e.g. phone country code). */
+  defaultValues?: Partial<Record<'firstName' | 'lastName' | 'email' | 'phone', string>>;
+  /** Default country for phone input (ISO2, e.g. "pe" for Peru). Inferred from defaultValues.phone when "+51" etc. */
+  defaultCountry?: string;
+  /** Loading button text. Default: "Sending..." */
+  loadingLabel?: string;
   /** Additional class name for the form wrapper. */
   className?: string;
   /** Override inline styles on the form. */
@@ -102,6 +117,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 // ---------------------------------------------------------------------------
 
 function LeadFormInner({
+  ingestOrgKey,
+  ingestBuKey,
   source,
   apiUrl = API_URL,
   fields = DEFAULT_FIELDS,
@@ -111,13 +128,20 @@ function LeadFormInner({
   onSuccessRedirect,
   onSuccess,
   submitLabel = 'Submit',
+  loadingLabel = 'Sending...',
   successMessage = "Thanks! We'll be in touch.",
+  placeholders,
+  defaultValues,
+  defaultCountry,
   className,
   style,
 }: LeadFormProps) {
   const utm = useUtm();
   const [status, setStatus] = useState<FormStatus>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [phone, setPhone] = useState(defaultValues?.phone ?? '');
+
+  const phoneCountry = defaultCountry ?? inferCountryFromPhone(defaultValues?.phone);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -136,6 +160,15 @@ function LeadFormInner({
       if (val) body[field] = val;
     }
 
+    const rawPhone = typeof body.phone === 'string' ? body.phone : undefined;
+    if (rawPhone) {
+      const normalizedPhone = normalizePhoneAndGetTimezone(rawPhone);
+      if (!normalizedPhone) {
+        throw new Error('Please enter a valid WhatsApp phone number');
+      }
+      body.phone = normalizedPhone.phone;
+    }
+
     // Build customFields from extraFields inputs + hiddenFields
     const custom: Record<string, string> = { ...(hiddenFields ?? {}) };
     for (const ef of extraFields) {
@@ -148,11 +181,14 @@ function LeadFormInner({
     if (Object.keys(utmData).length > 0) body.utmData = utmData;
 
     try {
-      const res = await fetch(`${apiUrl}/api/ingest`, {
+      const res = await fetch(
+        `${apiUrl}/api/orgs/${encodeURIComponent(ingestOrgKey)}/bus/${encodeURIComponent(ingestBuKey)}/ingest`,
+        {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      });
+        },
+      );
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -201,16 +237,25 @@ function LeadFormInner({
     >
       {/* Standard fields */}
       {fields!.includes('firstName') && (
-        <input name="firstName" type="text" placeholder="First name" required style={inputStyle} />
+        <input name="firstName" type="text" placeholder={placeholders?.firstName ?? 'First name'} defaultValue={defaultValues?.firstName} required style={inputStyle} />
       )}
       {fields!.includes('lastName') && (
-        <input name="lastName" type="text" placeholder="Last name" style={inputStyle} />
+        <input name="lastName" type="text" placeholder={placeholders?.lastName ?? 'Last name'} defaultValue={defaultValues?.lastName} style={inputStyle} />
       )}
       {fields!.includes('email') && (
-        <input name="email" type="email" placeholder="Email" required style={inputStyle} />
+        <input name="email" type="email" placeholder={placeholders?.email ?? 'Email'} defaultValue={defaultValues?.email} required style={inputStyle} />
       )}
       {fields!.includes('phone') && (
-        <input name="phone" type="tel" placeholder="Phone" style={inputStyle} />
+        <PhoneInput
+          defaultCountry={phoneCountry as 'pe'}
+          value={phone}
+          onChange={(p) => setPhone(p)}
+          name="phone"
+          placeholder={placeholders?.phone ?? 'Phone'}
+          preferredCountries={['pe', 'mx', 'co', 'ar', 'cl', 'ec']}
+          className="lead-form-phone"
+          inputStyle={inputStyle}
+        />
       )}
 
       {/* Extra fields — arbitrary per-landing */}
@@ -250,7 +295,7 @@ function LeadFormInner({
       })}
 
       <button type="submit" disabled={status === 'loading'} style={buttonStyle}>
-        {status === 'loading' ? 'Sending...' : submitLabel}
+        {status === 'loading' ? loadingLabel : submitLabel}
       </button>
 
       {status === 'error' && (
@@ -277,7 +322,7 @@ function LeadFormInner({
  * - Configurable conversion events (which Meta/GA4/TikTok event to fire, with what data)
  * - Per-pixel targeting (fire to a specific pixel ID, not all)
  * - Success redirect (e.g. to a thank-you page or WhatsApp link)
- * - POSTs to the API's /api/ingest endpoint
+ * - POSTs to the API's tenant-scoped ingestion endpoint
  */
 export function LeadForm(props: LeadFormProps) {
   return (
@@ -299,6 +344,28 @@ function buildUtmData(utm: UtmParams): Record<string, string> {
   if (utm.utm_content) data.utm_content = utm.utm_content;
   if (utm.utm_term) data.utm_term = utm.utm_term;
   return data;
+}
+
+/** Infer ISO2 country from default phone value (e.g. "+51 " → "pe"). */
+function inferCountryFromPhone(phone?: string): string {
+  if (!phone) return 'pe';
+  const dial = phone.replace(/\D/g, '').slice(0, 3);
+  const map: Record<string, string> = {
+    '51': 'pe',
+    '52': 'mx',
+    '54': 'ar',
+    '55': 'br',
+    '56': 'cl',
+    '57': 'co',
+    '58': 've',
+    '593': 'ec',
+    '598': 'uy',
+  };
+  for (const len of [3, 2, 1]) {
+    const code = dial.slice(0, len);
+    if (map[code]) return map[code];
+  }
+  return 'pe';
 }
 
 const inputStyle: React.CSSProperties = {

@@ -44,6 +44,8 @@ export default function TemplateHtmlLanding() {
       {/* React LeadForm below the HTML content */}
       <div style={{ maxWidth: 400, margin: '2rem auto', padding: '0 1rem' }}>
         <LeadForm
+          ingestOrgKey="<api-org-key>"
+          ingestBuKey="<api-bu-key>"
           source="landing-template-html"
           fields={['firstName', 'email']}
           submitLabel="Join Now"

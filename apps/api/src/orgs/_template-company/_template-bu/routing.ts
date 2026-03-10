@@ -9,7 +9,7 @@
  * at a specific stage).
  *
  * WHEN IS THIS CALLED?
- * - Every time POST /api/ingest is hit for this organization.
+ * - Every time POST /api/orgs/:orgKey/bus/:buKey/ingest is hit for this BU.
  * - The ingestion service passes: the lead, their custom fields, and source info.
  *
  * WHAT SHOULD IT RETURN?
