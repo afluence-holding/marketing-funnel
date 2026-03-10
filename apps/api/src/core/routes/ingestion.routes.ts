@@ -23,7 +23,7 @@ const ingestSchema = z.object({
   source: z.string().optional(),
   channel: z.enum(['inbound', 'outbound']).default('inbound'),
   sourceType: z.string().optional(),
-  sourceId: z.string().uuid().optional(),
+  sourceId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   utmData: z.record(z.string(), z.string()).optional(),
   customFields: z.record(z.string(), z.string()).optional(),
 });
