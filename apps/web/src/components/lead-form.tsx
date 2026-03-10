@@ -1,6 +1,8 @@
 'use client';
 
 import { type FormEvent, useState, Suspense } from 'react';
+import { PhoneInput } from 'react-international-phone';
+import 'react-international-phone/style.css';
 import { useUtm, type UtmParams } from '@/lib/tracking/use-utm';
 import { trackEvent, trackEventForPixel, type TrackEventOptions } from '@/lib/tracking/events';
 import { normalizePhoneAndGetTimezone } from '@/lib/utils/phone';
@@ -95,6 +97,8 @@ export interface LeadFormProps {
   placeholders?: Partial<Record<'firstName' | 'lastName' | 'email' | 'phone', string>>;
   /** Default values for standard fields (e.g. phone country code). */
   defaultValues?: Partial<Record<'firstName' | 'lastName' | 'email' | 'phone', string>>;
+  /** Default country for phone input (ISO2, e.g. "pe" for Peru). Inferred from defaultValues.phone when "+51" etc. */
+  defaultCountry?: string;
   /** Loading button text. Default: "Sending..." */
   loadingLabel?: string;
   /** Additional class name for the form wrapper. */
@@ -128,12 +132,16 @@ function LeadFormInner({
   successMessage = "Thanks! We'll be in touch.",
   placeholders,
   defaultValues,
+  defaultCountry,
   className,
   style,
 }: LeadFormProps) {
   const utm = useUtm();
   const [status, setStatus] = useState<FormStatus>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [phone, setPhone] = useState(defaultValues?.phone ?? '');
+
+  const phoneCountry = defaultCountry ?? inferCountryFromPhone(defaultValues?.phone);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -238,7 +246,16 @@ function LeadFormInner({
         <input name="email" type="email" placeholder={placeholders?.email ?? 'Email'} defaultValue={defaultValues?.email} required style={inputStyle} />
       )}
       {fields!.includes('phone') && (
-        <input name="phone" type="tel" placeholder={placeholders?.phone ?? 'Phone'} defaultValue={defaultValues?.phone} style={inputStyle} />
+        <PhoneInput
+          defaultCountry={phoneCountry as 'pe'}
+          value={phone}
+          onChange={(p) => setPhone(p)}
+          name="phone"
+          placeholder={placeholders?.phone ?? 'Phone'}
+          preferredCountries={['pe', 'mx', 'co', 'ar', 'cl', 'ec']}
+          className="lead-form-phone"
+          inputStyle={inputStyle}
+        />
       )}
 
       {/* Extra fields — arbitrary per-landing */}
@@ -327,6 +344,28 @@ function buildUtmData(utm: UtmParams): Record<string, string> {
   if (utm.utm_content) data.utm_content = utm.utm_content;
   if (utm.utm_term) data.utm_term = utm.utm_term;
   return data;
+}
+
+/** Infer ISO2 country from default phone value (e.g. "+51 " → "pe"). */
+function inferCountryFromPhone(phone?: string): string {
+  if (!phone) return 'pe';
+  const dial = phone.replace(/\D/g, '').slice(0, 3);
+  const map: Record<string, string> = {
+    '51': 'pe',
+    '52': 'mx',
+    '54': 'ar',
+    '55': 'br',
+    '56': 'cl',
+    '57': 'co',
+    '58': 've',
+    '593': 'ec',
+    '598': 'uy',
+  };
+  for (const len of [3, 2, 1]) {
+    const code = dial.slice(0, len);
+    if (map[code]) return map[code];
+  }
+  return 'pe';
 }
 
 const inputStyle: React.CSSProperties = {

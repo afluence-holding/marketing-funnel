@@ -11,7 +11,8 @@
   "dependencies": {
     "next": "^15.3.4",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-international-phone": "^4.8.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",

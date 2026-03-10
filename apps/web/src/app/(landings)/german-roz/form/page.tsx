@@ -134,6 +134,7 @@ const luxuryOverrides = `
     align-items: center;
     justify-content: flex-end;
     padding: 0 1.5rem 3.5rem;
+    overflow: visible;
   }
 
   .gr-titles {
@@ -163,6 +164,7 @@ const luxuryOverrides = `
   .gr-form {
     width: 100%;
     max-width: 380px;
+    overflow: visible;
   }
 
   .gr-form input,
@@ -196,6 +198,66 @@ const luxuryOverrides = `
   .gr-form textarea:focus {
     border-color: rgba(255, 255, 255, 0.9) !important;
     background: rgba(255, 255, 255, 0.18) !important;
+  }
+
+  /* Phone input — compact flag on left, input matches other fields */
+  .gr-form .lead-form-phone {
+    width: 100% !important;
+    position: relative !important;
+  }
+  /* Dropdown overlays instead of pushing content — no layout shift */
+  .gr-form .react-international-phone-country-selector {
+    position: relative !important;
+  }
+  .gr-form .react-international-phone-country-selector-dropdown {
+    position: absolute !important;
+    z-index: 9999 !important;
+    top: auto !important;
+    bottom: 100% !important;
+    left: 0 !important;
+    margin: 0 0 4px 0 !important;
+    background: rgba(20, 20, 20, 0.98) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5) !important;
+    color: #fff !important;
+  }
+  .gr-form .react-international-phone-country-selector-dropdown__list-item {
+    color: inherit !important;
+  }
+  .gr-form .react-international-phone-country-selector-dropdown__list-item:hover,
+  .gr-form .react-international-phone-country-selector-dropdown__list-item--selected,
+  .gr-form .react-international-phone-country-selector-dropdown__list-item--focused {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+  }
+  .gr-form .react-international-phone-country-selector-dropdown__list-item-dial-code {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+  .gr-form .react-international-phone-input-container {
+    display: flex !important;
+    align-items: stretch !important;
+  }
+  .gr-form .react-international-phone-country-selector-button {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-right: none !important;
+    border-radius: 4px 0 0 4px !important;
+    color: #fff !important;
+    cursor: pointer !important;
+    padding: 0 0.5rem !important;
+    min-width: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .gr-form .react-international-phone-country-selector-button:hover {
+    background: rgba(255, 255, 255, 0.18) !important;
+  }
+  .gr-form .react-international-phone-input-container .react-international-phone-input {
+    border-radius: 0 4px 4px 0 !important;
+    flex: 1 !important;
+    min-width: 0 !important;
   }
 
   .gr-form button[type="submit"] {
