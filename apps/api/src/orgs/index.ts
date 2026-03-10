@@ -16,9 +16,7 @@
  * That's it. The engine picks them up automatically on next startup.
  */
 
-import type { ClickUpPipelineConfig, SequenceDef, WorkflowDef } from '../core/types';
-import type { SequenceDef, WorkflowDef } from '../core/types';
-import type { RoutingEngine } from '../core/types';
+import type { ClickUpPipelineConfig, SequenceDef, WorkflowDef, RoutingEngine } from '../core/types';
 
 // -- Afluence / Company-1 -----------------------------------------------------
 import { sequences as company1Sequences } from './afluence/business-unit-1/sequences';
@@ -27,6 +25,7 @@ import { IDS as company1Ids, clickupConfig as company1ClickupConfig } from './af
 import { sequences as aiFactoryCreatorsSequences } from './afluence/ai-factory-creators/sequences';
 import { workflows as aiFactoryCreatorsWorkflows } from './afluence/ai-factory-creators/workflows';
 import { IDS as aiFactoryCreatorsIds, clickupConfig as aiFactoryCreatorsClickupConfig } from './afluence/ai-factory-creators/config';
+import { routingEngine as aiFactoryCreatorsRouting } from './afluence/ai-factory-creators/routing';
 import { routingEngine as company1Routing } from './afluence/business-unit-1/routing';
 
 // -- German Roz / Main --------------------------------------------------------
@@ -48,8 +47,14 @@ const businessUnits: BusinessUnitBinding[] = [
   {
     orgKey: 'afluence',
     buKey: 'business-unit-1',
-    organizationId: company1IDS.organizationId,
+    organizationId: company1Ids.organizationId,
     routingEngine: company1Routing,
+  },
+  {
+    orgKey: 'afluence',
+    buKey: 'ai-factory-creators',
+    organizationId: aiFactoryCreatorsIds.organizationId,
+    routingEngine: aiFactoryCreatorsRouting,
   },
   {
     orgKey: 'german-roz',
