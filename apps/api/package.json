@@ -8,7 +8,8 @@
     "seed": "ts-node src/orgs/afluence/company-1/seed.ts",
     "seed:german-roz": "ts-node src/orgs/german-roz/main/seed.ts",
     "gen-types": "bash scripts/gen-types.sh",
-    "build": "tsc",
+    "build:deps": "npm run build -w @marketing-funnel/clickup-client && npm run build -w @marketing-funnel/config && npm run build -w @marketing-funnel/db && npm run build -w @marketing-funnel/elevenlabs && npm run build -w @marketing-funnel/email && npm run build -w @marketing-funnel/whatsapp-client",
+    "build": "npm run build:deps && tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },
@@ -19,6 +20,7 @@
     "@marketing-funnel/db": "*",
     "@marketing-funnel/elevenlabs": "*",
     "@marketing-funnel/email": "*",
+    "@marketing-funnel/whatsapp-client": "*",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "node-cron": "^4.2.1",
