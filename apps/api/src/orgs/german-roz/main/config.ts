@@ -7,5 +7,5 @@ export const config: OrgConfig = {
 };
 
 export const IDS = {
-  organizationId: process.env.GERMAN_ROZ_ORG_ID ?? '',
+  organizationId: '614e43c9-5f3f-499b-8734-2fa256b3785c',  
 };

@@ -47,6 +47,14 @@ router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (re
       return;
     }
 
+    if (!binding.organizationId) {
+      res.status(503).json({
+        error: 'Organization not configured',
+        message: `Missing organization ID for ${orgKey}/${buKey}. Set the env var.`,
+      });
+      return;
+    }
+
     if (req.body.phone) {
       const normalizedPhone = normalizePhoneAndGetTimezone(req.body.phone);
       if (!normalizedPhone) {
