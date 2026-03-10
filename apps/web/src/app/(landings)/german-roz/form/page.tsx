@@ -65,7 +65,7 @@ export default function GermanRozForm() {
             defaultValues={{ phone: '+51 ' }}
             hiddenFields={{ creator: 'german-roz' }}
             conversion={{ event: 'Lead', data: { content_name: 'german-roz-form' } }}
-            submitLabel="Revelar mi acceso y el secreto"
+            submitLabel="¡Quiero mi cupo!"
             loadingLabel="Enviando..."
             successMessage="Gracias. Te contactaremos pronto."
             style={{ gap: '1.5rem' }}
