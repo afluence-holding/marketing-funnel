@@ -11,7 +11,7 @@
     "dev:web": "npm run dev -w @marketing-funnel/web",
     "build": "npm run build --workspaces",
     "build:api-deploy": "npm run build -w @marketing-funnel/clickup-client && npm run build -w @marketing-funnel/config && npm run build -w @marketing-funnel/db && npm run build -w @marketing-funnel/elevenlabs && npm run build -w @marketing-funnel/email && npm run build -w @marketing-funnel/whatsapp-client && npm run build -w @marketing-funnel/api",
-    "build:web-deploy": "npm run build -w @marketing-funnel/web",
+    "build:web-deploy": "npm install -w @marketing-funnel/web --no-save --include=optional sharp lightningcss && npm run build -w @marketing-funnel/web",
     "start:api": "npm run start -w @marketing-funnel/api",
     "start:web": "npm run start -w @marketing-funnel/web",
     "typecheck": "npm run typecheck --workspaces --if-present"
