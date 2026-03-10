@@ -4,6 +4,7 @@ import { logActivity } from './activity-log.service';
 import type { RoutingDecision } from '../types';
 
 interface CreateEntryInput {
+  organizationId: string;
   leadId: string;
   decision: RoutingDecision;
   triggerType: 'automatic' | 'manual';
@@ -13,6 +14,35 @@ interface CreateEntryInput {
 }
 
 export async function createPipelineEntry(input: CreateEntryInput) {
+  const { data: existingEntry, error: existingEntryError } = await supabaseAdmin
+    .from('lead_pipeline_entries')
+    .select('*')
+    .eq('lead_id', input.leadId)
+    .eq('pipeline_id', input.decision.pipelineId)
+    .order('updated_at', { ascending: false })
+    .order('entered_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingEntryError) throw existingEntryError;
+
+  if (existingEntry) {
+    if (existingEntry.current_stage_id !== input.decision.initialStageId) {
+      await moveStage(existingEntry.id, input.decision.initialStageId, input.organizationId);
+
+      const { data: updatedEntry, error: updatedEntryError } = await supabaseAdmin
+        .from('lead_pipeline_entries')
+        .select('*')
+        .eq('id', existingEntry.id)
+        .single();
+
+      if (updatedEntryError) throw updatedEntryError;
+      return updatedEntry!;
+    }
+
+    return existingEntry;
+  }
+
   const { data: entry, error: entryError } = await supabaseAdmin
     .from('lead_pipeline_entries')
     .insert({
@@ -39,6 +69,19 @@ export async function createPipelineEntry(input: CreateEntryInput) {
     });
 
   if (historyError) throw historyError;
+
+  eventBus.emit({
+    type: 'pipeline_entry_created',
+    organizationId: input.organizationId,
+    leadId: input.leadId,
+    pipelineEntryId: entry!.id,
+    metadata: {
+      pipelineId: input.decision.pipelineId,
+      stageId: input.decision.initialStageId,
+      channel: input.decision.channel,
+    },
+    timestamp: new Date(),
+  });
 
   return entry!;
 }

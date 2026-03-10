@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@marketing-funnel/clickup-client": "*",
     "@marketing-funnel/config": "*",
     "@marketing-funnel/db": "*",
     "@marketing-funnel/elevenlabs": "*",

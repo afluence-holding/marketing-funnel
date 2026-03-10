@@ -37,7 +37,10 @@ function matchConditions(
   if (!conditions || Object.keys(conditions).length === 0) return true;
 
   for (const [key, expected] of Object.entries(conditions)) {
-    const actual = event.metadata?.[key];
+    const eventRecord = event as unknown as Record<string, unknown>;
+    const actual =
+      event.metadata?.[key] ??
+      (key in eventRecord ? eventRecord[key] : undefined);
     if (actual !== expected) return false;
   }
   return true;

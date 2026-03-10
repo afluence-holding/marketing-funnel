@@ -215,7 +215,7 @@ export function WhatsAppRetoMockup() {
                     /* Video message */
                     <div className="relative">
                       <img
-                        src={videoThumb}
+                        src={typeof videoThumb === "string" ? videoThumb : videoThumb.src}
                         alt="Video rutina"
                         className="w-full object-cover"
                         style={{

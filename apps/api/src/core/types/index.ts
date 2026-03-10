@@ -9,6 +9,7 @@ export interface RoutingDecision {
 export interface SourceInfo {
   type: string;
   id?: string;
+  channel?: 'inbound' | 'outbound';
   utmData?: Record<string, string>;
 }
 
@@ -157,6 +158,7 @@ export interface SequenceDef {
 export type WorkflowEventType =
   | 'lead_created'
   | 'lead_updated'
+  | 'pipeline_entry_created'
   | 'stage_entered'
   | 'stage_exited'
   | 'status_changed'
@@ -175,8 +177,18 @@ export type WorkflowActionType =
   | 'update_status'
   | 'enroll_sequence'
   | 'unenroll_sequence'
+  | 'create_clickup_task'
+  | 'update_clickup_status'
   | 'log'
   | 'notify';
+
+export interface ClickUpPipelineConfig {
+  enabled: boolean;
+  apiToken: string;
+  listId: string;
+  customItemId?: number;
+  stageToStatusMap: Record<string, string>;
+}
 
 export interface WorkflowActionDef {
   type: WorkflowActionType;

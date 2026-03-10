@@ -1,0 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@import 'tailwindcss' source(none);
+@source "../**/*.{js,ts,jsx,tsx}";
+@source "../../../../docs/Landing page para Afluence/src/**/*.{js,ts,jsx,tsx}";
+
+@import 'tw-animate-css';
+@import "../../../../docs/Landing page para Afluence/src/styles/theme.css";

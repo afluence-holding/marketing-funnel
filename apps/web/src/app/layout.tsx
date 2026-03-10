@@ -1,5 +1,6 @@
 import { GoogleTagManagerNoscript } from '@/components/tracking/gtm';
 import { gtmId } from '@/lib/config/pixels';
+import './globals.css';
 
 export const metadata = {
   title: 'Marketing Pipeline',

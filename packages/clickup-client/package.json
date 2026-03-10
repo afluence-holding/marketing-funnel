@@ -1,0 +1,16 @@
+{
+  "name": "@marketing-funnel/clickup-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Minimal typed ClickUp API client",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "typescript": "^5.9.3"
+  }
+}

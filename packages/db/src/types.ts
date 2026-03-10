@@ -183,6 +183,7 @@ export type Database = {
       lead_pipeline_entries: {
         Row: {
           channel: string
+          clickup_task_id: string | null
           current_stage_id: string
           entered_at: string
           id: string
@@ -196,6 +197,7 @@ export type Database = {
         }
         Insert: {
           channel: string
+          clickup_task_id?: string | null
           current_stage_id: string
           entered_at?: string
           id?: string
@@ -209,6 +211,7 @@ export type Database = {
         }
         Update: {
           channel?: string
+          clickup_task_id?: string | null
           current_stage_id?: string
           entered_at?: string
           id?: string
