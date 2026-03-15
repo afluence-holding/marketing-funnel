@@ -2,7 +2,5 @@
 
 @import 'tailwindcss' source(none);
 @source "../**/*.{js,ts,jsx,tsx}";
-@source "../../../../docs/Landing page para Afluence/src/**/*.{js,ts,jsx,tsx}";
 
 @import 'tw-animate-css';
-@import "../../../../docs/Landing page para Afluence/src/styles/theme.css";
