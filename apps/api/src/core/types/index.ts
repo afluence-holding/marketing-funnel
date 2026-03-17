@@ -179,6 +179,7 @@ export type WorkflowActionType =
   | 'unenroll_sequence'
   | 'create_clickup_task'
   | 'update_clickup_status'
+  | 'notify_clickup_channel'
   | 'log'
   | 'notify';
 

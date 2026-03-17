@@ -19,6 +19,7 @@
 import type { ClickUpPipelineConfig, SequenceDef, WorkflowDef, RoutingEngine } from '../core/types';
 
 // -- Afluence / Company-1 -----------------------------------------------------
+import { workflows as afluenceOrgWorkflows } from './afluence/workflows';
 import { sequences as company1Sequences } from './afluence/business-unit-1/sequences';
 import { workflows as company1Workflows } from './afluence/business-unit-1/workflows';
 import { IDS as company1Ids, clickupConfig as company1ClickupConfig } from './afluence/business-unit-1/config';
@@ -86,6 +87,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
 };
 
 export const workflowRegistry: Record<string, WorkflowDef> = {
+  ...afluenceOrgWorkflows,
   ...company1Workflows,
   ...aiFactoryCreatorsWorkflows,
   ...germanRozWorkflows,

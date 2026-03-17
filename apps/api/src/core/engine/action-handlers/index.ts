@@ -7,6 +7,7 @@ import { logAction } from './log';
 import { notifyAction } from './notify';
 import { createClickupTaskAction } from './create-clickup-task';
 import { updateClickupStatusAction } from './update-clickup-status';
+import { notifyClickupChannelAction } from './notify-clickup-channel';
 
 export const actionHandlerMap: ActionHandlerMap = {
   move_stage: moveStageAction,
@@ -15,6 +16,7 @@ export const actionHandlerMap: ActionHandlerMap = {
   unenroll_sequence: unenrollSequenceAction,
   create_clickup_task: createClickupTaskAction,
   update_clickup_status: updateClickupStatusAction,
+  notify_clickup_channel: notifyClickupChannelAction,
   log: logAction,
   notify: notifyAction,
 };
