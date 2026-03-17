@@ -23,7 +23,10 @@ function normalizeText(value: string | undefined | null): string {
   return (value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    // Unify dash variants (en/em/minus) so "1–5K" and "1-5K" match equally.
+    .replace(/[–—−]/g, '-')
     .toLowerCase()
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -48,6 +51,15 @@ function resolveOptionId(field: ClickUpCustomField, rawValue: string): string | 
       getOptionText(opt).includes(normalized) || normalized.includes(getOptionText(opt)),
   );
   return contains?.id;
+}
+
+function formatPhoneForClickup(rawPhone: string | null | undefined): string {
+  const digits = (rawPhone ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  // Internal normalization stores WhatsApp-ready MX numbers as 521XXXXXXXXXX.
+  // ClickUp "phone" field expects +52XXXXXXXXXX (without the extra "1").
+  const normalized = digits.startsWith('521') ? `52${digits.slice(3)}` : digits;
+  return `+${normalized}`;
 }
 
 async function setFieldIfPossible(params: {
@@ -197,10 +209,17 @@ async function syncTaskCustomFields(
     return raw;
   })();
   const dealType = channel === 'outbound' ? 'Outbound' : 'Inbound';
+  const clickupPhone = formatPhoneForClickup(lead.phone);
 
   await setFieldIfPossible({ client, taskId, listFields, fieldNames: ['Nombre Completo'], value: fullName });
   await setFieldIfPossible({ client, taskId, listFields, fieldNames: ['Email'], value: lead.email });
-  await setFieldIfPossible({ client, taskId, listFields, fieldNames: ['Phone', 'WhatsApp', 'Telefono'], value: lead.phone ?? '' });
+  await setFieldIfPossible({
+    client,
+    taskId,
+    listFields,
+    fieldNames: ['Phone', 'WhatsApp', 'Telefono'],
+    value: clickupPhone,
+  });
   await setFieldIfPossible({ client, taskId, listFields, fieldNames: ['Deal Type'], value: dealType });
   await setFieldIfPossible({
     client,
@@ -318,7 +337,7 @@ export async function createClickUpTaskForEntry(input: CreateTaskInput): Promise
 export async function updateClickUpTaskStatusForEntry(input: UpdateStatusInput): Promise<void> {
   const { data: entry, error: entryError } = await supabaseAdmin
     .from('lead_pipeline_entries')
-    .select('id, pipeline_id, current_stage_id, clickup_task_id')
+    .select('id, lead_id, pipeline_id, current_stage_id, clickup_task_id')
     .eq('id', input.pipelineEntryId)
     .single();
 
@@ -343,6 +362,35 @@ export async function updateClickUpTaskStatusForEntry(input: UpdateStatusInput):
   }
 
   const client = new ClickUpClient({ apiToken: clickupConfig.apiToken });
-  await client.updateTaskStatus(entry.clickup_task_id, targetStatus);
-  console.log(`[clickup.service] Updated ClickUp task ${entry.clickup_task_id} to "${targetStatus}"`);
+  try {
+    await client.updateTaskStatus(entry.clickup_task_id, targetStatus);
+    console.log(`[clickup.service] Updated ClickUp task ${entry.clickup_task_id} to "${targetStatus}"`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const missingTask = message.includes('ITEM_013') || message.toLowerCase().includes('task not found');
+    if (!missingTask) throw error;
+
+    console.warn(
+      `[clickup.service] Task ${entry.clickup_task_id} missing for entry ${entry.id}; recreating task link`,
+    );
+    const { error: clearError } = await supabaseAdmin
+      .from('lead_pipeline_entries')
+      .update({
+        clickup_task_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', entry.id);
+    if (clearError) throw clearError;
+
+    const recreatedTaskId = await createClickUpTaskForEntry({
+      pipelineEntryId: entry.id,
+      leadId: entry.lead_id,
+    });
+    if (!recreatedTaskId) {
+      console.warn(`[clickup.service] Could not recreate task for entry ${entry.id}`);
+      return;
+    }
+
+    console.log(`[clickup.service] Recreated missing task ${recreatedTaskId} for entry ${entry.id}`);
+  }
 }

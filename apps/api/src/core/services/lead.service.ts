@@ -10,6 +10,30 @@ interface CreateLeadInput {
   status?: string;
 }
 
+async function insertLead(input: CreateLeadInput) {
+  const { data, error } = await supabaseAdmin
+    .from('leads')
+    .insert({
+      organization_id: input.organizationId,
+      email: input.email,
+      first_name: input.firstName,
+      last_name: input.lastName,
+      phone: input.phone,
+      source: input.source,
+      status: input.status ?? 'new',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data!;
+}
+
+export async function createLead(input: CreateLeadInput) {
+  const lead = await insertLead(input);
+  return { lead, isNew: true };
+}
+
 export async function createOrUpdateLead(input: CreateLeadInput) {
   const { data: existing } = await supabaseAdmin
     .from('leads')
@@ -36,22 +60,8 @@ export async function createOrUpdateLead(input: CreateLeadInput) {
     return { lead: data!, isNew: false };
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('leads')
-    .insert({
-      organization_id: input.organizationId,
-      email: input.email,
-      first_name: input.firstName,
-      last_name: input.lastName,
-      phone: input.phone,
-      source: input.source,
-      status: input.status ?? 'new',
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return { lead: data!, isNew: true };
+  const lead = await insertLead(input);
+  return { lead, isNew: true };
 }
 
 export async function getLeadById(id: string) {

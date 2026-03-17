@@ -17,6 +17,10 @@ export interface ClickUpTaskResponse {
   status?: {
     status?: string;
   };
+  assignees?: Array<{
+    username?: string;
+    email?: string;
+  }>;
   [key: string]: unknown;
 }
 
@@ -41,15 +45,18 @@ export interface ClickUpCustomField {
 interface ClickUpClientOptions {
   apiToken: string;
   baseUrl?: string;
+  chatBaseUrl?: string;
 }
 
 export class ClickUpClient {
   private readonly apiToken: string;
   private readonly baseUrl: string;
+  private readonly chatBaseUrl: string;
 
   constructor(options: ClickUpClientOptions) {
     this.apiToken = options.apiToken;
     this.baseUrl = options.baseUrl ?? 'https://api.clickup.com/api/v2';
+    this.chatBaseUrl = options.chatBaseUrl ?? 'https://api.clickup.com/api/v3';
   }
 
   async createTask(listId: string, payload: ClickUpTaskPayload): Promise<ClickUpTaskResponse> {
@@ -70,6 +77,12 @@ export class ClickUpClient {
     return this.updateTask(taskId, { status });
   }
 
+  async getTask(taskId: string): Promise<ClickUpTaskResponse> {
+    return this.request<ClickUpTaskResponse>(`/task/${taskId}`, {
+      method: 'GET',
+    });
+  }
+
   async getListCustomFields(listId: string): Promise<ClickUpCustomField[]> {
     const result = await this.request<{ fields?: ClickUpCustomField[] }>(`/list/${listId}/field`, {
       method: 'GET',
@@ -84,9 +97,28 @@ export class ClickUpClient {
     });
   }
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
+  async createChatMessage(
+    workspaceId: string,
+    channelId: string,
+    content: string,
+  ): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>(
+      `/workspaces/${workspaceId}/chat/channels/${channelId}/messages`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'message',
+          content,
+          content_format: 'text/plain',
+        }),
+      },
+      this.chatBaseUrl,
+    );
+  }
+
+  private async request<T>(path: string, init: RequestInit, baseUrl = this.baseUrl): Promise<T> {
     const authToken = this.apiToken.replace(/^Bearer\s+/i, '').trim();
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
         // ClickUp v2 expects raw token in Authorization header.
@@ -102,6 +134,8 @@ export class ClickUpClient {
       );
     }
 
-    return response.json() as Promise<T>;
+    const bodyText = await response.text();
+    if (!bodyText) return {} as T;
+    return JSON.parse(bodyText) as T;
   }
 }

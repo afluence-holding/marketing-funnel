@@ -21,6 +21,10 @@ export interface TrackEventOptions {
   [key: string]: unknown;
 }
 
+export interface MetaTrackOptions {
+  eventId?: string;
+}
+
 /**
  * Track a standard conversion event across ALL initialized pixels.
  *
@@ -29,11 +33,19 @@ export interface TrackEventOptions {
  *   trackEvent('Purchase', { value: 99.99, currency: 'USD' });
  *   trackEvent('CompleteRegistration', { content_name: 'landing-v1' });
  */
-export function trackEvent(eventName: string, options: TrackEventOptions = {}) {
+export function trackEvent(
+  eventName: string,
+  options: TrackEventOptions = {},
+  meta: MetaTrackOptions = {},
+) {
   if (typeof window === 'undefined') return;
 
   if (typeof window.fbq === 'function') {
-    window.fbq('track', eventName, options);
+    if (meta.eventId) {
+      window.fbq('track', eventName, options, { eventID: meta.eventId });
+    } else {
+      window.fbq('track', eventName, options);
+    }
   }
 
   if (typeof window.gtag === 'function') {
@@ -52,11 +64,20 @@ export function trackEvent(eventName: string, options: TrackEventOptions = {}) {
  * @example
  *   trackEventForPixel('123456789', 'Lead', { content_name: 'creator-landing' });
  */
-export function trackEventForPixel(pixelId: string, eventName: string, options: TrackEventOptions = {}) {
+export function trackEventForPixel(
+  pixelId: string,
+  eventName: string,
+  options: TrackEventOptions = {},
+  meta: MetaTrackOptions = {},
+) {
   if (typeof window === 'undefined') return;
 
   if (typeof window.fbq === 'function') {
-    window.fbq('trackSingle', pixelId, eventName, options);
+    if (meta.eventId) {
+      window.fbq('trackSingle', pixelId, eventName, options, { eventID: meta.eventId });
+    } else {
+      window.fbq('trackSingle', pixelId, eventName, options);
+    }
   }
 }
 
@@ -66,11 +87,19 @@ export function trackEventForPixel(pixelId: string, eventName: string, options: 
  * @example
  *   trackCustomEvent('ClickedWhatsApp', { landing: 'v2' });
  */
-export function trackCustomEvent(eventName: string, data: Record<string, unknown> = {}) {
+export function trackCustomEvent(
+  eventName: string,
+  data: Record<string, unknown> = {},
+  meta: MetaTrackOptions = {},
+) {
   if (typeof window === 'undefined') return;
 
   if (typeof window.fbq === 'function') {
-    window.fbq('trackCustom', eventName, data);
+    if (meta.eventId) {
+      window.fbq('trackCustom', eventName, data, { eventID: meta.eventId });
+    } else {
+      window.fbq('trackCustom', eventName, data);
+    }
   }
 
   if (typeof window.gtag === 'function') {

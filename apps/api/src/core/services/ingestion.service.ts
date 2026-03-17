@@ -1,4 +1,4 @@
-import { createOrUpdateLead } from './lead.service';
+import { createLead, createOrUpdateLead } from './lead.service';
 import { saveCustomFieldValues, getCustomFieldValues } from './custom-field.service';
 import { createPipelineEntry } from './lead-pipeline.service';
 import { logActivity } from './activity-log.service';
@@ -19,6 +19,14 @@ interface IngestInput {
   utmData?: Record<string, string>;
   customFields?: Record<string, string>;
   phoneTimezone?: string;
+  forceCreateLead?: boolean;
+  tracking?: {
+    meta?: {
+      eventId?: string;
+      fbp?: string;
+      fbc?: string;
+    };
+  };
 }
 
 export async function ingestLead(input: IngestInput, routingEngine: RoutingEngine) {
@@ -27,14 +35,17 @@ export async function ingestLead(input: IngestInput, routingEngine: RoutingEngin
     : null;
 
   // 1. Create or update lead
-  const { lead, isNew } = await createOrUpdateLead({
+  const leadWriteInput = {
     organizationId: input.organizationId,
     email: input.email,
     firstName: input.firstName,
     lastName: input.lastName,
     phone: normalizedPhone?.phone,
     source: input.source,
-  });
+  };
+  const { lead, isNew } = input.forceCreateLead
+    ? await createLead(leadWriteInput)
+    : await createOrUpdateLead(leadWriteInput);
 
   // 2. Save custom fields
   if (input.customFields && Object.keys(input.customFields).length > 0) {
