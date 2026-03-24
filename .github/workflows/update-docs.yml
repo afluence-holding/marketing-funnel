@@ -22,14 +22,14 @@ jobs:
       - name: Get diff details
         id: diff
         run: |
-          # Changed files (name + status)
-          CHANGED=$(git diff --name-status HEAD~1 HEAD 2>/dev/null || echo "initial commit")
+          # Changed files (name + status) — use before SHA for full push diff
+          CHANGED=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }} 2>/dev/null || echo "initial commit")
           echo "files<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
           # Full diff for context
-          FULL_DIFF=$(git diff HEAD~1 HEAD -- ':!package-lock.json' ':!*.sql' 2>/dev/null | head -3000)
+          FULL_DIFF=$(git diff ${{ github.event.before }} ${{ github.sha }} -- ':!package-lock.json' ':!*.sql' ':!pnpm-lock.yaml' 2>/dev/null | head -3000)
           echo "diff<<EOF" >> $GITHUB_OUTPUT
           echo "$FULL_DIFF" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -44,7 +44,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          direct_prompt: |
+          prompt: |
             A push to main just happened. Your job is to check if any existing documentation files in the repo need updating based on the code changes.
 
             ## Changed files
@@ -78,7 +78,8 @@ jobs:
             - Do NOT add changelog entries or "last updated" timestamps.
             - Do NOT commit — the workflow handles that.
             - Be conservative: if you're unsure whether a doc needs updating, leave it alone.
-          allowed_tools: "Read,Write,Edit,Glob,Grep,Bash"
+          claude_args: |
+            --allowedTools Read,Write,Edit,Glob,Grep,Bash
 
       - name: Commit and push documentation updates
         run: |
