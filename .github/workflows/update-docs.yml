@@ -6,7 +6,6 @@ on:
 
 jobs:
   update-docs:
-    # Prevent infinite loop: skip if this workflow made the last commit
     if: "!contains(github.event.head_commit.message, '[skip-docs]')"
     runs-on: ubuntu-latest
     permissions:
@@ -22,72 +21,68 @@ jobs:
       - name: Get diff details
         id: diff
         run: |
-          # Changed files (name + status) — use before SHA for full push diff
           CHANGED=$(git diff --name-status ${{ github.event.before }} ${{ github.sha }} 2>/dev/null || echo "initial commit")
           echo "files<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-          # Full diff for context
           FULL_DIFF=$(git diff ${{ github.event.before }} ${{ github.sha }} -- ':!package-lock.json' ':!*.sql' ':!pnpm-lock.yaml' 2>/dev/null | head -3000)
           echo "diff<<EOF" >> $GITHUB_OUTPUT
           echo "$FULL_DIFF" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-          # List all existing .md documentation files
           DOCS=$(find . -name '*.md' -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/dist/*' -not -path '*/.git/*' | sort)
           echo "docs<<EOF" >> $GITHUB_OUTPUT
           echo "$DOCS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
       - name: Run Claude Code to review and update docs
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            A push to main just happened. Your job is to check if any existing documentation files in the repo need updating based on the code changes.
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude --print --dangerously-skip-permissions --allowedTools Read,Write,Edit,Glob,Grep,Bash <<'PROMPT'
+          A push to main just happened. Your job is to check if any existing documentation files in the repo need updating based on the code changes.
 
-            ## Changed files
-            ```
-            ${{ steps.diff.outputs.files }}
-            ```
+          ## Changed files
+          ```
+          ${{ steps.diff.outputs.files }}
+          ```
 
-            ## Code diff (truncated)
-            ```diff
-            ${{ steps.diff.outputs.diff }}
-            ```
+          ## Code diff (truncated)
+          ```diff
+          ${{ steps.diff.outputs.diff }}
+          ```
 
-            ## Existing documentation files in the repo
-            ```
-            ${{ steps.diff.outputs.docs }}
-            ```
+          ## Existing documentation files in the repo
+          ```
+          ${{ steps.diff.outputs.docs }}
+          ```
 
-            ## Your task
+          ## Your task
+          1. Look at the changed files and the diff to understand WHAT changed in this push.
+          2. Read each documentation file that could potentially be affected by these changes.
+          3. For each doc file, determine if the changes make any part of the documentation outdated, incomplete, or incorrect.
+          4. If a doc file needs updating, update it to reflect the new state of the code.
+          5. If no docs need updating, do nothing — that's perfectly fine.
 
-            1. Look at the changed files and the diff to understand WHAT changed in this push.
-            2. Read each documentation file that could potentially be affected by these changes.
-            3. For each doc file, determine if the changes make any part of the documentation outdated, incomplete, or incorrect.
-            4. If a doc file needs updating, update it to reflect the new state of the code.
-            5. If no docs need updating, do nothing — that's perfectly fine.
-
-            ## Rules
-            - ONLY update docs that are actually affected by the changes. Do NOT touch docs that are still accurate.
-            - Common things to check: new/removed/renamed modules, changed API routes, new env variables, updated database schema, changed commands, new packages, modified architecture patterns.
-            - Keep the same style and language (Spanish for content, English for code identifiers) as the existing docs.
-            - Do NOT create new documentation files. Only update existing ones.
-            - Do NOT add changelog entries or "last updated" timestamps.
-            - Do NOT commit — the workflow handles that.
-            - Be conservative: if you're unsure whether a doc needs updating, leave it alone.
-          claude_args: |
-            --allowedTools Read,Write,Edit,Glob,Grep,Bash
+          ## Rules
+          - ONLY update docs that are actually affected by the changes. Do NOT touch docs that are still accurate.
+          - Common things to check: new/removed/renamed modules, changed API routes, new env variables, updated database schema, changed commands, new packages, modified architecture patterns.
+          - Keep the same style and language (Spanish for content, English for code identifiers) as the existing docs.
+          - Do NOT create new documentation files. Only update existing ones.
+          - Do NOT add changelog entries or "last updated" timestamps.
+          - Do NOT commit — the workflow handles that.
+          - Be conservative: if you're unsure whether a doc needs updating, leave it alone.
+          PROMPT
 
       - name: Commit and push documentation updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Stage only .md files
           git add '*.md' '**/*.md'
-          # Only commit if there are actual changes
           if git diff --cached --quiet; then
             echo "No documentation updates needed."
           else
