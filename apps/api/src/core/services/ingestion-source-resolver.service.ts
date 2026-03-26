@@ -16,6 +16,7 @@ const AI_FACTORY_CREATORS_SOURCE = 'landing-ai-factory-creators-v1';
 const GERMAN_ROZ_SOURCES = new Set([
   'landing-german-roz-form',
   'landing-german-roz-html',
+  'landing-german-roz-vsl-desinflamate',
   'landing-german-roz-desinflamate-vsl',
 ]);
 const BU1_SOURCE_PREFIX = 'landing-bu1-';
@@ -56,6 +57,6 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
   }
 
   throw new Error(
-    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-desinflamate-vsl", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
+    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
   );
 }

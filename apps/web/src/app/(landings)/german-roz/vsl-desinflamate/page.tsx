@@ -20,12 +20,12 @@ export const metadata: Metadata = {
 async function loadLandingHtml(): Promise<string> {
   const filePath = path.join(
     process.cwd(),
-    'src/app/(landings)/german-roz/html/landing-desinflamate.html',
+    'src/app/(landings)/german-roz/vsl-desinflamate/landing-desinflamate.html',
   );
   return fs.readFile(filePath, 'utf-8');
 }
 
-export default async function GermanRozHtmlLanding() {
+export default async function GermanRozVslDesinflamateLanding() {
   const html = await loadLandingHtml();
 
   return (
@@ -40,7 +40,7 @@ export default async function GermanRozHtmlLanding() {
         <LeadForm
           ingestOrgKey="german-roz"
           ingestBuKey="main"
-          source="landing-german-roz-desinflamate-vsl"
+          source="landing-german-roz-vsl-desinflamate"
           fields={['firstName', 'email', 'phone']}
           placeholders={{
             firstName: 'Nombre',
