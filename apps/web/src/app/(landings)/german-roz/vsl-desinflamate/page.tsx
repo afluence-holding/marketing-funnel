@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Metadata } from 'next';
+import { LandingConfig } from '@/components/landing-config';
+import { VslTracker } from './vsl-tracker';
 
 export const metadata: Metadata = {
   title: 'DESINFLAMATE! — Reto con German Roz',
@@ -26,6 +28,8 @@ export default async function GermanRozVslDesinflamateLanding() {
 
   return (
     <>
+      <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ} />
+      <VslTracker />
       <iframe
         srcDoc={html}
         title="DESINFLAMATE! — VSL"
