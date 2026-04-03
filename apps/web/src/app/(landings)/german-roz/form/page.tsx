@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { LeadForm } from '@/components/lead-form';
+import { LandingConfig } from '@/components/landing-config';
 import { Cormorant_Garamond, Bebas_Neue } from 'next/font/google';
 import type { Metadata } from 'next';
 import germanBg from './german.webp';
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
 export default function GermanRozForm() {
   return (
     <>
+      <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ} />
       <style>{luxuryOverrides}</style>
 
       <main className="gr-main">

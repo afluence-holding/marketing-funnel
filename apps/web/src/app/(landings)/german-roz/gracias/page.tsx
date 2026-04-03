@@ -1,5 +1,7 @@
 import { Cormorant_Garamond, Bebas_Neue } from 'next/font/google';
 import type { Metadata } from 'next';
+import { LandingConfig } from '@/components/landing-config';
+import { PurchaseTracker } from './purchase-tracker';
 
 const serif = Cormorant_Garamond({
   subsets: ['latin'],
@@ -27,6 +29,8 @@ export const metadata: Metadata = {
 export default function GermanRozGracias() {
   return (
     <>
+      <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ} />
+      <PurchaseTracker />
       <style>{styles}</style>
 
       <main className="ty-main">

@@ -5512,6 +5512,49 @@ Error generating stack: `+ i.message + `
       else { setTimeout(boot, 400); }
     })();
   </script>
+  <script>
+    // VSL milestone tracker — sends progress to parent via postMessage
+    (function () {
+      var milestones = {25: false, 50: false, 75: false, 100: false};
+
+      function startTracking() {
+        var ytIframe = document.getElementById('yt-vsl');
+        if (!ytIframe) return setTimeout(startTracking, 500);
+
+        // Listen for YouTube postMessage events (enablejsapi=1 required)
+        window.addEventListener('message', function (e) {
+          var data;
+          try { data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (_) { return; }
+          if (!data || data.event !== 'infoDelivery' || !data.info) return;
+          var ct = data.info.currentTime;
+          var dur = data.info.duration;
+          if (!dur || ct == null) return;
+          var pct = (ct / dur) * 100;
+          [25, 50, 75, 100].forEach(function (m) {
+            if (pct >= m && !milestones[m]) {
+              milestones[m] = true;
+              window.parent.postMessage({type: 'vsl-milestone', milestone: m}, '*');
+            }
+          });
+        });
+
+        // Tell YouTube we're listening so it starts sending infoDelivery
+        function subscribe() {
+          try {
+            ytIframe.contentWindow.postMessage(JSON.stringify({event: 'listening'}), '*');
+          } catch (_) {}
+        }
+        ytIframe.addEventListener('load', subscribe);
+        subscribe();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(startTracking, 600); });
+      } else {
+        setTimeout(startTracking, 600);
+      }
+    })();
+  </script>
 </body>
 
 </html>
