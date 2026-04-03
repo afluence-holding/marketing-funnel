@@ -28,6 +28,11 @@ export const pixelConfig: Record<string, Record<string, BuPixels>> = {
       tiktokPixelId: process.env.NEXT_PUBLIC_TIKTOK_AFLUENCE_FAKTORY_COMPANIES,
     },
   },
+  'german-roz': {
+    main: {
+      metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ,
+    },
+  },
 };
 
 export const gtmId = process.env.NEXT_PUBLIC_GTM_ID;

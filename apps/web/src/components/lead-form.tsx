@@ -180,6 +180,15 @@ function LeadFormInner({
     const utmData = buildUtmData(utm);
     if (Object.keys(utmData).length > 0) body.utmData = utmData;
 
+    // Build tracking metadata for CAPI deduplication
+    const eventId = crypto.randomUUID();
+    const fbp = getCookie('_fbp');
+    const fbc = getCookie('_fbc');
+    const metaTracking: Record<string, string> = { eventId };
+    if (fbp) metaTracking.fbp = fbp;
+    if (fbc) metaTracking.fbc = fbc;
+    body.tracking = { meta: metaTracking };
+
     try {
       const res = await fetch(
         `${apiUrl}/api/orgs/${encodeURIComponent(ingestOrgKey)}/bus/${encodeURIComponent(ingestBuKey)}/ingest`,
@@ -195,16 +204,16 @@ function LeadFormInner({
         throw new Error(data.message ?? `Request failed (${res.status})`);
       }
 
-      // Fire conversion events
+      // Fire conversion events (eventId matches CAPI for dedup)
       const eventName = conversion?.event ?? 'Lead';
       const eventData: TrackEventOptions = {
         content_name: source,
         ...(conversion?.data ?? {}),
       };
       if (conversion?.pixelId) {
-        trackEventForPixel(conversion.pixelId, eventName, eventData);
+        trackEventForPixel(conversion.pixelId, eventName, eventData, { eventId });
       } else {
-        trackEvent(eventName, eventData);
+        trackEvent(eventName, eventData, { eventId });
       }
 
       onSuccess?.();
@@ -366,6 +375,12 @@ function inferCountryFromPhone(phone?: string): string {
     if (map[code]) return map[code];
   }
   return 'pe';
+}
+
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match?.[1];
 }
 
 const inputStyle: React.CSSProperties = {

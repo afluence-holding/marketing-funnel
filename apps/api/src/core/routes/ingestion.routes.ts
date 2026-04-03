@@ -138,12 +138,19 @@ router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (re
       binding.routingEngine,
     );
 
+    // --- Meta CAPI ---
     const xForwardedFor = req.headers['x-forwarded-for'];
     const clientIpAddress = Array.isArray(xForwardedFor)
       ? xForwardedFor[0]
       : xForwardedFor?.split(',')[0]?.trim() ?? req.ip;
     const eventId = req.body.tracking?.meta?.eventId;
-    if (eventId && formType === 'full') {
+
+    // Resolve per-org CAPI credentials (fall back to global env vars)
+    const capiCreds = getCapiCredentials(orgKey);
+
+    // Fire CAPI: ai-factory-creators requires formType=full; other orgs fire on any eventId
+    const shouldFireCapi = eventId && (formType === 'full' || orgKey !== 'afluence');
+    if (shouldFireCapi) {
       for (const eventName of ['Lead', 'CompleteRegistration'] as const) {
         try {
           await sendMetaCapiEvent({
@@ -163,6 +170,7 @@ router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (re
               form_type: formType ?? 'unknown',
               channel: req.body.channel ?? 'inbound',
             },
+            ...capiCreds,
           });
         } catch (error) {
           console.warn('[meta-capi] ingest event failed', {
@@ -323,5 +331,15 @@ router.post('/ingest', (_req, res) => {
     message: 'Use /api/orgs/:orgKey/bus/:buKey/ingest and keep source metadata in the request body.',
   });
 });
+
+/** Resolve per-org CAPI pixel ID + access token. Returns empty object to use global defaults. */
+function getCapiCredentials(orgKey: string): { pixelId?: string; accessToken?: string } {
+  if (orgKey === 'german-roz') {
+    const pixelId = process.env.META_PIXEL_ID_GERMAN_ROZ;
+    const accessToken = process.env.META_CAPI_TOKEN_GERMAN_ROZ;
+    if (pixelId && accessToken) return { pixelId, accessToken };
+  }
+  return {};
+}
 
 export default router;

@@ -17,6 +17,10 @@ interface SendMetaCapiEventInput {
   eventSourceUrl?: string;
   userData?: MetaCapiUserData;
   customData?: Record<string, unknown>;
+  /** Override the pixel ID (defaults to META_PIXEL_ID env var). */
+  pixelId?: string;
+  /** Override the access token (defaults to META_CAPI_TOKEN env var). */
+  accessToken?: string;
 }
 
 function sha256(value: string): string {
@@ -36,8 +40,8 @@ function normalizePhone(phone?: string): string | undefined {
 }
 
 export async function sendMetaCapiEvent(input: SendMetaCapiEventInput): Promise<void> {
-  const token = process.env.META_CAPI_TOKEN?.trim();
-  const pixelId = process.env.META_PIXEL_ID?.trim();
+  const token = (input.accessToken ?? process.env.META_CAPI_TOKEN)?.trim();
+  const pixelId = (input.pixelId ?? process.env.META_PIXEL_ID)?.trim();
 
   if (!token || !pixelId) return;
 
