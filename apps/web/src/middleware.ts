@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Maps custom client domains to their org landing directories,
  * so `nutricion.germanroz.com/vsl-desinflamate` serves `/german-roz/vsl-desinflamate`.
  */
+
 const DOMAIN_TO_ORG: Record<string, string> = {
   'nutricion.germanroz.com': '/german-roz',
 };
