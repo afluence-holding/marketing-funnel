@@ -4,6 +4,13 @@ import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
 import { VslTracker } from './vsl-tracker';
 
+/** WhatsApp Business del reto (Perú). Solo dígitos, sin +, para wa.me */
+const GERMAN_ROZ_WHATSAPP_E164 = '51973227945';
+
+const WHATSAPP_PREFILL_MESSAGE = 'Hola! Tengo dudas sobre el desafío de 21 días';
+
+const whatsappContactHref = `https://wa.me/${GERMAN_ROZ_WHATSAPP_E164}?text=${encodeURIComponent(WHATSAPP_PREFILL_MESSAGE)}`;
+
 export const metadata: Metadata = {
   title: 'DESINFLAMATE! — Reto con German Roz',
   description:
@@ -41,7 +48,7 @@ export default async function GermanRozVslDesinflamateLanding() {
         }}
       />
       <a
-        href="https://wa.me/525586773483?text=Hola!%20Tengo%20dudas%20sobre%20el%20desaf%C3%ADo%20de%2021%20d%C3%ADas"
+        href={whatsappContactHref}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Contactar por WhatsApp"
