@@ -5460,17 +5460,11 @@ Error generating stack: `+ i.message + `
         if (!vid) { return setTimeout(boot, 200); }
 
         var wrap = vid.closest('div');
-        var isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-        var viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-        var targetWidth = isiOS ? Math.min(viewportWidth - 8, viewportWidth * 0.98) : wrap.getBoundingClientRect().width;
+        var rect = wrap.getBoundingClientRect();
         wrap.style.position = 'relative';
-        wrap.style.width = isiOS ? targetWidth + 'px' : '100%';
-        wrap.style.maxWidth = targetWidth + 'px';
+        wrap.style.width = '100%';
+        wrap.style.maxWidth = rect.width + 'px';
         wrap.style.aspectRatio = '16/9';
-        if (isiOS) {
-          wrap.style.marginLeft = 'auto';
-          wrap.style.marginRight = 'auto';
-        }
         wrap.innerHTML = '';
 
         var iframe = document.createElement('iframe');
