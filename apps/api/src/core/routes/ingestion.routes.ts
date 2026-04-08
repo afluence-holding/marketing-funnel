@@ -54,6 +54,24 @@ const meetingScheduledSchema = z.object({
     .optional(),
 });
 
+const videoEventSchema = z.object({
+  eventName: z.enum(['VSL_25', 'VSL_50', 'VSL_75', 'VSL_100']),
+  source: z.string().min(1).optional(),
+  contentName: z.string().min(1).optional(),
+  milestone: z.number().int().min(0).max(100).optional(),
+  tracking: z
+    .object({
+      meta: z
+        .object({
+          eventId: z.string().min(1),
+          fbp: z.string().min(1).optional(),
+          fbc: z.string().min(1).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
 router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (req, res, next) => {
   try {
     const source = req.body.source;
@@ -319,6 +337,76 @@ router.post(
         pipelineEntryId: entry.id,
         moveResult,
       });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  '/orgs/:orgKey/bus/:buKey/video-events',
+  validate(videoEventSchema),
+  async (req, res, next) => {
+    try {
+      const orgKey = Array.isArray(req.params.orgKey) ? req.params.orgKey[0] : req.params.orgKey;
+      const buKey = Array.isArray(req.params.buKey) ? req.params.buKey[0] : req.params.buKey;
+
+      if (!orgKey || !buKey) {
+        res.status(400).json({ error: 'Invalid org or business unit key' });
+        return;
+      }
+
+      const binding = getBusinessUnitBinding(orgKey, buKey);
+      if (!binding) {
+        res.status(404).json({
+          error: 'Business unit not found',
+          message: `Unknown ingestion target: ${orgKey}/${buKey}`,
+        });
+        return;
+      }
+
+      const eventId = req.body.tracking?.meta?.eventId;
+      if (!eventId) {
+        res.status(400).json({
+          error: 'Missing required tracking.meta.eventId',
+        });
+        return;
+      }
+
+      const xForwardedFor = req.headers['x-forwarded-for'];
+      const clientIpAddress = Array.isArray(xForwardedFor)
+        ? xForwardedFor[0]
+        : xForwardedFor?.split(',')[0]?.trim() ?? req.ip;
+      const capiCreds = getCapiCredentials(orgKey);
+
+      try {
+        await sendMetaCapiEvent({
+          eventName: req.body.eventName,
+          eventId,
+          eventSourceUrl: req.get('referer') ?? req.get('origin'),
+          userData: {
+            fbp: req.body.tracking?.meta?.fbp,
+            fbc: req.body.tracking?.meta?.fbc,
+            clientIpAddress,
+            clientUserAgent: req.get('user-agent') ?? undefined,
+          },
+          customData: {
+            content_name: req.body.contentName ?? req.body.source ?? 'unknown',
+            source: req.body.source ?? null,
+            milestone: req.body.milestone ?? null,
+            bu_key: buKey,
+          },
+          ...capiCreds,
+        });
+      } catch (error) {
+        console.warn('[meta-capi] video event failed', {
+          eventName: req.body.eventName,
+          source: req.body.source ?? null,
+          error: error instanceof Error ? error.message : 'unknown',
+        });
+      }
+
+      res.status(202).json({ ok: true });
     } catch (err) {
       next(err);
     }

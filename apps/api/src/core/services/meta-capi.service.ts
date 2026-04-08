@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-type MetaCapiEventName = 'Lead' | 'CompleteRegistration' | 'Schedule';
+type MetaCapiEventName = string;
 
 interface MetaCapiUserData {
   email?: string;

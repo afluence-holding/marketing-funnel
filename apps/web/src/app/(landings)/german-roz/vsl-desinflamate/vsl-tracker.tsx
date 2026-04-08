@@ -2,9 +2,15 @@
 
 import { useEffect } from 'react';
 import { trackCustomEvent, trackEvent } from '@/lib/tracking/events';
+import { buildMetaTrackingPayload, createMetaEventId } from '@/lib/tracking/meta-capi';
 
 const MILESTONES = [25, 50, 75, 100] as const;
 const HOTMART_PATTERN = /hotmart/i;
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+const ORG_KEY = 'german-roz';
+const BU_KEY = 'main';
+const CONTENT_NAME = 'german-roz-vsl-desinflamate';
+const SOURCE = 'landing-german-roz-vsl-desinflamate';
 
 /**
  * Listens for postMessage events from the srcDoc iframe:
@@ -19,12 +25,42 @@ export function VslTracker() {
     const fired = new Set<number>();
     let ctaFired = false;
 
+    async function sendMilestoneToCapi(eventName: string, eventId: string, milestone: number) {
+      try {
+        await fetch(
+          `${API_URL}/api/orgs/${encodeURIComponent(ORG_KEY)}/bus/${encodeURIComponent(BU_KEY)}/video-events`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              eventName,
+              source: SOURCE,
+              contentName: CONTENT_NAME,
+              milestone,
+              tracking: {
+                meta: buildMetaTrackingPayload(eventId),
+              },
+            }),
+          },
+        );
+      } catch (error) {
+        console.warn('[vsl-tracker] milestone capi sync failed', {
+          eventName,
+          milestone,
+          error: error instanceof Error ? error.message : 'unknown',
+        });
+      }
+    }
+
     function onMessage(e: MessageEvent) {
       if (e.data?.type === 'vsl-milestone') {
         const m = e.data.milestone as number;
         if (!MILESTONES.includes(m as (typeof MILESTONES)[number]) || fired.has(m)) return;
         fired.add(m);
-        trackCustomEvent(`VSL_${m}`, { content_name: 'german-roz-vsl-desinflamate', milestone: m });
+        const eventName = `VSL_${m}`;
+        const eventId = createMetaEventId(`vsl_${m}`);
+        trackCustomEvent(eventName, { content_name: CONTENT_NAME, milestone: m }, { eventId });
+        void sendMilestoneToCapi(eventName, eventId, m);
       }
     }
 
@@ -52,7 +88,7 @@ export function VslTracker() {
 
         if (isCTA) {
           ctaFired = true;
-          trackEvent('InitiateCheckout', { content_name: 'german-roz-vsl-desinflamate' });
+          trackEvent('InitiateCheckout', { content_name: CONTENT_NAME });
         }
       }, true);
     }
