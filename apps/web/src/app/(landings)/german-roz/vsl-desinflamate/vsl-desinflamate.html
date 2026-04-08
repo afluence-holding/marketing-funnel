@@ -5460,11 +5460,17 @@ Error generating stack: `+ i.message + `
         if (!vid) { return setTimeout(boot, 200); }
 
         var wrap = vid.closest('div');
-        var rect = wrap.getBoundingClientRect();
+        var isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+        var viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        var targetWidth = isiOS ? Math.min(viewportWidth - 8, viewportWidth * 0.98) : wrap.getBoundingClientRect().width;
         wrap.style.position = 'relative';
-        wrap.style.width = '100%';
-        wrap.style.maxWidth = rect.width + 'px';
+        wrap.style.width = isiOS ? targetWidth + 'px' : '100%';
+        wrap.style.maxWidth = targetWidth + 'px';
         wrap.style.aspectRatio = '16/9';
+        if (isiOS) {
+          wrap.style.marginLeft = 'auto';
+          wrap.style.marginRight = 'auto';
+        }
         wrap.innerHTML = '';
 
         var iframe = document.createElement('iframe');
@@ -5480,7 +5486,7 @@ Error generating stack: `+ i.message + `
         fsBtn.type = 'button';
         fsBtn.innerHTML = '\u26F6 Pantalla completa';
         fsBtn.setAttribute('aria-label', 'Alternar pantalla completa');
-        fsBtn.style.cssText = 'position:absolute;right:12px;bottom:12px;z-index:35;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:.55rem .85rem;font-size:12px;line-height:1;font-weight:700;letter-spacing:.02em;color:#fff;background:rgba(12,12,12,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);cursor:pointer;';
+        fsBtn.style.cssText = 'position:absolute;right:12px;bottom:12px;z-index:35;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:.55rem .85rem;font-size:12px;line-height:1;font-weight:700;letter-spacing:.02em;color:#fff;background:rgba(12,12,12,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s ease;';
         wrap.appendChild(fsBtn);
 
         var fsHint = document.createElement('div');
@@ -5492,6 +5498,18 @@ Error generating stack: `+ i.message + `
         function setFsButtonLabel() {
           var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
           fsBtn.innerHTML = isFs ? '\u2715 Salir pantalla completa' : '\u26F6 Pantalla completa';
+        }
+        var fsBtnTimer = null;
+        function setFsButtonVisible(visible) {
+          fsBtn.style.opacity = visible ? '1' : '0';
+          fsBtn.style.pointerEvents = visible ? 'auto' : 'none';
+        }
+        function showFsButtonTemporarily() {
+          setFsButtonVisible(true);
+          clearTimeout(fsBtnTimer);
+          fsBtnTimer = setTimeout(function () {
+            setFsButtonVisible(false);
+          }, 1800);
         }
 
         function requestWrapFullscreen() {
@@ -5522,6 +5540,7 @@ Error generating stack: `+ i.message + `
 
         fsBtn.addEventListener('click', function (ev) {
           ev.stopPropagation();
+          showFsButtonTemporarily();
           var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
           if (isFs) {
             exitFullscreen().catch(function () {});
@@ -5538,8 +5557,19 @@ Error generating stack: `+ i.message + `
               if (isMobileLike()) showFullscreenFallbackHint();
             });
         });
-        document.addEventListener('fullscreenchange', setFsButtonLabel);
-        document.addEventListener('webkitfullscreenchange', setFsButtonLabel);
+        wrap.addEventListener('mousemove', showFsButtonTemporarily);
+        wrap.addEventListener('touchstart', showFsButtonTemporarily, { passive: true });
+        wrap.addEventListener('click', showFsButtonTemporarily);
+        fsBtn.addEventListener('mouseenter', showFsButtonTemporarily);
+        fsBtn.addEventListener('focus', showFsButtonTemporarily);
+        document.addEventListener('fullscreenchange', function () {
+          setFsButtonLabel();
+          showFsButtonTemporarily();
+        });
+        document.addEventListener('webkitfullscreenchange', function () {
+          setFsButtonLabel();
+          showFsButtonTemporarily();
+        });
 
         // overlay
         var ov = document.createElement('div');
@@ -5553,6 +5583,7 @@ Error generating stack: `+ i.message + `
         ov.addEventListener('click', function () {
           ov.style.opacity = '0';
           setTimeout(function () { ov.remove(); }, 300);
+          showFsButtonTemporarily();
           // Reload iframe unmuted — user gesture allows autoplay with sound
           iframe.src = 'https://www.youtube.com/embed/' + YT_ID + '?autoplay=1&mute=0&playsinline=1&rel=0&modestbranding=1&controls=0&fs=0&disablekb=1&iv_load_policy=3&enablejsapi=1';
 
