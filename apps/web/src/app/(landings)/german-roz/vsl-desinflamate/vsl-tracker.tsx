@@ -84,7 +84,14 @@ export function VslTracker() {
         // Check the element's text or nearby context for Hotmart indicators
         const text = btn.textContent?.toLowerCase() ?? '';
         const href = (btn as HTMLAnchorElement).href ?? '';
-        const isCTA = HOTMART_PATTERN.test(href) || text.includes('quiero') || text.includes('reserv') || text.includes('compr') || text.includes('inscrib');
+        const isCTA =
+          HOTMART_PATTERN.test(href) ||
+          text.includes('quiero') ||
+          text.includes('unirme') ||
+          text.includes('reto') ||
+          text.includes('reserv') ||
+          text.includes('compr') ||
+          text.includes('inscrib');
 
         if (isCTA) {
           ctaFired = true;
