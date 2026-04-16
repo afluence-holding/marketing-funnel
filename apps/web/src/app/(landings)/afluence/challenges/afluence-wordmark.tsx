@@ -10,8 +10,9 @@ export function AfluenceWordmark({ variant = 'header' }: { variant?: 'header' | 
     <Image
       src={logoTransparent}
       alt="Afluence Building your empire"
-      height={isFooter ? 38 : 56}
-      className="w-auto select-none"
+      width={256}
+      height={83}
+      className={isFooter ? 'h-8 w-auto select-none' : 'h-9 w-auto select-none'}
       priority={!isFooter}
     />
   );
