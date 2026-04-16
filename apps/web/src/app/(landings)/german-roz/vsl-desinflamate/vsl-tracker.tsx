@@ -6,6 +6,8 @@ import { buildMetaTrackingPayload, createMetaEventId } from '@/lib/tracking/meta
 
 const MILESTONES = [25, 50, 75, 100] as const;
 const HOTMART_PATTERN = /hotmart/i;
+/** GTM pone el primer iframe del DOM; la VSL usa `srcDoc`. */
+const VSL_IFRAME_SELECTOR = 'iframe[srcDoc]';
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const ORG_KEY = 'german-roz';
 const BU_KEY = 'main';
@@ -66,7 +68,7 @@ export function VslTracker() {
 
     // Attach click listener inside the srcDoc iframe to catch Hotmart CTA clicks
     function attachIframeListener() {
-      const iframe = document.querySelector('iframe') as HTMLIFrameElement | null;
+      const iframe = document.querySelector(VSL_IFRAME_SELECTOR) as HTMLIFrameElement | null;
       if (!iframe) return;
 
       const iframeDoc = iframe.contentDocument;
@@ -104,7 +106,7 @@ export function VslTracker() {
     let attempts = 0;
     const interval = setInterval(() => {
       attempts++;
-      const iframe = document.querySelector('iframe') as HTMLIFrameElement | null;
+      const iframe = document.querySelector(VSL_IFRAME_SELECTOR) as HTMLIFrameElement | null;
       if (iframe?.contentDocument?.body || attempts > 50) {
         clearInterval(interval);
         if (iframe?.contentDocument?.body) attachIframeListener();
