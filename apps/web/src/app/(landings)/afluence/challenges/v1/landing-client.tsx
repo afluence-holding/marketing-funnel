@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingSection } from './booking';
-import logoHeader from './logo-header.jpeg';
+import { AfluenceWordmark } from '../afluence-wordmark';
 import gymWsp from './gym-wsp.jpeg';
 
 /* ═══════════════════════════════════════════════════════════
@@ -70,7 +70,7 @@ function Header() {
     >
       <div className="mx-auto max-w-[1240px] px-4 md:px-20 flex items-center justify-between h-[72px]">
         <button onClick={() => scrollTo('hero')} className="flex items-center gap-2.5 group cursor-pointer">
-          <Image src={logoHeader} alt="Afluence" height={36} className="w-auto" />
+          <AfluenceWordmark variant="header" />
         </button>
 
         <nav className="hidden md:flex items-center gap-8">
@@ -1147,7 +1147,7 @@ function Footer() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <Image src={logoHeader} alt="Afluence" height={32} className="w-auto" />
+              <AfluenceWordmark variant="footer" />
             </div>
             <p className="text-[0.75rem] text-brand-muted max-w-[280px]" style={{ lineHeight: 1.7 }}>Retos por WhatsApp con tutor IA para creadores e infoproductores que quieren vender high-ticket.</p>
           </div>
