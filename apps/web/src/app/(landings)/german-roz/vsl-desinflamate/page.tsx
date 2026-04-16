@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
+import { HotmartAttribution } from './hotmart-attribution';
 import { VslTracker } from './vsl-tracker';
 
 /** WhatsApp Business del reto (Perú). Solo dígitos, sin +, para wa.me */
@@ -36,6 +37,7 @@ export default async function GermanRozVslDesinflamateLanding() {
   return (
     <>
       <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ} />
+      <HotmartAttribution />
       <VslTracker />
       <iframe
         srcDoc={html}
