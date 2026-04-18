@@ -5,6 +5,8 @@ import { IDS as aiFactoryCreatorsIds } from '../../orgs/afluence/ai-factory-crea
 import { routingEngine as aiFactoryCreatorsRoutingEngine } from '../../orgs/afluence/ai-factory-creators/routing';
 import { IDS as germanRozIds } from '../../orgs/german-roz/main/config';
 import { routingEngine as germanRozRoutingEngine } from '../../orgs/german-roz/main/routing';
+import { IDS as lucasConLucasIds } from '../../orgs/lucas-con-lucas/main/config';
+import { routingEngine as lucasConLucasRoutingEngine } from '../../orgs/lucas-con-lucas/main/routing';
 
 interface IngestionTarget {
   organizationId: string;
@@ -18,6 +20,9 @@ const GERMAN_ROZ_SOURCES = new Set([
   'landing-german-roz-html',
   'landing-german-roz-vsl-desinflamate',
   'landing-german-roz-desinflamate-vsl',
+]);
+const LUCAS_CON_LUCAS_SOURCES = new Set([
+  'landing-lucas-con-lucas-pre-launch',
 ]);
 const BU1_SOURCE_PREFIX = 'landing-bu1-';
 const BU1_EXPLICIT_SOURCES = new Set([
@@ -48,6 +53,14 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
     };
   }
 
+  if (source && LUCAS_CON_LUCAS_SOURCES.has(source)) {
+    return {
+      organizationId: lucasConLucasIds.organizationId,
+      routingEngine: lucasConLucasRoutingEngine,
+      businessUnit: 'main',
+    };
+  }
+
   if (isBusinessUnit1Source(source)) {
     return {
       organizationId: bu1Ids.organizationId,
@@ -57,6 +70,6 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
   }
 
   throw new Error(
-    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
+    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-lucas-con-lucas-pre-launch", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
   );
 }
