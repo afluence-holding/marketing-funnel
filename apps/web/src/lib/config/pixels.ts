@@ -33,6 +33,11 @@ export const pixelConfig: Record<string, Record<string, BuPixels>> = {
       metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ,
     },
   },
+  'lucas-con-lucas': {
+    main: {
+      metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_LUCAS_CON_LUCAS,
+    },
+  },
 };
 
 export const gtmId = process.env.NEXT_PUBLIC_GTM_ID;

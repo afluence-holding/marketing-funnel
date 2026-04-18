@@ -35,6 +35,12 @@ import { workflows as germanRozWorkflows } from './german-roz/main/workflows';
 import { IDS as germanRozIDS } from './german-roz/main/config';
 import { routingEngine as germanRozRouting } from './german-roz/main/routing';
 
+// -- Lucas con Lucas / Main ---------------------------------------------------
+import { sequences as lucasConLucasSequences } from './lucas-con-lucas/main/sequences';
+import { workflows as lucasConLucasWorkflows } from './lucas-con-lucas/main/workflows';
+import { IDS as lucasConLucasIDS } from './lucas-con-lucas/main/config';
+import { routingEngine as lucasConLucasRouting } from './lucas-con-lucas/main/routing';
+
 // -- Add new BUs here ---------------------------------------------------------
 
 export interface BusinessUnitBinding {
@@ -63,6 +69,12 @@ const businessUnits: BusinessUnitBinding[] = [
     organizationId: germanRozIDS.organizationId,
     routingEngine: germanRozRouting,
   },
+  {
+    orgKey: 'lucas-con-lucas',
+    buKey: 'main',
+    organizationId: lucasConLucasIDS.organizationId,
+    routingEngine: lucasConLucasRouting,
+  },
 ];
 
 function makeBusinessUnitRegistryKey(orgKey: string, buKey: string) {
@@ -84,6 +96,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
   ...company1Sequences,
   ...aiFactoryCreatorsSequences,
   ...germanRozSequences,
+  ...lucasConLucasSequences,
 };
 
 export const workflowRegistry: Record<string, WorkflowDef> = {
@@ -91,6 +104,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...company1Workflows,
   ...aiFactoryCreatorsWorkflows,
   ...germanRozWorkflows,
+  ...lucasConLucasWorkflows,
 };
 
 export const clickupRegistryByPipelineId: Record<string, ClickUpPipelineConfig> = {
