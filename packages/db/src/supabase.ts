@@ -16,3 +16,14 @@ export const supabaseAdmin = createClient<Database, 'marketing'>(env.SUPABASE_UR
   db: { schema: 'marketing' },
   auth: { autoRefreshToken: false, persistSession: false },
 });
+
+/**
+ * Admin client scoped to an arbitrary schema (e.g. 'meta_ops', 'marketing_ops').
+ * Returns an untyped client — consumers can layer their own types on top.
+ */
+export function supabaseAdminForSchema(schema: string) {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    db: { schema },
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
