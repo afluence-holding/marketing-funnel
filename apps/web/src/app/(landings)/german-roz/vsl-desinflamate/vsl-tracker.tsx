@@ -94,8 +94,10 @@ export function VslTracker() {
           text.includes('reserv') ||
           text.includes('compr') ||
           text.includes('inscrib');
-        const compactText = text.replace(/\s+/g, ' ').trim();
-        const isStickyBottomButton = compactText.includes('unirme al reto');
+        const className = (btn as HTMLElement).className || '';
+        const isStickyBottomButton =
+          typeof className === 'string' &&
+          className.includes('animate-pulse');
 
         if (isCTA) {
           if (!ctaFired) {
