@@ -13,6 +13,7 @@ const ORG_KEY = 'german-roz';
 const BU_KEY = 'main';
 const CONTENT_NAME = 'german-roz-vsl-desinflamate';
 const SOURCE = 'landing-german-roz-vsl-desinflamate';
+const HOTMART_CHECKOUT_URL = 'https://pay.hotmart.com/I105257258C?off=5zf6yl6a';
 
 /**
  * Listens for postMessage events from the srcDoc iframe:
@@ -75,7 +76,6 @@ export function VslTracker() {
       if (!iframeDoc) return;
 
       iframeDoc.addEventListener('click', (e: MouseEvent) => {
-        if (ctaFired) return;
         const target = e.target as HTMLElement;
         // Check if click target or any ancestor has an onclick that opens Hotmart
         // The CTA buttons use onClick: () => window.open(hotmartUrl, "_top")
@@ -94,10 +94,19 @@ export function VslTracker() {
           text.includes('reserv') ||
           text.includes('compr') ||
           text.includes('inscrib');
+        const compactText = text.replace(/\s+/g, ' ').trim();
+        const isStickyBottomButton = compactText.includes('unirme al reto');
 
         if (isCTA) {
-          ctaFired = true;
-          trackEvent('InitiateCheckout', { content_name: CONTENT_NAME });
+          if (!ctaFired) {
+            ctaFired = true;
+            trackEvent('InitiateCheckout', { content_name: CONTENT_NAME });
+          }
+          if (isStickyBottomButton) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(HOTMART_CHECKOUT_URL, '_top');
+          }
         }
       }, true);
     }
