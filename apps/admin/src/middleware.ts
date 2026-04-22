@@ -16,7 +16,12 @@ export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  const isApi = pathname.startsWith('/api/');
+
   if (!url || !anonKey) {
+    if (isApi) {
+      return NextResponse.json({ error: 'misconfigured' }, { status: 500 });
+    }
     const redirect = request.nextUrl.clone();
     redirect.pathname = '/login';
     redirect.searchParams.set('err', 'misconfig');
@@ -39,6 +44,9 @@ export async function middleware(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser();
   if (!data.user) {
+    if (isApi) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
     const redirect = request.nextUrl.clone();
     redirect.pathname = '/login';
     redirect.searchParams.set('next', pathname);

@@ -120,7 +120,13 @@ async function listTargetBus(
 }
 
 /** Internal runner used by each tier-specific job. */
-async function runInsightsJob(params: RunJobParams, jobType: JobType, since: string, until: string): Promise<{ rowsWritten: number; bus: number }> {
+async function runInsightsJob(
+  params: RunJobParams,
+  jobType: JobType,
+  since: string,
+  until: string,
+  includeRich: boolean,
+): Promise<{ rowsWritten: number; freqRows: number; bus: number }> {
   const { supabase, masterKey, businessUnitFilter } = params;
   const lockKey = businessUnitFilter
     ? `${jobType}:${businessUnitFilter.organizerSlug}/${businessUnitFilter.buSlug}`
@@ -130,26 +136,37 @@ async function runInsightsJob(params: RunJobParams, jobType: JobType, since: str
   const acquired = await acquireLock(supabase, lockKey, owner);
   if (!acquired) {
     await insertJobRow(supabase, { jobType, status: 'skipped', metadata: { reason: 'lock_held' } });
-    return { rowsWritten: 0, bus: 0 };
+    return { rowsWritten: 0, freqRows: 0, bus: 0 };
   }
 
-  const jobId = await insertJobRow(supabase, { jobType, status: 'running', metadata: { since, until } });
+  const jobId = await insertJobRow(supabase, {
+    jobType,
+    status: 'running',
+    metadata: { since, until, includeRich },
+  });
 
   try {
     const bus = await listTargetBus(supabase, businessUnitFilter);
     let totalRows = 0;
+    let totalFreqRows = 0;
+    const richTotals = { ad_account: 0, campaigns: 0, ad_sets: 0, ads: 0, creatives: 0, audiences: 0 };
     const errors: string[] = [];
 
     for (const bu of bus) {
       try {
-        const { rowsWritten } = await pullBuInsights(supabase, {
+        const { rowsWritten, freqRows, richCounts } = await pullBuInsights(supabase, {
           organizerSlug: bu.organizer_slug,
           buSlug: bu.slug,
           masterKey,
           since,
           until,
+          includeRich,
         });
         totalRows += rowsWritten;
+        totalFreqRows += freqRows;
+        for (const k of Object.keys(richTotals) as Array<keyof typeof richTotals>) {
+          richTotals[k] += richCounts[k];
+        }
       } catch (err) {
         errors.push(`${bu.organizer_slug}/${bu.slug}: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -159,10 +176,10 @@ async function runInsightsJob(params: RunJobParams, jobType: JobType, since: str
       status: errors.length > 0 ? 'failed' : 'completed',
       rowsWritten: totalRows,
       error: errors.length > 0 ? errors.join(' | ') : undefined,
-      metadata: { since, until, bus: bus.length },
+      metadata: { since, until, bus: bus.length, freqRows: totalFreqRows, richTotals, includeRich },
     });
 
-    return { rowsWritten: totalRows, bus: bus.length };
+    return { rowsWritten: totalRows, freqRows: totalFreqRows, bus: bus.length };
   } catch (err) {
     await updateJobRow(supabase, jobId, {
       status: 'failed',
@@ -174,28 +191,28 @@ async function runInsightsJob(params: RunJobParams, jobType: JobType, since: str
   }
 }
 
-/** Pull today's insights for all BUs (or a single BU). */
+/** Pull today's insights for all BUs (or a single BU). Refreshes rich entities. */
 export function runTodayJob(params: RunJobParams) {
   const today = toYmd(new Date());
-  return runInsightsJob(params, 'today', today, today);
+  return runInsightsJob(params, 'today', today, today, true);
 }
 
-/** Pull last 7 days of insights for reconciliation. */
+/** Pull last 7 days of insights for reconciliation. Refreshes rich entities. */
 export function runRecentJob(params: RunJobParams) {
   const now = new Date();
-  return runInsightsJob(params, 'recent', toYmd(addDays(now, -7)), toYmd(now));
+  return runInsightsJob(params, 'recent', toYmd(addDays(now, -7)), toYmd(now), true);
 }
 
-/** Pull days 8..30 for mid-tier reconciliation. */
+/** Pull days 8..30 for mid-tier reconciliation. Skips rich entity refresh (redundant). */
 export function runMidJob(params: RunJobParams) {
   const now = new Date();
-  return runInsightsJob(params, 'mid', toYmd(addDays(now, -30)), toYmd(addDays(now, -8)));
+  return runInsightsJob(params, 'mid', toYmd(addDays(now, -30)), toYmd(addDays(now, -8)), false);
 }
 
-/** Pull days 31..90 for historical backfill. */
+/** Pull days 31..90 for historical backfill. Skips rich entity refresh (redundant). */
 export function runHistoricalJob(params: RunJobParams) {
   const now = new Date();
-  return runInsightsJob(params, 'historical', toYmd(addDays(now, -90)), toYmd(addDays(now, -31)));
+  return runInsightsJob(params, 'historical', toYmd(addDays(now, -90)), toYmd(addDays(now, -31)), false);
 }
 
 /**

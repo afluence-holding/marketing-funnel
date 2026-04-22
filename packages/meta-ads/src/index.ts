@@ -5,7 +5,18 @@ export { decryptToken, encryptToken, generateMasterKey } from './crypto';
 
 export { classifyTier } from './tier';
 
-export { loadBuAndToken, pullBuInsights, resolveBuCampaigns, upsertEntitiesAndInsights } from './service';
+export {
+  loadBuAndToken,
+  pullBuInsights,
+  resolveBuCampaigns,
+  upsertAdAccountRich,
+  upsertAdSetsRich,
+  upsertAdsAndCreativesRich,
+  upsertAudiencesRich,
+  upsertCampaignsRich,
+  upsertEntitiesAndInsights,
+  upsertFrequencyBreakdown,
+} from './service';
 
 export {
   acquireLock,
@@ -18,14 +29,22 @@ export {
 } from './jobs';
 
 export type {
+  AdAccountRichRow,
+  AdRichRow,
+  AdSetRichRow,
   AttributionWindow,
+  AudienceRichRow,
   BusinessUnitConfig,
   BusinessUnitRow,
+  CampaignRichRow,
+  CreativeRichRow,
   EntityType,
+  FrequencyRow,
   InsightRow,
   InsightsTier,
   JobType,
   KpiTargets,
   MatchStrategy,
+  MetaAction,
   OrganizerRow,
 } from './types';

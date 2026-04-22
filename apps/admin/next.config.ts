@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
+  outputFileTracingRoot: monorepoRoot,
   transpilePackages: ['@marketing-funnel/db', '@marketing-funnel/meta-ads'],
 };
 

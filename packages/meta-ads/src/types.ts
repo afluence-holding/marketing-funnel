@@ -49,6 +49,12 @@ export interface OrganizerRow {
   token_expires_at: string | null;
 }
 
+/** Raw Meta action row `{action_type, value}` persisted as jsonb. */
+export interface MetaAction {
+  action_type: string;
+  value: string;
+}
+
 /** One insight row ready for upsert into meta_ops.meta_insights. */
 export interface InsightRow {
   entity_id: string;
@@ -61,4 +67,116 @@ export interface InsightRow {
   leads: number;
   purchases: number;
   purchase_value: number;
+  link_clicks: number;
+  landing_page_views: number;
+  initiate_checkout: number;
+  unique_link_clicks: number;
+  video_3s_views: number;
+  /** video_3s_views / impressions, rounded to 4 decimals. */
+  hook_rate: number;
+  /** Raw `actions` array from Meta, preserved for downstream analysis. */
+  actions: MetaAction[];
+}
+
+/** One frequency breakdown row ready for upsert into meta_ops.meta_insights_frequency. */
+export interface FrequencyRow {
+  entity_id: string;
+  date: string;
+  reach: number;
+  avg_frequency: number;
+  bucket_1: number;
+  bucket_2_3: number;
+  bucket_4_5: number;
+  bucket_6_10: number;
+  bucket_11_20: number;
+  bucket_21_plus: number;
+  raw: Array<{ frequency_value: number; reach: number; impressions: number }>;
+}
+
+/** Rich campaign row ready for upsert into meta_ops.campaigns. */
+export interface CampaignRichRow {
+  id: string;
+  account_id: string | null;
+  business_unit_id: string;
+  name: string;
+  objective: string | null;
+  status: string | null;
+  effective_status: string | null;
+  buying_type: string | null;
+  bid_strategy: string | null;
+  daily_budget: number | null;
+  lifetime_budget: number | null;
+  start_time: string | null;
+  stop_time: string | null;
+  updated_time: string | null;
+  learning_stage_info: Record<string, unknown> | null;
+}
+
+/** Rich ad set row ready for upsert into meta_ops.ad_sets. */
+export interface AdSetRichRow {
+  id: string;
+  campaign_id: string | null;
+  business_unit_id: string;
+  name: string;
+  status: string | null;
+  effective_status: string | null;
+  daily_budget: number | null;
+  lifetime_budget: number | null;
+  bid_strategy: string | null;
+  bid_amount: number | null;
+  optimization_goal: string | null;
+  billing_event: string | null;
+  destination_type: string | null;
+  targeting: Record<string, unknown> | null;
+  learning_stage_info: Record<string, unknown> | null;
+  updated_time: string | null;
+}
+
+/** Rich ad row + creative stub ready for upsert into meta_ops.ads + meta_ops.creatives. */
+export interface AdRichRow {
+  id: string;
+  ad_set_id: string | null;
+  business_unit_id: string;
+  name: string;
+  status: string | null;
+  effective_status: string | null;
+  updated_time: string | null;
+  creative: CreativeRichRow | null;
+}
+
+export interface CreativeRichRow {
+  meta_creative_id: string;
+  business_unit_id: string;
+  type: string | null;
+  format: string | null;
+  headline: string | null;
+  body_text: string | null;
+  cta: string | null;
+  media_url: string | null;
+  thumbnail_url: string | null;
+}
+
+export interface AudienceRichRow {
+  id: string;
+  account_id: string | null;
+  business_unit_id: string;
+  name: string;
+  type: string | null;
+  subtype: string | null;
+  source_audience_id: string | null;
+  lookalike_spec: Record<string, unknown> | null;
+  approximate_count: number | null;
+  status: string | null;
+  retention_days: number | null;
+}
+
+export interface AdAccountRichRow {
+  meta_account_id: string;
+  organizer_id: string | null;
+  name: string | null;
+  currency: string | null;
+  timezone: string | null;
+  account_status: string | null;
+  spending_cap: number | null;
+  amount_spent: number | null;
 }
