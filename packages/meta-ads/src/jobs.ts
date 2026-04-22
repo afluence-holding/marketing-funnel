@@ -1,4 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+/** Accepts any schema-scoped client (avoids 'public' schema literal coupling). */
+type AnySupabaseClient = SupabaseClient<any, string, string, any, any>;
 import { metaGraphFetch, MetaCallError } from './client';
 import { decryptToken } from './crypto';
 import { pullBuInsights } from './service';
@@ -21,7 +24,7 @@ function toYmd(date: Date): string {
 }
 
 /** Acquire a lock by inserting a row. Returns true if acquired. Prunes stale locks first. */
-export async function acquireLock(supabase: SupabaseClient, key: string, owner: string): Promise<boolean> {
+export async function acquireLock(supabase: AnySupabaseClient, key: string, owner: string): Promise<boolean> {
   // Prune any expired lock for this key (serverless invocations that died without cleanup).
   await supabase.from('meta_pull_locks').delete().eq('key', key).lt('expires_at', nowIso());
 
@@ -36,7 +39,7 @@ export async function acquireLock(supabase: SupabaseClient, key: string, owner: 
   return true;
 }
 
-export async function releaseLock(supabase: SupabaseClient, key: string): Promise<void> {
+export async function releaseLock(supabase: AnySupabaseClient, key: string): Promise<void> {
   await supabase.from('meta_pull_locks').delete().eq('key', key);
 }
 
@@ -51,7 +54,7 @@ interface LogJobArgs {
   metadata?: Record<string, unknown>;
 }
 
-async function insertJobRow(supabase: SupabaseClient, args: LogJobArgs): Promise<string> {
+async function insertJobRow(supabase: AnySupabaseClient, args: LogJobArgs): Promise<string> {
   const { data, error } = await supabase
     .from('meta_pull_jobs')
     .insert({
@@ -71,7 +74,7 @@ async function insertJobRow(supabase: SupabaseClient, args: LogJobArgs): Promise
 }
 
 async function updateJobRow(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   jobId: string,
   patch: Partial<Omit<LogJobArgs, 'jobType' | 'businessUnitId' | 'startedAt'>>,
 ): Promise<void> {
@@ -88,13 +91,13 @@ async function updateJobRow(
 }
 
 interface RunJobParams {
-  supabase: SupabaseClient;
+  supabase: AnySupabaseClient;
   masterKey: string;
   businessUnitFilter?: { organizerSlug: string; buSlug: string };
 }
 
 async function listTargetBus(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   filter?: { organizerSlug: string; buSlug: string },
 ): Promise<Array<{ id: string; slug: string; organizer_slug: string }>> {
   let query = supabase
@@ -199,7 +202,7 @@ export function runHistoricalJob(params: RunJobParams) {
  * Probe each organizer's token: call GET /me to check validity and store a
  * health snapshot. Writes results to organizers.health_snapshot.
  */
-export async function runTokenHealthJob(params: { supabase: SupabaseClient; masterKey: string }) {
+export async function runTokenHealthJob(params: { supabase: AnySupabaseClient; masterKey: string }) {
   const { supabase, masterKey } = params;
   const lockKey: JobType = 'token-health';
   const owner = `meta-ads-jobs@${nowIso()}`;

@@ -1,4 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+/** Accepts any schema-scoped client (avoids 'public' schema literal coupling). */
+type AnySupabaseClient = SupabaseClient<any, string, string, any, any>;
 import { metaGraphFetchPaginated } from './client';
 import { decryptToken } from './crypto';
 import { classifyTier } from './tier';
@@ -47,7 +50,7 @@ const PURCHASE_ACTIONS = ['purchase', 'omni_purchase', 'offsite_conversion.fb_pi
 
 /** Load a BU + its organizer + decrypted token. */
 export async function loadBuAndToken(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   organizerSlug: string,
   buSlug: string,
   masterKey: string,
@@ -170,7 +173,7 @@ async function fetchInsightsForParents(
 
 /** Upsert entities and insights into meta_ops. Returns count of insight rows written. */
 export async function upsertEntitiesAndInsights(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   businessUnitId: string,
   level: EntityType,
   rows: RawInsightRow[],
@@ -266,7 +269,7 @@ function extractEntity(row: RawInsightRow, level: EntityType) {
 const TIER_RANK: Record<InsightsTier, number> = { historical: 1, mid: 2, recent: 3, today: 4 };
 
 /** Remove rows where the new tier is lower than the stored tier (trigger would reject). */
-async function filterTierDowngrades(supabase: SupabaseClient, rows: InsightRow[]): Promise<InsightRow[]> {
+async function filterTierDowngrades(supabase: AnySupabaseClient, rows: InsightRow[]): Promise<InsightRow[]> {
   if (rows.length === 0) return rows;
   const entityIds = [...new Set(rows.map((r) => r.entity_id))];
   const dates = [...new Set(rows.map((r) => r.date))];
@@ -291,7 +294,7 @@ async function filterTierDowngrades(supabase: SupabaseClient, rows: InsightRow[]
 
 /** High-level: pull insights for a single BU across ad/adset/campaign levels. */
 export async function pullBuInsights(
-  supabase: SupabaseClient,
+  supabase: AnySupabaseClient,
   params: {
     organizerSlug: string;
     buSlug: string;
