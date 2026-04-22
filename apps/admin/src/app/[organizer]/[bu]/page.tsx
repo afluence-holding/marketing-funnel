@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation';
+
+// Always hit the DB — never prerender or cache a BU dashboard page.
+export const dynamic = 'force-dynamic';
+
 import {
-  loadDi21Dashboard,
+  loadDashboard,
   type AdPerfRow,
   type AdSetRow,
   type AlertItem,
@@ -18,9 +22,11 @@ import {
   type TargetingBlock,
   type TrendPoint,
   type WatchSignalItem,
-} from '@/lib/dashboard/di21-adapter';
+} from '@/lib/dashboard/dashboard-adapter';
+import { listBuOptions, type BuOption } from '@/lib/dashboard/bu-options';
 import { CtrCpmChart, SpendPurchasesChart } from '@/components/trends-chart';
 import { RefreshButton } from '@/components/refresh-button';
+import { BuSelector } from '@/components/bu-selector';
 
 // ---------------------------------------------------------------------------
 // Helpers & constants
@@ -102,14 +108,23 @@ export default async function DashboardPage({
 
   let data: DashboardData;
   try {
-    data = await loadDi21Dashboard({ organizerSlug: organizer, buSlug: bu });
+    data = await loadDashboard({ organizerSlug: organizer, buSlug: bu });
   } catch {
     notFound();
   }
 
+  const buOptions = await listBuOptions().catch(() => [] as BuOption[]);
+  const currentPath = `/${organizer}/${bu}`;
+
   return (
     <>
-      <Header data={data} organizerSlug={organizer} buSlug={bu} />
+      <Header
+        data={data}
+        organizerSlug={organizer}
+        buSlug={bu}
+        buOptions={buOptions}
+        currentPath={currentPath}
+      />
       <ProgressBar data={data} />
       <HealthAndConfig data={data} />
       <PriceTierSchedule tiers={data.price_tiers} />
@@ -145,10 +160,14 @@ function Header({
   data,
   organizerSlug,
   buSlug,
+  buOptions,
+  currentPath,
 }: {
   data: DashboardData;
   organizerSlug: string;
   buSlug: string;
+  buOptions: BuOption[];
+  currentPath: string;
 }) {
   const { header } = data;
   const statusClass =
@@ -185,7 +204,8 @@ function Header({
           </span>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <BuSelector options={buOptions} currentPath={currentPath} />
         <RefreshButton organizerSlug={organizerSlug} buSlug={buSlug} />
         <span className={`badge ${statusClass}`}>{header.status_badge}</span>
         <span className={`badge ${healthClass}`}>{header.health_label}</span>

@@ -14,7 +14,7 @@ import {
   type ChartOptions,
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
-import type { TrendPoint } from '@/lib/dashboard/di21-adapter';
+import type { TrendPoint } from '@/lib/dashboard/dashboard-adapter';
 
 ChartJS.register(
   CategoryScale,
