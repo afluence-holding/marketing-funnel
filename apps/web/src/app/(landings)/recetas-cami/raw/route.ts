@@ -10,7 +10,7 @@ const LANDING_HTML = `<!DOCTYPE html>
   <style>
     :root {
       --bg: #f5efe6;
-      --card: #f9f4ed;
+      --card: #e1d5c2;
       --text: #332018;
       --muted: #7a6357;
       --accent: #a06650;
@@ -29,8 +29,8 @@ const LANDING_HTML = `<!DOCTYPE html>
       padding: 12px 18px 24px;
     }
     .hero {
-      width: 74%;
-      max-width: 420px;
+      width: 64%;
+      max-width: 360px;
       margin: 0 auto;
       aspect-ratio: 4 / 5;
       object-fit: cover;
@@ -73,9 +73,11 @@ const LANDING_HTML = `<!DOCTYPE html>
     }
     .card {
       background: var(--card);
-      border: 1px solid #eadfd0;
+      border: 1px solid #d5c4ac;
       border-radius: 28px;
-      padding: 34px 36px 30px;
+      padding: 26px 28px 22px;
+      max-width: 620px;
+      margin: 0 auto;
       box-shadow: 0 4px 14px rgba(49, 22, 10, 0.08);
       text-align: center;
     }
@@ -143,7 +145,7 @@ const LANDING_HTML = `<!DOCTYPE html>
     }
     @media (max-width: 768px) {
       .wrap { max-width: 430px; padding: 12px 12px 20px; }
-      .hero { width: 86%; }
+      .hero { width: 78%; max-width: 320px; }
       .sub { font-size: 12px; margin-bottom: 14px; }
       .card { border-radius: 14px; padding: 12px; }
       .card-title { font-size: 16px; margin-bottom: 4px; }
