@@ -61,9 +61,9 @@ const LANDING_HTML = `<!DOCTYPE html>
     .sub {
       text-align: center;
       color: var(--muted);
-      font-size: 15px;
-      line-height: 1.35;
-      margin-bottom: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 14px;
     }
     .card {
       background: var(--card);
@@ -71,21 +71,22 @@ const LANDING_HTML = `<!DOCTYPE html>
       border-radius: 14px;
       padding: 12px;
       box-shadow: 0 4px 14px rgba(49, 22, 10, 0.08);
+      text-align: center;
     }
-    .label {
-      font-size: 13px;
-      font-weight: 600;
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #3d2a22;
+    }
+    .card-sub {
+      color: var(--muted);
+      font-size: 12px;
       margin-bottom: 8px;
-      color: #5e4338;
-    }
-    .row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
     }
     input[type="email"] {
       width: 100%;
-      min-height: 44px;
+      min-height: 42px;
       border: 1px solid #dccbbb;
       border-radius: 10px;
       padding: 0 12px;
@@ -100,20 +101,29 @@ const LANDING_HTML = `<!DOCTYPE html>
     }
     button {
       min-height: 44px;
+      width: 100%;
       border: none;
       border-radius: 10px;
-      padding: 0 14px;
-      font-size: 14px;
+      padding: 0 16px;
+      font-size: 15px;
       font-weight: 700;
       color: #fff;
       background: var(--accent);
       cursor: pointer;
       white-space: nowrap;
+      margin-top: 8px;
     }
     button:hover { background: var(--accent-dark); }
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-style: italic;
+      line-height: 1.35;
+    }
     .msg {
       margin-top: 8px;
-      font-size: 13px;
+      font-size: 12px;
       color: #2f7d4b;
       min-height: 18px;
     }
@@ -124,14 +134,14 @@ const LANDING_HTML = `<!DOCTYPE html>
     <img class="hero" src="/recetas-cami/hero.png" alt="Recetas saludables" loading="eager" />
     <div class="tag">PROXIMAMENTE</div>
     <h1>Liberate del <span>"que cocino hoy?"</span></h1>
-    <p class="sub">Deja tu correo y te avisamos primero cuando abramos la lista.</p>
+    <p class="sub">Una guia mensual pensada para personas que no tienen tiempo en el dia a dia y estan agotadas de decidir que hacer de comer. Se de los primeros en saber cuando sale.</p>
 
     <form id="waitlist-form" class="card">
-      <p class="label">Correo electronico</p>
-      <div class="row">
-        <input id="email" name="email" type="email" placeholder="tu@email.com" autocomplete="email" required />
-        <button id="submit-btn" type="submit">Unirme</button>
-      </div>
+      <p class="card-title">Unete a la lista de espera</p>
+      <p class="card-sub">Acceso anticipado + precio especial para los primeros 100.</p>
+      <input id="email" name="email" type="email" placeholder="tu@correo.com" autocomplete="email" required />
+      <button id="submit-btn" type="submit">Quiero ser de los primeros</button>
+      <p class="note">Sin spam, sin promesas vacias. Solo aviso cuando salga y el descuento de lanzamiento.</p>
       <p id="msg" class="msg"></p>
     </form>
   </main>
