@@ -11,10 +11,14 @@
 -- 20260422120000_meta_ops_dashboard_schema.sql (link_clicks, landing_page_views,
 -- initiate_checkout) so dashboards can read the full funnel from one view.
 --
--- Idempotent: CREATE OR REPLACE.
+-- Idempotent: DROP + CREATE (the shape changes — new columns inserted in the
+-- middle of the select list — so CREATE OR REPLACE is rejected by Postgres
+-- with "cannot change name of view column ... use ALTER VIEW ... RENAME").
 -- =============================================================================
 
-CREATE OR REPLACE VIEW meta_ops.v_bu_daily_rollup AS
+DROP VIEW IF EXISTS meta_ops.v_bu_daily_rollup;
+
+CREATE VIEW meta_ops.v_bu_daily_rollup AS
 SELECT
   bu.id                                         AS business_unit_id,
   bu.slug                                       AS bu_slug,
