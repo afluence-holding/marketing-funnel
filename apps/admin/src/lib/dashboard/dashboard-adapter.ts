@@ -174,6 +174,7 @@ export interface AdPerfRow {
   id: string;
   name: string;
   adset_role: string;
+  adset_name: string;
   format: 'VID' | 'IMG';
   wave: 'W1' | 'W2' | 'W3';
   manual_status: string;                // Winner / Watch / Dead / Active / Testing
@@ -1066,13 +1067,16 @@ export async function loadDashboard(params: {
   };
 
   // ---------- 9. Ad performance + matchups + frequency + alerts ----------
-  // map ad_set_id → role / daily_budget. Role is shown in the table; daily
-  // budget feeds the auto-classification thresholds below (e.g. an ad with
-  // spend ≥ 1× ad_set daily_budget and zero purchases enters "watch").
+  // map ad_set_id → role / name / daily_budget. Role is shown in the table;
+  // name populates the new "Ad Set" column; daily budget feeds the
+  // auto-classification thresholds below (e.g. an ad with spend ≥ 1× ad_set
+  // daily_budget and zero purchases enters "watch").
   const adsetRoleById   = new Map<string, string>();
+  const adsetNameById   = new Map<string, string>();
   const adsetBudgetById = new Map<string, number>();
   for (const s of (adsetRows ?? []) as AnyRow[]) {
     adsetRoleById.set(s.id as string, (s.role as string) ?? '—');
+    adsetNameById.set(s.id as string, (s.name as string) ?? '—');
     adsetBudgetById.set(s.id as string, Number(s.daily_budget) || 0);
   }
 
@@ -1242,6 +1246,7 @@ export async function loadDashboard(params: {
       id: a.id as string,
       name: a.name as string,
       adset_role: role,
+      adset_name: adsetNameById.get(a.ad_set_id as string) ?? '—',
       format: ((a.format as string) ?? 'IMG') as 'VID' | 'IMG',
       wave: ((a.wave as string) ?? 'W1') as 'W1' | 'W2' | 'W3',
       manual_status: label,
@@ -1261,7 +1266,17 @@ export async function loadDashboard(params: {
   for (const r of adPerfRows) {
     r.pct_of_budget = totalSpendAds > 0 ? (r.spend * 100) / totalSpendAds : 0;
   }
-  adPerfRows.sort((a, b) => b.spend - a.spend);
+  // Default order: active ads first (sorted by spend desc), then dead ads
+  // pushed to the bottom (also spend desc among themselves). This keeps the
+  // operator's eye on what's actually delivering without losing historical
+  // context. The client table respects this ordering when no explicit sort
+  // is applied.
+  adPerfRows.sort((a, b) => {
+    const aDead = a.status_dot === 'dead' ? 1 : 0;
+    const bDead = b.status_dot === 'dead' ? 1 : 0;
+    if (aDead !== bDead) return aDead - bDead;
+    return b.spend - a.spend;
+  });
   const ad_performance: AdPerfRow[] = adPerfRows;
 
   const { data: matchupRows } = await meta
