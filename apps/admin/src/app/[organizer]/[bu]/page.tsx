@@ -144,6 +144,7 @@ export default async function DashboardPage({
       <ProgressBar data={data} />
       <HealthAndConfig data={data} />
       <PriceTierSchedule tiers={data.price_tiers} />
+      <TrendsSection trend={data.trend} />
       <RevenueSection tiles={data.revenue_tiles} footer={data.revenue_footer} />
       <RecentDailyRevenueSection tiles={data.recent_daily_tiles} />
       <KpisSection kpis={data.kpis} />
@@ -152,7 +153,6 @@ export default async function DashboardPage({
       <RecentPurchasesSection rows={data.recent_purchases} />
       <TargetingSection blocks={data.targeting_blocks} />
       <CusSaturationSection data={data} />
-      <TrendsSection trend={data.trend} />
       <FunnelSection steps={data.funnel} />
       <AdPerformanceTable
         rows={data.ad_performance}
