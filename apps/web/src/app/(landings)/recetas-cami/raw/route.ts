@@ -1,162 +1,192 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { gunzipSync } from 'node:zlib';
-
-type BundledManifestEntry = {
-  mime: string;
-  compressed?: boolean;
-  data: string;
-};
-
-let cachedFinalHtml: string | null = null;
-
-function extractBundlerBlock(rawHtml: string, type: string): string | null {
-  const startTag = `<script type="${type}">`;
-  const start = rawHtml.indexOf(startTag);
-  if (start === -1) return null;
-
-  const contentStart = start + startTag.length;
-  const endTag = '\n  </script>';
-  const end = rawHtml.indexOf(endTag, contentStart);
-  if (end === -1) return null;
-
-  return rawHtml.slice(contentStart, end).trim();
-}
-
-function unpackBundledLanding(rawHtml: string): string {
-  const manifestRaw = extractBundlerBlock(rawHtml, '__bundler/manifest');
-  const templateRaw = extractBundlerBlock(rawHtml, '__bundler/template');
-  const extResourcesRaw = extractBundlerBlock(rawHtml, '__bundler/ext_resources');
-
-  if (!manifestRaw || !templateRaw) return rawHtml;
-
-  try {
-    const manifest = JSON.parse(manifestRaw) as Record<string, BundledManifestEntry>;
-    let template = JSON.parse(templateRaw) as string;
-
-    const dataUrlsByUuid: Record<string, string> = {};
-    for (const [uuid, entry] of Object.entries(manifest)) {
-      let bytes = Buffer.from(entry.data, 'base64');
-      if (entry.compressed) bytes = gunzipSync(bytes);
-      dataUrlsByUuid[uuid] = `data:${entry.mime};base64,${bytes.toString('base64')}`;
+const LANDING_HTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Liberate del "que cocino hoy?" - Lista de espera</title>
+  <style>
+    :root {
+      --bg: #f5efe6;
+      --card: #f9f4ed;
+      --text: #332018;
+      --muted: #7a6357;
+      --accent: #a06650;
+      --accent-dark: #814f3d;
     }
-
-    for (const [uuid, dataUrl] of Object.entries(dataUrlsByUuid)) {
-      template = template.split(uuid).join(dataUrl);
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
     }
+    .wrap {
+      max-width: 430px;
+      margin: 0 auto;
+      padding: 14px 14px 24px;
+    }
+    .hero {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
+      border-radius: 18px;
+      display: block;
+      box-shadow: 0 8px 26px rgba(49, 22, 10, 0.12);
+      background: #e8dfd3;
+    }
+    .tag {
+      margin: 10px auto 8px;
+      width: fit-content;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      background: #efe5d8;
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+    h1 {
+      text-align: center;
+      font-size: clamp(33px, 7.4vw, 40px);
+      line-height: 1.04;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    h1 span {
+      display: block;
+      color: var(--accent);
+      font-style: italic;
+      font-weight: 700;
+    }
+    .sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+      margin-bottom: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid #eadfd0;
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 4px 14px rgba(49, 22, 10, 0.08);
+    }
+    .label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #5e4338;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+    input[type="email"] {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid #dccbbb;
+      border-radius: 10px;
+      padding: 0 12px;
+      font-size: 15px;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+    }
+    input[type="email"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(160, 102, 80, 0.16);
+    }
+    button {
+      min-height: 44px;
+      border: none;
+      border-radius: 10px;
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: var(--accent-dark); }
+    .msg {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #2f7d4b;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <img class="hero" src="/recetas-cami/hero.png" alt="Recetas saludables" loading="eager" />
+    <div class="tag">PROXIMAMENTE</div>
+    <h1>Liberate del <span>"que cocino hoy?"</span></h1>
+    <p class="sub">Deja tu correo y te avisamos primero cuando abramos la lista.</p>
 
-    if (extResourcesRaw) {
-      const extResources = JSON.parse(extResourcesRaw) as Array<{
-        id: string;
-        uuid: string;
-      }>;
-      const resourceMap: Record<string, string> = {};
-      for (const resource of extResources) {
-        const resolved = dataUrlsByUuid[resource.uuid];
-        if (resolved) resourceMap[resource.id] = resolved;
+    <form id="waitlist-form" class="card">
+      <p class="label">Correo electronico</p>
+      <div class="row">
+        <input id="email" name="email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+        <button id="submit-btn" type="submit">Unirme</button>
+      </div>
+      <p id="msg" class="msg"></p>
+    </form>
+  </main>
+
+  <script>
+    (() => {
+      const API_PATH = '/api/recetas-cami/emails';
+      const form = document.getElementById('waitlist-form');
+      const input = document.getElementById('email');
+      const msg = document.getElementById('msg');
+      const btn = document.getElementById('submit-btn');
+      const EMAIL_REGEX = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+
+      async function saveEmail(source) {
+        const email = String(input.value || '').trim().toLowerCase();
+        if (!EMAIL_REGEX.test(email)) return false;
+
+        const res = await fetch(API_PATH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            source,
+            path: window.location.pathname,
+            submittedAt: new Date().toISOString(),
+          }),
+        });
+        return res.ok;
       }
 
-      const resourcesScript = `<script>window.__resources=${JSON.stringify(resourceMap)};</script>`;
-      const headOpen = template.match(/<head[^>]*>/i);
-      if (headOpen) {
-        const insertAt = (headOpen.index ?? 0) + headOpen[0].length;
-        template = `${template.slice(0, insertAt)}${resourcesScript}${template.slice(insertAt)}`;
-      }
-    }
-
-    return template;
-  } catch {
-    // Fall back to raw HTML if bundle unpacking fails.
-    return rawHtml;
-  }
-}
-
-function injectEmailCapture(html: string): string {
-  const emailCaptureScript = `
-<script>
-(() => {
-  const API_PATH = '/api/recetas-cami/emails';
-  const EMAIL_REGEX = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-  const sentEmails = new Set();
-
-  function normalizeEmail(value) {
-    return String(value || '').trim().toLowerCase();
-  }
-
-  async function sendEmail(rawEmail, source) {
-    const email = normalizeEmail(rawEmail);
-    if (!email || !EMAIL_REGEX.test(email) || sentEmails.has(email)) return;
-    sentEmails.add(email);
-
-    try {
-      await fetch(API_PATH, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          source,
-          path: window.location.pathname,
-          submittedAt: new Date().toISOString(),
-        }),
+      input.addEventListener('blur', () => {
+        saveEmail('input-blur').catch(() => {});
       });
-    } catch (_error) {
-      // Ignore transient tracking errors to avoid breaking UX.
-    }
-  }
 
-  function bindInput(input) {
-    if (!input || input.dataset.emailCaptureBound === 'true') return;
-    input.dataset.emailCaptureBound = 'true';
-    input.addEventListener('blur', () => sendEmail(input.value, 'input-blur'));
-    input.addEventListener('change', () => sendEmail(input.value, 'input-change'));
-  }
-
-  function bindForm(form) {
-    if (!form || form.dataset.emailCaptureBound === 'true') return;
-    form.dataset.emailCaptureBound = 'true';
-
-    form.addEventListener('submit', () => {
-      const input = form.querySelector('input[type="email"], input[name*="mail" i], input[id*="mail" i]');
-      if (input) sendEmail(input.value, 'form-submit');
-    });
-  }
-
-  function attachListeners() {
-    document
-      .querySelectorAll('input[type="email"], input[name*="mail" i], input[id*="mail" i]')
-      .forEach(bindInput);
-    document.querySelectorAll('form').forEach(bindForm);
-  }
-
-  attachListeners();
-  const observer = new MutationObserver(attachListeners);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-})();
-</script>
-`;
-
-  if (html.includes('</body>')) return html.replace('</body>', `${emailCaptureScript}</body>`);
-  return `${html}${emailCaptureScript}`;
-}
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        msg.textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+        try {
+          const ok = await saveEmail('form-submit');
+          msg.textContent = ok ? 'Listo! Ya estas en lista de espera.' : 'No se pudo guardar. Intenta de nuevo.';
+        } catch (_error) {
+          msg.textContent = 'No se pudo guardar. Intenta de nuevo.';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Unirme';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>`;
 
 export async function GET() {
-  if (cachedFinalHtml) {
-    return new Response(cachedFinalHtml, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
-      },
-    });
-  }
-
-  const filePath = path.join(process.cwd(), 'src/app/(landings)/recetas-cami/landing.html');
-  const rawHtml = await fs.readFile(filePath, 'utf-8');
-  const unpackedHtml = unpackBundledLanding(rawHtml);
-  const finalHtml = injectEmailCapture(unpackedHtml);
-  cachedFinalHtml = finalHtml;
-
-  return new Response(finalHtml, {
+  return new Response(LANDING_HTML, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
