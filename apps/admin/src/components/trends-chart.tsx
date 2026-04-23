@@ -1,11 +1,13 @@
 'use client';
 
 import {
+  BarController,
   BarElement,
   CategoryScale,
   Chart as ChartJS,
   Legend,
   LinearScale,
+  LineController,
   LineElement,
   PointElement,
   Title,
@@ -19,7 +21,9 @@ import type { TrendPoint } from '@/lib/dashboard/dashboard-adapter';
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  BarController,
   BarElement,
+  LineController,
   LineElement,
   PointElement,
   Title,
