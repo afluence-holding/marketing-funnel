@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Santinversor — Calculadora</title>
+<style>
+  :root {
+    --bg: #05070d;
+    --surface: #0d1220;
+    --surface-2: #121a2b;
+    --border: rgba(255, 255, 255, 0.1);
+    --text: #e8ecf5;
+    --text-dim: #8a93a6;
+    --accent: #3d7dff;
+    --green: #3ecf8e;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 500px at 50% -5%, rgba(61,125,255,0.18), transparent 60%), var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+  }
+  .wrap { width: min(980px, 92vw); margin: 0 auto; padding: 22px 0 48px; }
+  .nav {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--mono); letter-spacing: .12em; text-transform: uppercase; font-size: 13px; }
+  .mark { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(135deg, #4384ff, #2d62c9); font-weight: 700; }
+  .hero { margin: 24px 0 18px; }
+  h1 { margin: 10px 0; font-size: clamp(28px, 4vw, 42px); line-height: 1.12; letter-spacing: -0.02em; }
+  .sub { color: var(--text-dim); max-width: 780px; line-height: 1.6; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--surface), var(--surface-2));
+    padding: 18px;
+  }
+  .title { font-family: var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); font-size: 11px; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 12px 12px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04); color: var(--text);
+    font-size: 14px;
+  }
+  .btn {
+    width: 100%; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #4384ff, #2d62c9);
+    color: white; font-size: 15px; font-weight: 600;
+    padding: 13px 16px; cursor: pointer;
+  }
+  .result {
+    margin-top: 16px; padding: 14px; border-radius: 10px;
+    background: rgba(61,125,255,0.08); border: 1px solid rgba(61,125,255,0.35);
+  }
+  .result .years { font-size: 34px; font-weight: 800; color: var(--green); letter-spacing: -0.03em; }
+  .result .desc { color: var(--text-dim); margin-top: 4px; font-size: 13px; }
+  .stats { margin-top: 14px; display: grid; gap: 8px; }
+  .stat { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+  .cta {
+    margin-top: 20px; text-align: center; padding: 18px;
+    border: 1px dashed rgba(62, 207, 142, 0.4); border-radius: 12px;
+    background: rgba(62, 207, 142, 0.08);
+  }
+  .cta a {
+    display: inline-block; margin-top: 10px; text-decoration: none;
+    background: #25D366; color: #fff; border-radius: 10px; padding: 12px 16px; font-weight: 700;
+  }
+  .cta a.secondary {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    color: var(--text);
+  }
+  .foot { margin-top: 20px; color: var(--text-dim); font-size: 11px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; text-align: center; }
+  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="nav">
+      <div class="brand">
+        <div class="mark">S</div>
+        <span>Santinversor / Calculadora</span>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:.12em;">ONLINE</span>
+    </div>
+
+    <section class="hero">
+      <div class="title">Calculadora · Libertad financiera</div>
+      <h1>¿En cuántos años puedes dejar de depender de tu sueldo?</h1>
+      <p class="sub">Ingresa tus datos y descubre cuánto tiempo te falta para alcanzar la libertad financiera, usando la regla del 4% y capitalización compuesta.</p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="title">Tu situación actual</div>
+        <div class="field">
+          <label>Moneda</label>
+          <select id="currency">
+            <option>USD</option><option>ARS</option><option>CLP</option><option>COP</option><option>EUR</option><option>MXN</option>
+          </select>
+        </div>
+        <div class="field"><label>Edad actual</label><input id="age" type="number" min="18" value="30" /></div>
+        <div class="field"><label>Ingresos mensuales netos</label><input id="income" type="number" min="0" value="2500" /></div>
+        <div class="field"><label>Gastos mensuales</label><input id="expenses" type="number" min="0" value="1500" /></div>
+        <div class="field"><label>Patrimonio invertido hoy</label><input id="initial" type="number" min="0" value="10000" /></div>
+      </div>
+
+      <div class="card">
+        <div class="title">Tu estrategia</div>
+        <div class="field"><label>Rendimiento anual esperado (%)</label><input id="annualRate" type="number" min="1" max="25" value="7" /></div>
+        <div class="field"><label>¿Cuánto inviertes mensualmente?</label><input id="monthly" type="number" min="0" value="600" /></div>
+        <div class="field"><label>¿Con cuánta plata al mes te gustaría jubilarte?</label><input id="retireMonthly" type="number" min="0" value="2000" /></div>
+        <button class="btn" id="calculate">Calcular mi libertad financiera →</button>
+
+        <div class="result">
+          <div class="years"><span id="years">—</span> años</div>
+          <div class="desc" id="summary">Completa tus datos y calcula.</div>
+          <div class="stats">
+            <div class="stat"><span>Patrimonio necesario</span><strong id="needed">—</strong></div>
+            <div class="stat"><span>Tu patrimonio hoy</span><strong id="today">—</strong></div>
+            <div class="stat"><span>Aporte mensual</span><strong id="contrib">—</strong></div>
+            <div class="stat"><span>Brecha pendiente</span><strong id="gap">—</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="cta">
+      <strong>¿Quieres llegar antes?</strong>
+      <div style="color:var(--text-dim); margin-top:6px;">Santinversor está preparando algo nuevo. Sé de los primeros en saberlo.</div>
+      <a href="https://chat.whatsapp.com/FOqu9aWNWN771JHQc8fmWi?mode=gi_t" target="_blank" rel="noopener">Únete a mi grupo de WhatsApp</a>
+      <a class="secondary" href="https://chat.whatsapp.com/FOqu9aWNWN771JHQc8fmWi?mode=gi_t" target="_blank" rel="noopener">Quiero mejorar mi estrategia → únete al grupo</a>
+    </div>
+
+    <div class="foot">Calculadora orientativa · Regla del 4% · Capitalización compuesta · @Santinversor</div>
+  </main>
+
+<script>
+  const fmt = (n) => {
+    if (!Number.isFinite(n)) return '—';
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.max(0, n));
+  };
+
+  const byId = (id) => document.getElementById(id);
+  const valueNum = (id) => Number(byId(id).value || 0);
+
+  function capitalAfterMonths(initial, monthlyContribution, monthlyRate, months) {
+    if (months <= 0) return initial;
+    if (monthlyRate === 0) return initial + monthlyContribution * months;
+    return initial * Math.pow(1 + monthlyRate, months) + monthlyContribution * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+  }
+
+  function monthsToTarget(initial, monthlyContribution, monthlyRate, target) {
+    if (initial >= target) return 0;
+    let lo = 0;
+    let hi = 12 * 120;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const cap = capitalAfterMonths(initial, monthlyContribution, monthlyRate, mid);
+      if (cap >= target) hi = mid;
+      else lo = mid + 1;
+    }
+    return lo >= 12 * 120 ? null : lo;
+  }
+
+  function run() {
+    const currency = byId('currency').value;
+    const age = valueNum('age');
+    const initial = valueNum('initial');
+    const monthly = valueNum('monthly');
+    const annualRate = valueNum('annualRate') / 100;
+    const retireMonthly = valueNum('retireMonthly');
+
+    const needed = (retireMonthly * 12) / 0.04;
+    const monthlyRate = Math.pow(1 + annualRate, 1 / 12) - 1;
+    const months = monthsToTarget(initial, monthly, monthlyRate, needed);
+
+    const symbol = currency === 'EUR' ? '€' : '$';
+    byId('needed').textContent = `${symbol}${fmt(needed)}`;
+    byId('today').textContent = `${symbol}${fmt(initial)}`;
+    byId('contrib').textContent = `${symbol}${fmt(monthly)}`;
+    byId('gap').textContent = `${symbol}${fmt(needed - initial)}`;
+
+    if (months === null) {
+      byId('years').textContent = '120+';
+      byId('summary').textContent = `A este ritmo te tomaría más de 120 años. Ajusta aportes o rendimiento esperado.`;
+      return;
+    }
+
+    const years = (months / 12).toFixed(1);
+    const targetAge = (age + months / 12).toFixed(1);
+    byId('years').textContent = years;
+    byId('summary').textContent = `Podrías lograr tu objetivo alrededor de los ${targetAge} años, manteniendo estos supuestos.`;
+  }
+
+  byId('calculate').addEventListener('click', run);
+  run();
+</script>
+</body>
+</html>
