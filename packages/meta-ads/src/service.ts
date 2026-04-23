@@ -155,7 +155,11 @@ function pickActions(
 }
 
 const LEAD_ACTIONS = ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead'];
-const PURCHASE_ACTIONS = ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase'];
+// Priority order matters — `pickActions` picks the first lens that is present.
+// `offsite_conversion.fb_pixel_purchase` is the canonical Pixel purchase bucket and
+// lines up with what Ads Manager shows by default, so we prefer it over plain
+// `purchase` (which can include off-Pixel events and drift vs Ads Manager).
+const PURCHASE_ACTIONS = ['omni_purchase', 'offsite_conversion.fb_pixel_purchase', 'purchase'];
 const LANDING_PAGE_VIEW_ACTIONS = ['omni_landing_page_view', 'landing_page_view', 'offsite_conversion.fb_pixel_view_content'];
 const INITIATE_CHECKOUT_ACTIONS = [
   'omni_initiated_checkout',
@@ -290,13 +294,20 @@ async function fetchInsightsForParents(
   return rows;
 }
 
-/** Upsert entities and insights into meta_ops. Returns count of insight rows written. */
+/** Default timezone for local-date comparisons. Matches DI21's operating region. */
+const DEFAULT_TIME_ZONE = 'America/Lima';
+
+/** Upsert entities and insights into meta_ops. Returns count of insight rows written.
+ *
+ *  `timeZone` controls the local date used by `classifyTier` and by the past-date
+ *  reconciliation logic inside `filterTierDowngrades`. */
 export async function upsertEntitiesAndInsights(
   supabase: AnySupabaseClient,
   businessUnitId: string,
   level: EntityType,
   rows: RawInsightRow[],
   now: Date = new Date(),
+  timeZone: string = DEFAULT_TIME_ZONE,
 ): Promise<number> {
   if (rows.length === 0) return 0;
 
@@ -356,7 +367,7 @@ export async function upsertEntitiesAndInsights(
     insights.push({
       entity_id: entityId,
       date: r.date_start,
-      tier: classifyTier(r.date_start, now),
+      tier: classifyTier(r.date_start, now, timeZone),
       spend: toNumber(r.spend),
       impressions,
       reach: Math.round(toNumber(r.reach)),
@@ -374,9 +385,10 @@ export async function upsertEntitiesAndInsights(
     });
   }
 
-  // 4. Upsert insights. Tier may advance but never downgrade (trigger enforces).
-  // Pre-filter: drop rows whose tier would be a downgrade vs what's already stored.
-  const filtered = await filterTierDowngrades(supabase, insights);
+  // 4. Upsert insights. The DB trigger `prevent_tier_downgrade` rejects tier downgrades,
+  // so we adjust rows in-place: for past-date rows we always reconcile metrics and clamp
+  // the tier to the stored value; for today's rows we drop would-be downgrades entirely.
+  const filtered = await filterTierDowngrades(supabase, insights, timeZone);
 
   if (filtered.length === 0) return 0;
   const { error: insErr } = await supabase
@@ -414,8 +426,24 @@ function extractEntity(row: RawInsightRow, level: EntityType) {
 
 const TIER_RANK: Record<InsightsTier, number> = { historical: 1, mid: 2, recent: 3, today: 4 };
 
-/** Remove rows where the new tier is lower than the stored tier (trigger would reject). */
-async function filterTierDowngrades(supabase: AnySupabaseClient, rows: InsightRow[]): Promise<InsightRow[]> {
+/**
+ * Reconcile stored tiers with newly-computed ones while respecting the
+ * `prevent_tier_downgrade` DB trigger.
+ *
+ *   - No stored row yet   → pass through as-is.
+ *   - Past date (< today) → always include, but clamp tier to max(new, stored)
+ *                           so metrics reconcile without tripping the trigger.
+ *                           (Tier is a cache hint; past rows naturally slide
+ *                            4→3→2→1 as they age and must not block upserts.)
+ *   - Today's row         → drop if the new tier would be a downgrade.
+ *
+ * "Today" is computed in `timeZone` local time.
+ */
+async function filterTierDowngrades(
+  supabase: AnySupabaseClient,
+  rows: InsightRow[],
+  timeZone: string,
+): Promise<InsightRow[]> {
   if (rows.length === 0) return rows;
   const entityIds = [...new Set(rows.map((r) => r.entity_id))];
   const dates = [...new Set(rows.map((r) => r.date))];
@@ -431,11 +459,37 @@ async function filterTierDowngrades(supabase: AnySupabaseClient, rows: InsightRo
     existingMap.set(`${e.entity_id}|${e.date}`, e.tier as InsightsTier);
   }
 
-  return rows.filter((r) => {
+  const localToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+  const out: InsightRow[] = [];
+  for (const r of rows) {
     const prev = existingMap.get(`${r.entity_id}|${r.date}`);
-    if (!prev) return true;
-    return TIER_RANK[r.tier] >= TIER_RANK[prev];
-  });
+    if (!prev) {
+      out.push(r);
+      continue;
+    }
+    if (r.date < localToday) {
+      // Past date: always reconcile metrics. If the recomputed tier is lower than
+      // the stored tier (e.g. today → recent as the day rolls over), keep the
+      // stored tier so the trigger doesn't reject the UPDATE.
+      if (TIER_RANK[r.tier] < TIER_RANK[prev]) {
+        out.push({ ...r, tier: prev });
+      } else {
+        out.push(r);
+      }
+      continue;
+    }
+    // Today's row: strict no-downgrade guard.
+    if (TIER_RANK[r.tier] >= TIER_RANK[prev]) {
+      out.push(r);
+    }
+  }
+  return out;
 }
 
 // =============================================================================
@@ -907,6 +961,8 @@ export async function pullBuInsights(
     since: string;
     until: string;
     includeRich?: boolean;
+    /** Local timezone for tier classification. Defaults to America/Lima. */
+    timeZone?: string;
   },
 ): Promise<{
   rowsWritten: number;
@@ -949,7 +1005,14 @@ export async function pullBuInsights(
       params.until,
       organizer.ad_account_id,
     );
-    rowsWritten += await upsertEntitiesAndInsights(supabase, bu.id, level, raw);
+    rowsWritten += await upsertEntitiesAndInsights(
+      supabase,
+      bu.id,
+      level,
+      raw,
+      new Date(),
+      params.timeZone ?? DEFAULT_TIME_ZONE,
+    );
   }
 
   const richCounts = { ad_account: 0, campaigns: 0, ad_sets: 0, ads: 0, creatives: 0, audiences: 0 };
