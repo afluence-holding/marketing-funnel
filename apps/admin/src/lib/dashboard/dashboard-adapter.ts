@@ -301,6 +301,12 @@ export interface DashboardData {
   campaign_config: Array<{ label: string; value: string; full_row?: boolean }>;
   price_tiers: PriceTier[];
   revenue_tiles: RevenueTile[];
+  /**
+   * Last 5 calendar days immediately prior to the report date. Ordered from
+   * most recent (index 0) to oldest (index 4). Each tile mirrors the HOY
+   * card styling so operators can spot day-over-day momentum at a glance.
+   */
+  recent_daily_tiles: RevenueTile[];
   revenue_footer: string;
   kpis: KpiCell[];
   ad_sets: AdSetRow[];
@@ -1349,6 +1355,33 @@ export async function loadDashboard(params: {
       return `$${t.price} ${i === 0 ? 'hasta' : 'del'} ${range}${t.ends_on ? '–' + t.ends_on.slice(5) : ''}`;
     }).join(', ')}.`;
 
+  // ---------- Recent 5 days (per-day revenue tiles, mirrors HOY card) ----------
+  // Anchor = reportDate - 1 (yesterday) so the HOY tile above stays the sole
+  // "today" reference. Rows are lookup by date against the full campInsights
+  // set (not filtered by the user range) because these are context tiles.
+  const insightsByDate = new Map<string, AnyRow>();
+  for (const r of (campInsights ?? []) as AnyRow[]) {
+    insightsByDate.set(r.date as string, r);
+  }
+  const recent_daily_tiles: RevenueTile[] = [];
+  const reportMs = new Date(`${reportDate}T00:00:00Z`).getTime();
+  for (let i = 1; i <= 5; i += 1) {
+    const iso = toYmd(new Date(reportMs - i * 86_400_000));
+    const row = insightsByDate.get(iso);
+    const purchases = Number(row?.purchases ?? 0);
+    const spend     = Number(row?.spend ?? 0);
+    const price     = priceForDate(iso);
+    const revenue   = purchases * price;
+    const roas      = spend > 0 ? revenue / spend : 0;
+    recent_daily_tiles.push({
+      label: `${iso}`,
+      date_range: iso,
+      amount: revenue,
+      sub: `${purchases} compras × $${price} · spend ${money(spend)}${spend > 0 ? ` · ROAS ${roas.toFixed(2)}x` : ''}`,
+      color: 'ok',
+    });
+  }
+
   // ---------- KPI grid ----------
   // KPI cells read from `windowMetrics` so the grid reflects the range the
   // user selected. Sub-labels that reference "today" still use the single
@@ -1625,6 +1658,7 @@ export async function loadDashboard(params: {
     campaign_config,
     price_tiers,
     revenue_tiles,
+    recent_daily_tiles,
     revenue_footer,
     kpis,
     ad_sets,

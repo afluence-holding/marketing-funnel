@@ -145,6 +145,7 @@ export default async function DashboardPage({
       <HealthAndConfig data={data} />
       <PriceTierSchedule tiers={data.price_tiers} />
       <RevenueSection tiles={data.revenue_tiles} footer={data.revenue_footer} />
+      <RecentDailyRevenueSection tiles={data.recent_daily_tiles} />
       <KpisSection kpis={data.kpis} />
       <AdSetTableSection rows={data.ad_sets} />
       <LearningPhaseSection cards={data.learning_cards} />
@@ -583,6 +584,44 @@ function RevenueTileView({ tile }: { tile: RevenueTile }) {
         }}
       >
         {tile.sub}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 5b. Recent daily revenue (last 5 days, newest → oldest, left → right)
+// ---------------------------------------------------------------------------
+
+function RecentDailyRevenueSection({ tiles }: { tiles: RevenueTile[] }) {
+  if (!tiles || tiles.length === 0) return null;
+  return (
+    <div className="section">
+      <div className="section-title">Revenue Diario — últimos 5 días</div>
+      <div className="card">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: 12,
+          }}
+        >
+          {tiles.map((tile, i) => (
+            <RevenueTileView key={i} tile={tile} />
+          ))}
+        </div>
+        <div
+          style={{
+            marginTop: 10,
+            fontSize: '0.7rem',
+            color: 'var(--color-text-secondary)',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 8,
+          }}
+        >
+          De más reciente (izquierda) a más antiguo (derecha). Cada día se
+          valoriza al tier de precio vigente en esa fecha.
+        </div>
       </div>
     </div>
   );
