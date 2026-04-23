@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 
 import {
   loadDashboard,
-  type AdSetRow,
   type AlertItem,
   type DashboardData,
   type FrequencyScope,
@@ -14,13 +13,10 @@ import {
   type HypothesisItem,
   type KpiCell,
   type LearningPhaseCard,
-  type MatchupRow,
   type PriceTier,
-  type RecentPurchase,
   type RevenueTile,
   type TargetingBlock,
   type TrendPoint,
-  type WatchSignalItem,
 } from '@/lib/dashboard/dashboard-adapter';
 import { listBuOptions, type BuOption } from '@/lib/dashboard/bu-options';
 import { CtrCpmChart, SpendPurchasesChart } from '@/components/trends-chart';
@@ -29,6 +25,10 @@ import { BuSelector } from '@/components/bu-selector';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { ZoomableChart } from '@/components/zoomable-chart';
 import { AdPerformanceTable } from '@/components/ad-performance-table';
+import { AdSetTable } from '@/components/ad-set-table';
+import { RecentPurchasesTable } from '@/components/recent-purchases-table';
+import { MatchupsTable } from '@/components/matchups-table';
+import { WatchSignalsTable } from '@/components/watch-signals-table';
 
 // ---------------------------------------------------------------------------
 // Helpers & constants
@@ -148,9 +148,9 @@ export default async function DashboardPage({
       <RevenueSection tiles={data.revenue_tiles} footer={data.revenue_footer} />
       <RecentDailyRevenueSection tiles={data.recent_daily_tiles} />
       <KpisSection kpis={data.kpis} />
-      <AdSetTableSection rows={data.ad_sets} />
+      <AdSetTable rows={data.ad_sets} />
       <LearningPhaseSection cards={data.learning_cards} />
-      <RecentPurchasesSection rows={data.recent_purchases} />
+      <RecentPurchasesTable rows={data.recent_purchases} />
       <TargetingSection blocks={data.targeting_blocks} />
       <CusSaturationSection data={data} />
       <FunnelSection steps={data.funnel} />
@@ -159,11 +159,11 @@ export default async function DashboardPage({
         linkCtrTarget={data.bu.config.link_ctr_target}
         linkCtrWarn={data.bu.config.link_ctr_warn}
       />
-      <MatchupsSection rows={data.matchups} />
+      <MatchupsTable rows={data.matchups} />
       <FrequencySection scopes={data.frequency} />
       <AlertsSection alerts={data.alerts} />
       <HypothesesSection items={data.hypotheses} />
-      <WatchSignalsSection items={data.watch_signals} />
+      <WatchSignalsTable items={data.watch_signals} />
       <Footer reportDate={data.header.report_date} />
     </>
   );
@@ -661,138 +661,6 @@ function KpisSection({ kpis }: { kpis: KpiCell[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Ad Set Performance
-// ---------------------------------------------------------------------------
-
-function AdSetTableSection({ rows }: { rows: AdSetRow[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">Ad Set Performance</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Ad Set</th>
-              <th>Status</th>
-              <th>Budget</th>
-              <th>Spend</th>
-              <th>Purchases</th>
-              <th>CPA</th>
-              <th>BE CPA</th>
-              <th>Margin/sale</th>
-              <th>ROAS (Est.)</th>
-              <th>Link CTR</th>
-              <th>Reach</th>
-              <th>
-                Freq Daily
-                <br />
-                <span style={{ fontWeight: 400, fontSize: '0.65rem' }}>
-                  (7d avg · Lifetime)
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <AdSetRowView key={r.id} row={r} />
-            ))}
-          </tbody>
-        </table>
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: '0.7rem',
-            color: 'var(--color-text-secondary)',
-            borderTop: '1px solid var(--color-border)',
-            paddingTop: 8,
-          }}
-        >
-          Freq daily = avg 7d impressions-weighted (real signal). Lifetime =
-          acumulado desde launch. BE CPA tier actual = breakeven usado para
-          juzgar margen. CARTAB con &lt;$300 spend se considera en learning.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdSetRowView({ row }: { row: AdSetRow }) {
-  const statusBadge =
-    row.status === 'ACTIVE'
-      ? 'badge-green'
-      : row.status === 'PAUSED'
-      ? 'badge-yellow'
-      : 'badge-red';
-
-  const cpaColor =
-    row.cpa == null
-      ? 'var(--color-text-secondary)'
-      : row.cpa <= row.breakeven_cpa
-      ? 'var(--color-success)'
-      : 'var(--color-warning)';
-
-  const marginColor =
-    row.margin_per_sale == null
-      ? 'var(--color-text-secondary)'
-      : row.margin_per_sale >= 0
-      ? 'var(--color-success)'
-      : 'var(--color-critical)';
-
-  const roasValue = row.roas ?? 0;
-  const roasColor =
-    row.roas == null
-      ? 'var(--color-text-secondary)'
-      : roasValue >= row.roas_target
-      ? 'var(--color-success)'
-      : 'var(--color-warning)';
-
-  const freqWatchColor =
-    row.freq_daily_7d == null || row.freq_daily_7d < 3
-      ? 'var(--color-success)'
-      : 'var(--color-warning)';
-
-  return (
-    <tr>
-      <td>
-        <strong>{row.role}</strong>{' '}
-        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
-          {row.name_subtitle}
-        </span>
-      </td>
-      <td>
-        <span className={`badge ${statusBadge}`}>{row.status}</span>
-      </td>
-      <td>${row.daily_budget}/day</td>
-      <td>${row.spend.toFixed(2)}</td>
-      <td>{row.purchases}</td>
-      <td style={{ color: cpaColor }}>
-        {row.cpa == null ? '—' : fmtMoney2(row.cpa)}
-      </td>
-      <td style={{ color: 'var(--color-text-secondary)' }}>
-        ${row.breakeven_cpa}
-      </td>
-      <td style={{ color: marginColor }}>
-        {row.margin_per_sale == null
-          ? '—'
-          : `${row.margin_per_sale >= 0 ? '+' : ''}${fmtMoney2(row.margin_per_sale)}`}
-      </td>
-      <td style={{ color: roasColor }}>{roasValue.toFixed(1)}x</td>
-      <td>{fmtPct(row.link_ctr, 2)}</td>
-      <td>{fmtInt(row.reach)}</td>
-      <td>
-        <strong style={{ color: freqWatchColor }}>
-          {row.freq_daily_7d == null ? '—' : row.freq_daily_7d.toFixed(2)}
-        </strong>{' '}
-        ·{' '}
-        <span style={{ color: 'var(--color-text-secondary)' }}>
-          {row.freq_lifetime == null ? '—' : row.freq_lifetime.toFixed(2)}
-        </span>
-      </td>
-    </tr>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // 8. Learning phase status
 // ---------------------------------------------------------------------------
 
@@ -928,91 +796,6 @@ function LearningCard({ card }: { card: LearningPhaseCard }) {
         {card.note}
       </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 9. Recent purchases
-// ---------------------------------------------------------------------------
-
-function RecentPurchasesSection({ rows }: { rows: RecentPurchase[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">Últimas 10 Compras (incluye hoy)</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <div
-          style={{
-            fontSize: '0.75rem',
-            color: 'var(--color-text-secondary)',
-            marginBottom: 12,
-          }}
-        >
-          Meta API no expone eventos de compra individuales. Esta tabla muestra
-          las combinaciones ad × día con compras ordenadas por fecha
-          descendente (granularidad máxima disponible). Incluye compras del día
-          de hoy.
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Compras</th>
-              <th>Ad Set</th>
-              <th>Ad</th>
-              <th>Temperatura</th>
-              <th>Spend día</th>
-              <th>CPA día</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <RecentPurchaseRow key={i} row={r} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function RecentPurchaseRow({ row }: { row: RecentPurchase }) {
-  const roleColor = ROLE_COLOR[row.adset_role] ?? 'var(--color-text-secondary)';
-  const cpa = row.cpa_day;
-  const cpaColor =
-    cpa == null
-      ? 'var(--color-text-secondary)'
-      : cpa <= row.cpa_target
-      ? 'var(--color-success)'
-      : cpa <= row.cpa_breakeven
-      ? 'var(--color-warning)'
-      : 'var(--color-critical)';
-  return (
-    <tr>
-      <td style={{ whiteSpace: 'nowrap' }}>{row.date}</td>
-      <td style={{ fontWeight: 600 }}>{row.purchases}</td>
-      <td>
-        <span
-          style={{
-            fontSize: '0.7rem',
-            padding: '2px 6px',
-            borderRadius: 4,
-            border: `1px solid ${roleColor}`,
-            color: roleColor,
-            fontWeight: 700,
-          }}
-        >
-          {row.adset_role}
-        </span>
-      </td>
-      <td style={{ fontSize: '0.8rem' }}>{row.ad_name}</td>
-      <td style={{ fontSize: '0.7rem', color: roleColor, fontWeight: 600 }}>
-        {row.temperature_label}
-      </td>
-      <td>${row.spend_day.toFixed(2)}</td>
-      <td style={{ color: cpaColor }}>
-        {cpa == null ? '—' : fmtMoney2(cpa)}
-      </td>
-    </tr>
   );
 }
 
@@ -1288,44 +1071,6 @@ function FunnelSection({ steps }: { steps: FunnelStep[] }) {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// 15. Matchups
-// ---------------------------------------------------------------------------
-
-function MatchupsSection({ rows }: { rows: MatchupRow[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">Format Test: Video vs Static</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Matchup</th>
-              <th>Video CTR</th>
-              <th>Static CTR</th>
-              <th>Video Purchases</th>
-              <th>Static Purchases</th>
-              <th>Early Winner</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i}>
-                <td>{r.label}</td>
-                <td>{fmtPct(r.video_ctr, 2)}</td>
-                <td>{fmtPct(r.static_ctr, 2)}</td>
-                <td>{r.video_purchases}</td>
-                <td>{r.static_purchases}</td>
-                <td>{r.early_winner}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // 16. Frequency distribution
 // ---------------------------------------------------------------------------
 
@@ -1530,65 +1275,6 @@ function HypothesesSection({ items }: { items: HypothesisItem[] }) {
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 19. Watch signals
-// ---------------------------------------------------------------------------
-
-function WatchSignalsSection({ items }: { items: WatchSignalItem[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">What to Watch Next</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Signal</th>
-              <th>Threshold</th>
-              <th>Current</th>
-              <th>Status</th>
-              <th>Action if Breached</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((sig, i) => {
-              const badgeClass =
-                sig.status === 'ok'
-                  ? 'badge-green'
-                  : sig.status === 'watch'
-                  ? 'badge-yellow'
-                  : 'badge-red';
-              const badgeLabel =
-                sig.status === 'ok'
-                  ? 'OK'
-                  : sig.status === 'watch'
-                  ? 'WATCH'
-                  : 'BREACH';
-              return (
-                <tr key={i}>
-                  <td>{sig.label}</td>
-                  <td>{sig.threshold}</td>
-                  <td>{sig.current}</td>
-                  <td>
-                    <span className={`badge ${badgeClass}`}>{badgeLabel}</span>
-                  </td>
-                  <td
-                    style={{
-                      fontSize: '0.8rem',
-                      color: 'var(--color-text-secondary)',
-                    }}
-                  >
-                    {sig.action}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   );
