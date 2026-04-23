@@ -1377,7 +1377,7 @@
         </h1>
 
         <p class="hero-sub">
-          Estoy armando un producto nuevo y necesito entender <strong>en qué punto estás</strong> con tus inversiones para construir algo que realmente resuelva <strong>tu situación</strong>. Tu respuesta me va a marcar lo que hago.
+          Estoy armando un producto nuevo y necesito entender <strong>en qué punto estás</strong> con tus inversiones para construir algo que realmente <strong>resuelva tu situacion</strong>. Tu respuesta me va a marcar lo que hago.
         </p>
 
         <div class="hero-meta-row">
@@ -1400,20 +1400,6 @@
           <span class="arrow">→</span>
         </a>
 
-        <div class="cupos-banner">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-            </svg>
-          </div>
-          <div class="text">
-            Los primeros <strong>299</strong> en responder acceden a un <strong>descuento exclusivo</strong> cuando lance el producto.
-          </div>
-          <div class="progress-mini">
-            <div class="bar"><div class="bar-fill" id="cupos-bar"></div></div>
-            <div class="nums"><span class="taken" id="cupos-taken">247</span><span>/ 299 cupos</span></div>
-          </div>
-        </div>
       </div>
 
       <div class="hero-portrait">
@@ -1532,7 +1518,8 @@
             <div class="age-chip" data-value="30-34">30 – 34</div>
             <div class="age-chip" data-value="35-39">35 – 39</div>
             <div class="age-chip" data-value="40-49">40 – 49</div>
-            <div class="age-chip" data-value="50+">50+</div>
+            <div class="age-chip" data-value="50-65">50 – 65</div>
+            <div class="age-chip" data-value="65+">+65</div>
             <input type="hidden" name="edad" id="edad-input" />
           </div>
         </div>
@@ -1605,27 +1592,6 @@
           <div class="input-error">Elegí al menos una opción.</div>
         </div>
 
-        <div class="q" data-required="true" data-field="urgencia">
-          <div class="q-header">
-            <span class="q-num">08</span>
-            <span class="q-required">Required</span>
-          </div>
-          <h3 class="q-title">¿Qué tan urgente es para vos resolver esto?</h3>
-          <p class="q-desc">Arrastrá el slider. Cuanto más alto, más urgente.</p>
-          <div class="slider-wrap">
-            <div class="slider-scale">
-              <span class="l">1 · Curíoso</span>
-              <span>5 · Importante</span>
-              <span class="r">10 · Urgente</span>
-            </div>
-            <input type="range" class="slider" name="urgencia" id="urgencia" min="1" max="10" step="1" value="5" />
-            <div class="slider-value">
-              <div class="num" id="urgencia-num">5<span class="max">/10</span></div>
-              <div class="label-dyn" id="urgencia-label"><strong>Importante.</strong>Quiero resolverlo este año.</div>
-            </div>
-          </div>
-        </div>
-
         <!-- SECTION: Visión -->
         <div class="section-divider">
           <div class="line"></div>
@@ -1657,7 +1623,7 @@
             <span class="q-num">10</span>
             <span class="q-required optional">Opcional</span>
           </div>
-          <h3 class="q-title">¿Qué querés lograr con tus inversiones en los próximos 12 meses?</h3>
+          <h3 class="q-title">¿Qué es lo que sientes que te tiene estancado con tus inversiones?</h3>
           <p class="q-desc">Si tenés una meta concreta en mente, contámela. Me sirve para entender tu horizonte.</p>
           <div class="input-wrap">
             <textarea name="meta_12m" id="meta_12m" placeholder="Mi meta concreta es… (opcional)" rows="3"></textarea>
@@ -1731,9 +1697,11 @@ const API_URL = "__API_URL__";
 const INGEST_PATH = "/api/orgs/santi-inversor/bus/research/ingest";
 const FORM_SOURCE = "landing-santi-inversor-research-home";
 const THANKS_URL = "/santi-inversor/research/gracias";
+const TICKER_API_PATH = "/api/market-ticker";
+const TICKER_REFRESH_MS = 15000;
 
 /* ═══════════ TICKER ═══════════ */
-const tickerItems = [
+const tickerFallbackItems = [
   { label: 'S&P 500', val: '5,847.22', chg: '+0.42%', dir: 'up' },
   { label: 'NASDAQ', val: '20,193.44', chg: '+0.68%', dir: 'up' },
   { label: 'BTC/USD', val: '98,421', chg: '+1.24%', dir: 'up' },
@@ -1747,8 +1715,8 @@ const tickerItems = [
 ];
 
 const track = document.getElementById('ticker-track');
-const buildTicker = () => {
-  const html = tickerItems.map(t => `
+const renderTicker = (items) => {
+  const html = items.map(t => `
     <div class="ticker-item">
       <span class="dot"></span>
       <span class="label">${t.label}</span>
@@ -1758,7 +1726,22 @@ const buildTicker = () => {
   `).join('');
   track.innerHTML = html + html;
 };
-buildTicker();
+renderTicker(tickerFallbackItems);
+
+const refreshTicker = async () => {
+  try {
+    const response = await fetch(TICKER_API_PATH, { cache: 'no-store' });
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (!Array.isArray(payload?.items) || !payload.items.length) return;
+    renderTicker(payload.items);
+  } catch (_error) {
+    // Keep fallback values if the market feed is unavailable.
+  }
+};
+
+refreshTicker();
+setInterval(refreshTicker, TICKER_REFRESH_MS);
 
 /* ═══════════ SESSION ═══════════ */
 const sessionId = 'SX-' + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -1964,7 +1947,7 @@ form.addEventListener('submit', async (e) => {
       : '',
     country: document.getElementById('country-code').selectedOptions[0]?.dataset.country || '',
     edad: document.getElementById('edad-input').value || '',
-    urgencia: document.getElementById('urgencia').value || '',
+    urgencia: document.getElementById('urgencia')?.value || '',
     punto_financiero: document.querySelector('[name="punto_financiero"]:checked')?.value || '',
     inversion_mes: document.querySelector('[name="inversion_mes"]:checked')?.value || '',
     tema_ayuda: Array.from(document.querySelectorAll('[name="tema_ayuda"]:checked')).map(i => i.value).join(','),
@@ -2172,43 +2155,6 @@ function getCurrentPosition() {
   emailInput.addEventListener('input', () => {
     if (suggest.classList.contains('show')) suggest.classList.remove('show');
   });
-})();
-
-/* ═══════════ URGENCIA SLIDER ═══════════ */
-(() => {
-  const slider = document.getElementById('urgencia');
-  const num = document.getElementById('urgencia-num');
-  const label = document.getElementById('urgencia-label');
-  if (!slider) return;
-
-  const LABELS = [
-    null,
-    { t: 'Curíoso nomás.', d: 'Estoy explorando el tema.' },
-    { t: 'Algo interesado.', d: 'Cuando tenga un rato lo miro.' },
-    { t: 'Me importa.', d: 'Quiero aprender pero sin apuro.' },
-    { t: 'Prioridad media.', d: 'Quiero resolverlo este año.' },
-    { t: 'Importante.', d: 'Quiero resolverlo este año.' },
-    { t: 'Me jode.', d: 'Lo estoy posponiendo y no puedo más.' },
-    { t: 'Hay que actuar.', d: 'Quiero arrancar en los próximos meses.' },
-    { t: 'Urge.', d: 'Necesito soluciones ya.' },
-    { t: 'Muy urgente.', d: 'Estoy perdiendo plata/tiempo cada día.' },
-    { t: 'Crisis.', d: 'Necesito resolverlo ahora.' },
-  ];
-
-  const update = () => {
-    const v = parseInt(slider.value, 10);
-    num.innerHTML = `${v}<span class="max">/10</span>`;
-    const L = LABELS[v];
-    label.innerHTML = `<strong>${L.t}</strong>${L.d}`;
-    // color interpolation
-    const hue = 150 - (v - 1) * 16; // 150 green -> 6 red
-    num.style.color = `hsl(${hue}, 75%, 62%)`;
-    // Mark as answered
-    slider.closest('.q').setAttribute('data-touched', 'true');
-  };
-
-  slider.addEventListener('input', () => { update(); updateProgress(); persistProgress(); });
-  update();
 })();
 
 /* ═══════════ AGE CHIPS ═══════════ */
