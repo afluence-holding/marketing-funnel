@@ -27,6 +27,7 @@ import { listBuOptions, type BuOption } from '@/lib/dashboard/bu-options';
 import { CtrCpmChart, SpendPurchasesChart } from '@/components/trends-chart';
 import { RefreshButton } from '@/components/refresh-button';
 import { BuSelector } from '@/components/bu-selector';
+import { DateRangeFilter } from '@/components/date-range-filter';
 
 // ---------------------------------------------------------------------------
 // Helpers & constants
@@ -101,14 +102,28 @@ function phaseLabel(
 
 export default async function DashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ organizer: string; bu: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { organizer, bu } = await params;
+  const sp = (await searchParams) ?? {};
+  const pickString = (v: string | string[] | undefined): string | undefined =>
+    Array.isArray(v) ? v[0] : v;
+  const rangeInput = {
+    from:   pickString(sp.from),
+    to:     pickString(sp.to),
+    preset: pickString(sp.preset),
+  };
 
   let data: DashboardData;
   try {
-    data = await loadDashboard({ organizerSlug: organizer, buSlug: bu });
+    data = await loadDashboard({
+      organizerSlug: organizer,
+      buSlug: bu,
+      range: rangeInput,
+    });
   } catch {
     notFound();
   }
@@ -199,6 +214,18 @@ function Header({
             Report: {header.report_date} · Day {header.day_index} of{' '}
             {header.total_days} · {header.adset_summary}
           </span>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              color: 'var(--color-text-secondary)',
+              padding: '2px 8px',
+              border: '1px solid var(--color-border)',
+              borderRadius: 4,
+            }}
+            title={`KPIs, trends, ad sets & funnel respetan este rango. Learning cards, Health Score y Total campaña se mantienen fijos.`}
+          >
+            Rango: {data.range.label} · {data.range.start} → {data.range.end} ({data.range.days}d)
+          </span>
           <span className="freshness">
             <span className="freshness-dot" /> Data pulled {header.freshness_utc}
           </span>
@@ -206,6 +233,12 @@ function Header({
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <BuSelector options={buOptions} currentPath={currentPath} />
+        <DateRangeFilter
+          currentPreset={data.range.preset}
+          currentStart={data.range.start}
+          currentEnd={data.range.end}
+          currentLabel={data.range.label}
+        />
         <RefreshButton organizerSlug={organizerSlug} buSlug={buSlug} />
         <span className={`badge ${statusClass}`}>{header.status_badge}</span>
         <span className={`badge ${healthClass}`}>{header.health_label}</span>
