@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "steps": {
+    "install": {
+      "inputs": [{ "step": "packages:mise" }],
+      "commands": [
+        { "src": ".", "dest": "." },
+        { "cmd": "npm ci --workspaces --include-workspace-root" }
+      ]
+    },
+    "build": {
+      "inputs": [{ "step": "install" }],
+      "commands": [
+        { "cmd": "npm run build -w @marketing-funnel/admin" }
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "npm run start -w @marketing-funnel/admin"
+  }
+}
