@@ -9,3 +9,7 @@ dist/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Local data dumps
+/Supabase Snippet*.csv
+/desinflamate21-report-*.html
