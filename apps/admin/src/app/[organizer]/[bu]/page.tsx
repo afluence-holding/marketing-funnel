@@ -1180,55 +1180,49 @@ function FunnelSection({ steps }: { steps: FunnelStep[] }) {
   const last = steps[steps.length - 1];
   const lpToCheckout = steps.length >= 4 ? steps[3].conv_pct_from_prev : null;
   const checkoutToPurchase = last?.conv_pct_from_prev ?? null;
-  const funnelBars = (
-    <div className="funnel">
-      {steps.map((step, i) => {
-        const widthPct =
-          i === 0
-            ? 100
-            : firstValue > 0
-            ? Math.max(5, (step.value / firstValue) * 100)
-            : 0;
-        const opacity = 1 - (i * 0.6) / Math.max(1, steps.length - 1);
-        const showDrop =
-          step.conv_pct_from_prev != null && step.value > 0;
-        return (
-          <div className="funnel-step" key={step.label}>
-            <span className="funnel-label">{step.label}</span>
-            <div className="funnel-bar-bg">
-              <div
-                className="funnel-bar"
-                style={{
-                  width: `${widthPct.toFixed(1)}%`,
-                  background: 'var(--color-accent)',
-                  opacity,
-                }}
-              >
-                {fmtInt(step.value)}
-              </div>
-            </div>
-            <span className="funnel-value">{fmtInt(step.value)}</span>
-            <span className="funnel-drop">
-              {showDrop
-                ? `${fmtPct(step.conv_pct_from_prev!, 1)} conv | ${fmtPct(
-                    step.drop_pct_from_prev ?? 0,
-                    1
-                  )} drop`
-                : ''}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-
   return (
     <div className="section">
       <div className="section-title">Funnel Analysis</div>
       <div className="card">
-        <ZoomableChart title="Funnel Analysis" subtitle="Click para ampliar">
-          {funnelBars}
-        </ZoomableChart>
+        <div className="funnel">
+          {steps.map((step, i) => {
+            const widthPct =
+              i === 0
+                ? 100
+                : firstValue > 0
+                ? Math.max(5, (step.value / firstValue) * 100)
+                : 0;
+            const opacity = 1 - (i * 0.6) / Math.max(1, steps.length - 1);
+            const showDrop =
+              step.conv_pct_from_prev != null && step.value > 0;
+            return (
+              <div className="funnel-step" key={step.label}>
+                <span className="funnel-label">{step.label}</span>
+                <div className="funnel-bar-bg">
+                  <div
+                    className="funnel-bar"
+                    style={{
+                      width: `${widthPct.toFixed(1)}%`,
+                      background: 'var(--color-accent)',
+                      opacity,
+                    }}
+                  >
+                    {fmtInt(step.value)}
+                  </div>
+                </div>
+                <span className="funnel-value">{fmtInt(step.value)}</span>
+                <span className="funnel-drop">
+                  {showDrop
+                    ? `${fmtPct(step.conv_pct_from_prev!, 1)} conv | ${fmtPct(
+                        step.drop_pct_from_prev ?? 0,
+                        1
+                      )} drop`
+                    : ''}
+                </span>
+              </div>
+            );
+          })}
+        </div>
         <div
           style={{
             marginTop: 16,
