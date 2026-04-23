@@ -4,6 +4,9 @@ const LANDING_HTML = `<!DOCTYPE html>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Libérate del "¿qué cocino hoy?" - Lista de espera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #f5efe6;
@@ -15,7 +18,7 @@ const LANDING_HTML = `<!DOCTYPE html>
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -46,6 +49,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       padding: 6px 10px;
     }
     h1 {
+      font-family: 'Fraunces', Georgia, serif;
       text-align: center;
       font-size: clamp(33px, 7.4vw, 40px);
       line-height: 1.04;
@@ -74,6 +78,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       text-align: center;
     }
     .card-title {
+      font-family: 'Fraunces', Georgia, serif;
       font-size: 16px;
       font-weight: 700;
       margin-bottom: 4px;
