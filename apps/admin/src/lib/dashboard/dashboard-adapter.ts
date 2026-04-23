@@ -21,6 +21,8 @@ export interface BuConfig {
   landing_url: string;
   campaign_code: string;
   campaign_label: string;
+  /** IANA timezone for the BU — controls what "today" means in tiles/KPIs. Defaults to America/Lima. */
+  timezone?: string;
   campaign_window: {
     starts_on: string;
     ends_on: string;
@@ -313,6 +315,17 @@ function toYmd(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** YYYY-MM-DD "today" for the given IANA timezone (e.g. America/Lima). */
+function todayInTimezone(timeZone: string): string {
+  // en-CA formats as YYYY-MM-DD which happens to match ISO day format.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRow = Record<string, any>;
 
@@ -322,7 +335,6 @@ export async function loadDashboard(params: {
   reportDate?: string;          // defaults to today
 }): Promise<DashboardData> {
   const meta = supabaseAdminForSchema('meta_ops');
-  const reportDate = params.reportDate ?? toYmd(new Date());
 
   // ---------- 1. Organizer + BU ----------
   const { data: org } = await meta
@@ -342,6 +354,11 @@ export async function loadDashboard(params: {
 
   const config = bu.config as BuConfig;
   const kpi = bu.kpi_targets as KpiTargets;
+
+  // "Today" must be evaluated in the BU's timezone. The server runs UTC, so a
+  // pure toISOString() would flip to the next day after ~7pm Lima time.
+  const timezone = config.timezone ?? 'America/Lima';
+  const reportDate = params.reportDate ?? todayInTimezone(timezone);
   const buId = bu.id as string;
 
   // ---------- 2. price_tiers ----------

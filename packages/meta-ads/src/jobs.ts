@@ -191,10 +191,20 @@ async function runInsightsJob(
   }
 }
 
-/** Pull today's insights for all BUs (or a single BU). Refreshes rich entities. */
+/**
+ * Pull today's insights for all BUs (or a single BU). Refreshes rich entities.
+ *
+ * The server runs in UTC but most BUs live in timezones behind UTC (e.g. Lima
+ * UTC-5). Asking Meta for `since=until=todayUTC` near/after UTC midnight returns
+ * the empty row of a day that has not started yet in Lima, making the dashboard
+ * show "hoy = tomorrow $0". Widening the window to yesterdayUTC..todayUTC
+ * guarantees we always have the row for the BU's local "today".
+ */
 export function runTodayJob(params: RunJobParams) {
-  const today = toYmd(new Date());
-  return runInsightsJob(params, 'today', today, today, true);
+  const now = new Date();
+  const today = toYmd(now);
+  const yesterday = toYmd(addDays(now, -1));
+  return runInsightsJob(params, 'today', yesterday, today, true);
 }
 
 /** Pull last 7 days of insights for reconciliation. Refreshes rich entities. */
