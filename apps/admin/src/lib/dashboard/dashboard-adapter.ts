@@ -1066,10 +1066,14 @@ export async function loadDashboard(params: {
   };
 
   // ---------- 9. Ad performance + matchups + frequency + alerts ----------
-  // map ad_set_id → role via adsetRows (used below for `adset_role` column).
-  const adsetRoleById = new Map<string, string>();
+  // map ad_set_id → role / daily_budget. Role is shown in the table; daily
+  // budget feeds the auto-classification thresholds below (e.g. an ad with
+  // spend ≥ 1× ad_set daily_budget and zero purchases enters "watch").
+  const adsetRoleById   = new Map<string, string>();
+  const adsetBudgetById = new Map<string, number>();
   for (const s of (adsetRows ?? []) as AnyRow[]) {
     adsetRoleById.set(s.id as string, (s.role as string) ?? '—');
+    adsetBudgetById.set(s.id as string, Number(s.daily_budget) || 0);
   }
 
   // Ad-level performance must respect the user range as well. The
@@ -1133,30 +1137,114 @@ export async function loadDashboard(params: {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Auto-classification: derive a status_dot from live metrics so the table
+  // is meaningful even when nobody has touched `manual_status`. The bootstrap
+  // seed leaves every ad as 'Testing', which made the column useless.
+  //
+  // Precedence:
+  //   1. Hard delivery state from Meta (PAUSED / DELETED) → 'dead'.
+  //   2. Explicit operator override (manual_status set to something other
+  //      than the bootstrap 'Testing') → respect it. This keeps an escape
+  //      hatch for humans without changing the schema.
+  //   3. Auto rules from spend / purchases / CPA vs the BU's breakeven_cpa,
+  //      kill_cpa and the ad set's daily_budget (used as a "delivery unit"
+  //      to decide when an ad has had a fair chance).
+  //
+  // Rules (evaluated top-down, first match wins):
+  //   • winner : purchases ≥ 3 AND cpa ≤ breakeven
+  //   • active : purchases ≥ 1 AND cpa ≤ kill_cpa
+  //   • dead   : (cpa > kill_cpa)  OR  (spend ≥ 3× daily_budget AND zero purchases)
+  //   • watch  : spend ≥ 1× daily_budget AND zero purchases (warming, no signal yet)
+  //   • testing: anything below those thresholds — typically too little spend
+  //              to judge.
+  // -----------------------------------------------------------------------
+  const beForRole = (role: string): number => {
+    const overrides = kpi.breakeven_cpa_by_role ?? {};
+    const r = role as keyof typeof overrides;
+    return overrides[r] ?? kpi.breakeven_cpa;
+  };
+  const PAUSED_RE = /^(PAUSED|ARCHIVED|DELETED|DISAPPROVED)$/i;
+
+  const classifyAd = (params: {
+    purchases: number;
+    spend: number;
+    cpa: number | null;
+    role: string;
+    adsetBudget: number;
+    effectiveStatus: string | null;
+    metaStatus: string | null;
+  }): AdPerfRow['status_dot'] => {
+    const { purchases, spend, cpa, role, adsetBudget, effectiveStatus, metaStatus } = params;
+    if (effectiveStatus && PAUSED_RE.test(effectiveStatus)) return 'dead';
+    if (metaStatus && PAUSED_RE.test(metaStatus))           return 'dead';
+    const be   = beForRole(role);
+    const kill = kpi.kill_cpa;
+    if (purchases >= 3 && cpa != null && cpa <= be)   return 'winner';
+    if (purchases >= 1 && cpa != null && cpa <= kill) return 'active';
+    if (cpa != null && cpa > kill)                    return 'dead';
+    if (adsetBudget > 0 && spend >= adsetBudget * 3 && purchases === 0) return 'dead';
+    if (adsetBudget > 0 && spend >= adsetBudget       && purchases === 0) return 'watch';
+    return 'testing';
+  };
+
+  // Map dot back to a human label so the badge text matches the colour.
+  const labelForDot: Record<AdPerfRow['status_dot'], string> = {
+    winner:  'Winner',
+    active:  'Active',
+    watch:   'Watch',
+    dead:    'Dead',
+    testing: 'Testing',
+  };
+
   const adPerfRows: AdPerfRow[] = [];
   for (const a of (adMeta ?? []) as AnyRow[]) {
     // `ads.id` IS the Meta ad id, so we look up the entity row by it.
     const entityId = adEntityMetaToId.get(a.id as string);
     const agg = entityId ? adAggByEntityId.get(entityId) : undefined;
-    const status = ((a.manual_status as string) ?? 'Testing');
-    let dot: AdPerfRow['status_dot'] = 'testing';
-    if (/^winner$/i.test(status))  dot = 'winner';
-    else if (/^watch$/i.test(status)) dot = 'watch';
-    else if (/^dead$/i.test(status))  dot = 'dead';
-    else if (/^active$/i.test(status)) dot = 'active';
     const spend       = agg?.spend ?? 0;
     const impressions = agg?.impressions ?? 0;
     const purchases   = agg?.purchases ?? 0;
     const linkClicks  = agg?.link_clicks ?? 0;
     const linkCtr     = impressions > 0 ? (linkClicks * 100) / impressions : 0;
     const cpa         = purchases > 0 ? spend / purchases : null;
+    const role        = adsetRoleById.get(a.ad_set_id as string) ?? '—';
+    const adsetBudget = adsetBudgetById.get(a.ad_set_id as string) ?? 0;
+
+    // Auto-derived classification.
+    const autoDot = classifyAd({
+      purchases,
+      spend,
+      cpa,
+      role,
+      adsetBudget,
+      effectiveStatus: (a.effective_status as string | null) ?? null,
+      metaStatus:      (a.status as string | null)           ?? null,
+    });
+
+    // Operator override: only respected when manual_status is one of the
+    // recognised tokens AND not the bootstrap default 'Testing'. A literal
+    // 'Testing' value is treated as "no opinion" → fall back to auto.
+    const manualRaw  = ((a.manual_status as string) ?? '').trim();
+    const manualNorm = manualRaw.toLowerCase();
+    const overrideDot: AdPerfRow['status_dot'] | null =
+      manualNorm === 'winner' ? 'winner' :
+      manualNorm === 'active' ? 'active' :
+      manualNorm === 'watch'  ? 'watch'  :
+      manualNorm === 'dead'   ? 'dead'   :
+      null;
+    const dot   = overrideDot ?? autoDot;
+    const label = overrideDot
+      ? labelForDot[overrideDot]
+      : `${labelForDot[autoDot]} (auto)`;
+
     adPerfRows.push({
       id: a.id as string,
       name: a.name as string,
-      adset_role: adsetRoleById.get(a.ad_set_id as string) ?? '—',
+      adset_role: role,
       format: ((a.format as string) ?? 'IMG') as 'VID' | 'IMG',
       wave: ((a.wave as string) ?? 'W1') as 'W1' | 'W2' | 'W3',
-      manual_status: status,
+      manual_status: label,
       status_dot: dot,
       spend,
       impressions,
