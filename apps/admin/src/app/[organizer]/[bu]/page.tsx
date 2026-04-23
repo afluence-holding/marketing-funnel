@@ -143,9 +143,12 @@ export default async function DashboardPage({
       />
       <ProgressBar data={data} />
       <HealthAndConfig data={data} />
-      <PriceTierSchedule tiers={data.price_tiers} />
+      <PriceAndRevenueSection
+        tiers={data.price_tiers}
+        tiles={data.revenue_tiles}
+        footer={data.revenue_footer}
+      />
       <TrendsSection trend={data.trend} />
-      <RevenueSection tiles={data.revenue_tiles} footer={data.revenue_footer} />
       <RecentDailyRevenueSection tiles={data.recent_daily_tiles} />
       <KpisSection kpis={data.kpis} />
       <AdSetTable rows={data.ad_sets} />
@@ -438,17 +441,62 @@ function CampaignConfigCard({
 // 4. Price tier schedule
 // ---------------------------------------------------------------------------
 
-function PriceTierSchedule({ tiers }: { tiers: PriceTier[] }) {
+/**
+ * Price tiers + revenue tiles share the same "pricing + money" mental model,
+ * so collapsing them into a single horizontal row (instead of two sections)
+ * saves ~160px of vertical real estate. Compact revenue tiles (1.25rem money,
+ * shrunk padding) sit on the same baseline as tier chips, separated by a
+ * vertical divider. Wraps on narrow viewports to avoid clipping.
+ */
+function PriceAndRevenueSection({
+  tiers,
+  tiles,
+  footer,
+}: {
+  tiers: PriceTier[];
+  tiles: RevenueTile[];
+  footer: string;
+}) {
   return (
     <div className="section">
+      <div className="section-title">Price Tier & Revenue</div>
       <div className="card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
-        <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 8 }}>
-          Price Tier Schedule
-        </p>
-        <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 16,
+            alignItems: 'stretch',
+            flexWrap: 'wrap',
+          }}
+        >
           {tiers.map((t, i) => (
             <TierAndArrow key={`${t.label}-${i}`} tier={t} isLast={i === tiers.length - 1} />
           ))}
+
+          <div
+            style={{
+              width: 1,
+              background: 'var(--color-border)',
+              alignSelf: 'stretch',
+              margin: '0 8px',
+            }}
+            aria-hidden="true"
+          />
+
+          {tiles.map((tile, i) => (
+            <RevenueTileView key={i} tile={tile} />
+          ))}
+        </div>
+        <div
+          style={{
+            marginTop: 12,
+            fontSize: '0.7rem',
+            color: 'var(--color-text-secondary)',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 10,
+          }}
+        >
+          {footer}
         </div>
       </div>
     </div>
@@ -467,24 +515,25 @@ function TierAndArrow({ tier, isLast }: { tier: PriceTier; isLast: boolean }) {
       <div
         style={{
           textAlign: 'center',
-          padding: '12px 20px',
+          padding: '10px 14px',
           background: 'var(--color-bg-hover)',
           borderRadius: 8,
           border: `2px solid ${borderColor}`,
+          minWidth: 96,
         }}
       >
-        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--color-text-secondary)', letterSpacing: '0.05em' }}>
           {tier.status.toUpperCase()}
         </div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 700, color }}>
+        <div style={{ fontSize: '1.25rem', fontWeight: 700, color, lineHeight: 1.15, marginTop: 2 }}>
           ${tier.price}
         </div>
-        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
           {formatTierDateRange(tier)}
         </div>
       </div>
       {!isLast && (
-        <div style={{ color: 'var(--color-text-secondary)' }}>→</div>
+        <div style={{ color: 'var(--color-text-secondary)', alignSelf: 'center' }}>→</div>
       )}
     </>
   );
@@ -506,46 +555,8 @@ function formatMonthDay(ymd: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Revenue
+// 5. Revenue tile (consumed by PriceAndRevenueSection)
 // ---------------------------------------------------------------------------
-
-function RevenueSection({
-  tiles,
-  footer,
-}: {
-  tiles: RevenueTile[];
-  footer: string;
-}) {
-  return (
-    <div className="section">
-      <div className="section-title">Revenue (priced por tier de precio del día)</div>
-      <div className="card">
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 16,
-          }}
-        >
-          {tiles.map((tile, i) => (
-            <RevenueTileView key={i} tile={tile} />
-          ))}
-        </div>
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: '0.7rem',
-            color: 'var(--color-text-secondary)',
-            borderTop: '1px solid var(--color-border)',
-            paddingTop: 10,
-          }}
-        >
-          {footer}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function RevenueTileView({ tile }: { tile: RevenueTile }) {
   const color =
@@ -557,15 +568,17 @@ function RevenueTileView({ tile }: { tile: RevenueTile }) {
   return (
     <div
       style={{
-        padding: 16,
+        padding: '10px 14px',
         background: 'var(--color-bg-hover)',
         borderRadius: 8,
-        borderLeft: `4px solid ${color}`,
+        borderLeft: `3px solid ${color}`,
+        minWidth: 150,
+        flex: '1 1 150px',
       }}
     >
       <div
         style={{
-          fontSize: '0.7rem',
+          fontSize: '0.62rem',
           color: 'var(--color-text-secondary)',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
@@ -573,14 +586,22 @@ function RevenueTileView({ tile }: { tile: RevenueTile }) {
       >
         {tile.label}
       </div>
-      <div style={{ fontSize: '2rem', fontWeight: 700, color, marginTop: 4 }}>
+      <div
+        style={{
+          fontSize: '1.25rem',
+          fontWeight: 700,
+          color,
+          marginTop: 2,
+          lineHeight: 1.15,
+        }}
+      >
         {fmtMoney2(tile.amount)}
       </div>
       <div
         style={{
-          fontSize: '0.75rem',
+          fontSize: '0.65rem',
           color: 'var(--color-text-secondary)',
-          marginTop: 4,
+          marginTop: 2,
         }}
       >
         {tile.sub}
@@ -695,26 +716,65 @@ function LearningPhaseSection({ cards }: { cards: LearningPhaseCard[] }) {
           padding: '10px 14px',
           fontSize: '0.7rem',
           color: 'var(--color-text-secondary)',
+          display: 'grid',
+          gap: 8,
         }}
       >
-        Meta exige 50 eventos de conversión / 7d para salir de learning. Si un
-        adset está en LEARNING LIMITED explícito = hay un problema
-        (budget/señal/audience). Edits significativos reinician learning (regla
-        1-edit-por-24h para conservar ciclo). Signals: <code>learning_stage_info</code>{' '}
-        + purchases 7d + <code>updated_time</code>.
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <span className="badge badge-green">EARLY WINNER</span>
+          <span style={{ lineHeight: '22px' }}>≥5 compras 7d · CPA ≤ breakeven</span>
+          <span className="badge badge-yellow">LEARNING</span>
+          <span style={{ lineHeight: '22px' }}>delivering, &lt;50 compras 7d</span>
+          <span className="badge badge-orange">EDIT RESET</span>
+          <span style={{ lineHeight: '22px' }}>edit &lt;24h · probable reset</span>
+          <span className="badge badge-gray">PAUSED</span>
+          <span style={{ lineHeight: '22px' }}>no delivering por decisión</span>
+          <span className="badge badge-red">INACTIVE</span>
+          <span style={{ lineHeight: '22px' }}>ACTIVE en Meta pero sin spend 7d</span>
+        </div>
+        <div>
+          Meta exige 50 eventos de conversión / 7d para salir de learning. Si un
+          adset está en LEARNING LIMITED explícito = hay un problema
+          (budget/señal/audience). Edits significativos reinician learning (regla
+          1-edit-por-24h para conservar ciclo). Signals:{' '}
+          <code>learning_stage_info</code> + purchases 7d +{' '}
+          <code>updated_time</code>.
+        </div>
       </div>
     </div>
   );
 }
 
+// Maps each learning state to its visual theme. Keeping it as a lookup
+// table (vs. branching inline) makes the legend easy to read and the
+// design trivially extensible if we add more states later.
+const LEARNING_STATE_STYLE: Record<
+  LearningPhaseCard['state'],
+  { badge: string; accent: string; fill: string; dim: boolean }
+> = {
+  paused:       { badge: 'badge-gray',    accent: 'var(--color-text-secondary)', fill: 'var(--color-text-secondary)', dim: true  },
+  inactive:     { badge: 'badge-red',     accent: 'var(--color-critical)',       fill: 'var(--color-critical)',       dim: true  },
+  early_winner: { badge: 'badge-green',   accent: 'var(--color-success)',        fill: 'var(--color-success)',        dim: false },
+  edit_reset:   { badge: 'badge-orange',  accent: '#f97316',                     fill: '#f97316',                     dim: false },
+  learning:     { badge: 'badge-yellow',  accent: 'var(--color-warning)',        fill: 'var(--color-warning)',        dim: false },
+};
+
 function LearningCard({ card }: { card: LearningPhaseCard }) {
   const roleColor = ROLE_COLOR[card.role] ?? 'var(--color-text-secondary)';
+  const theme = LEARNING_STATE_STYLE[card.state];
   const pct = Math.min(100, Math.max(0, card.progress_pct));
   const etaLine = card.eta_days != null && card.eta_date
     ? `Gap ${card.gap} compras · ~${card.eta_days}d al ritmo actual (${(card.purchases_7d / 7).toFixed(1)}/d) → sale ~${card.eta_date}`
     : `Gap ${card.gap} compras · sin compras 7d → timeline no calculable`;
   return (
-    <div className="card" style={{ borderTop: `3px solid ${roleColor}` }}>
+    <div
+      className="card"
+      style={{
+        borderTop: `3px solid ${roleColor}`,
+        borderLeft: `3px solid ${theme.accent}`,
+        opacity: theme.dim ? 0.72 : 1,
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -732,7 +792,7 @@ function LearningCard({ card }: { card: LearningPhaseCard }) {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <span className="badge badge-yellow">{card.status_label}</span>
+          <span className={`badge ${theme.badge}`}>{card.status_label}</span>
         </div>
       </div>
       <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginBottom: 6 }}>
@@ -741,7 +801,7 @@ function LearningCard({ card }: { card: LearningPhaseCard }) {
       <div className="pacing-bar">
         <div
           className="pacing-fill"
-          style={{ width: `${pct.toFixed(1)}%`, background: 'var(--color-warning)' }}
+          style={{ width: `${pct.toFixed(1)}%`, background: theme.fill }}
         />
       </div>
       <div
@@ -1008,11 +1068,17 @@ function FunnelSection({ steps }: { steps: FunnelStep[] }) {
       <div className="card">
         <div className="funnel">
           {steps.map((step, i) => {
+            // Funnel magnitudes usually span 3-4 orders of magnitude (661k
+            // impressions → 144 purchases). A linear scale against the top
+            // of funnel collapses every downstream stage to <2% width, which
+            // visually tells you nothing. A square-root scale preserves the
+            // decreasing order while keeping every bar legibly sized, so the
+            // user can actually compare step-to-step delivery at a glance.
             const widthPct =
               i === 0
                 ? 100
-                : firstValue > 0
-                ? Math.max(5, (step.value / firstValue) * 100)
+                : firstValue > 0 && step.value > 0
+                ? Math.max(6, Math.sqrt(step.value / firstValue) * 100)
                 : 0;
             const opacity = 1 - (i * 0.6) / Math.max(1, steps.length - 1);
             const showDrop =

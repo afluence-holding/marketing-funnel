@@ -124,6 +124,15 @@ export interface LearningPhaseCard {
   early_winner: boolean;
   note: string;
   status_label: string;              // LEARNING (implícito) / LEARNING (edit reset)
+  // Semantic bucket used by the UI to pick colour. Keeps the render layer
+  // dumb: the adapter owns the rules, the card just maps bucket → badge.
+  // Precedence when computing the bucket:
+  //   paused          → status === 'paused'
+  //   inactive        → status === 'inactive'   (spent nothing in 7d)
+  //   early_winner    → ≥5 purchases 7d AND CPA ≤ breakeven
+  //   edit_reset      → recent edit (<24h) AND delivering
+  //   learning        → default, still below the 50/7d exit target
+  state: 'paused' | 'inactive' | 'early_winner' | 'edit_reset' | 'learning';
 }
 
 export interface RecentPurchase {
@@ -359,6 +368,22 @@ function todayInTimezone(timeZone: string): string {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date());
+}
+
+/**
+ * Current hour-of-day (0-23.999) in the given IANA timezone. We return a
+ * float so pacing can be normalised mid-hour (e.g. 10:30 → 10.5).
+ */
+function hourInTimezone(timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const h = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
+  const m = Number(parts.find(p => p.type === 'minute')?.value ?? '0');
+  return h + m / 60;
 }
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -931,14 +956,27 @@ export async function loadDashboard(params: {
     // Status precedence: hard delivery state (PAUSED/INACTIVE) wins over the
     // edit-reset hint, otherwise pausing an ad set with a recent edit would
     // still render as "LEARNING (edit reset)" — misleading the operator into
-    // thinking it's still spending and resetting learning.
-    const statusLabel = status === 'paused'
-      ? 'PAUSED'
-      : status === 'inactive'
-      ? 'INACTIVE'
-      : edit.recent
-      ? 'LEARNING (edit reset)'
-      : 'LEARNING (implícito)';
+    // thinking it's still spending and resetting learning. Winner overrides
+    // the edit-reset hint because breaking CPA is the meaningful signal even
+    // if the ad set was just tweaked.
+    let state: LearningPhaseCard['state'];
+    let statusLabel: string;
+    if (status === 'paused') {
+      state = 'paused';
+      statusLabel = 'PAUSED';
+    } else if (status === 'inactive') {
+      state = 'inactive';
+      statusLabel = 'INACTIVE';
+    } else if (early_winner) {
+      state = 'early_winner';
+      statusLabel = 'EARLY WINNER';
+    } else if (edit.recent) {
+      state = 'edit_reset';
+      statusLabel = 'LEARNING (edit reset)';
+    } else {
+      state = 'learning';
+      statusLabel = 'LEARNING (implícito)';
+    }
 
     return {
       adset_id: s.id,
@@ -958,6 +996,7 @@ export async function loadDashboard(params: {
       early_winner,
       note,
       status_label: statusLabel,
+      state,
     };
   });
 
@@ -1694,26 +1733,74 @@ export async function loadDashboard(params: {
   else funnelScore = 0;
   const funnelSub = `Click→LP ${totalClickToLp.toFixed(1)}% (target ${config.click_to_lp_target}%)`;
 
-  // Pacing (15%): today's spend vs daily budget. Continuous around 1.0 so a
-  // campaign at 0.61x doesn't score identically to one at 1.29x. Outside
-  // [0.6, 1.3] the score drops linearly toward 0.
-  const pacingRatio = config.daily_budget > 0 ? todaySpend / config.daily_budget : 0;
+  // Pacing (15%): spend vs daily budget. Measures whether the campaign is
+  // actually consuming the allocated budget — a proxy for "Meta is delivering
+  // what we asked for and nothing is mis-paused".
+  //
+  // Two historical issues drove this logic:
+  //
+  //   1. At 02:00 AM in the BU's tz the day has barely started and Meta also
+  //      delays reporting by 1-3h, so `todaySpend` is near zero. The old
+  //      formula collapsed the score to 0 even though yesterday's pacing was
+  //      perfectly healthy.
+  //   2. `config.daily_budget` is a static number that drifts out of sync
+  //      when ad sets are paused (e.g. DI21 has $595 configured but only
+  //      $490 in active ad set budgets). That inflates the denominator and
+  //      under-scores pacing.
+  //
+  // Fixes:
+  //   • Prefer the real-time sum of ACTIVE ad sets as the denominator; fall
+  //     back to the configured number when none are active (or data is
+  //     missing). This mirrors operator reality.
+  //   • Before 06:00 local time, or between 06:00-12:00 when Meta still
+  //     hasn't reported anything, fall back to **yesterday** (the last full
+  //     day). After 12:00, normalise `todaySpend` by the fraction of the
+  //     day elapsed so "10:00 AM with ~42% of budget spent" scores near 100.
+  const activeAdsetBudget = ad_setsUnsorted
+    .filter(s => s.status === 'ACTIVE')
+    .reduce((sum, s) => sum + (s.daily_budget || 0), 0);
+  const pacingBudget = activeAdsetBudget > 0 ? activeAdsetBudget : config.daily_budget;
+
+  const yesterdayDate = toYmd(new Date(new Date(reportDate).getTime() - 86_400_000));
+  const yesterdayRow = ((campInsights ?? []) as AnyRow[]).find(r => r.date === yesterdayDate);
+  const yesterdaySpend = Number(yesterdayRow?.spend ?? 0);
+
+  const hourLocal = hourInTimezone(timezone);
+
   let pacingScore: number;
-  if (config.daily_budget <= 0) {
+  let pacingSub: string;
+  if (pacingBudget <= 0) {
     pacingScore = 50;
-  } else if (pacingRatio >= 0.6 && pacingRatio <= 1.3) {
-    // Inside the healthy band: peak at 1.0, mild penalty at edges.
-    const dist = Math.abs(pacingRatio - 1);
-    pacingScore = Math.round(100 - 30 * (dist / 0.3));
+    pacingSub = 'no daily budget set';
   } else {
-    // Outside the band: fall off to 0 over the same distance again.
-    const bandMiss = pacingRatio < 0.6 ? 0.6 - pacingRatio : pacingRatio - 1.3;
-    pacingScore = Math.round(clamp(50 - (bandMiss / 0.6) * 50));
+    let ratio: number;
+    let basis: string;
+    if (hourLocal < 6) {
+      // Too early for today's data to be meaningful. Use yesterday.
+      ratio = yesterdaySpend / pacingBudget;
+      basis = `yesterday ${money(yesterdaySpend)} / budget ${money(pacingBudget)}`;
+    } else if (hourLocal < 12 && todaySpend === 0) {
+      // Morning but Meta still hasn't reported for today → yesterday proxy.
+      ratio = yesterdaySpend / pacingBudget;
+      basis = `yesterday ${money(yesterdaySpend)} / budget ${money(pacingBudget)} (today not reported yet)`;
+    } else {
+      // Normalise today's spend by fraction of day elapsed, so 42% of budget
+      // spent at 10:00 AM (10/24 = 0.417) scores as "on pace" (~1.0).
+      const expectedSoFar = (pacingBudget * hourLocal) / 24;
+      ratio = expectedSoFar > 0 ? todaySpend / expectedSoFar : 0;
+      basis = `today ${money(todaySpend)} vs expected ${money(expectedSoFar)} at ${hourLocal.toFixed(1)}h`;
+    }
+
+    if (ratio >= 0.6 && ratio <= 1.3) {
+      const dist = Math.abs(ratio - 1);
+      pacingScore = Math.round(100 - 30 * (dist / 0.3));
+    } else {
+      const bandMiss = ratio < 0.6 ? 0.6 - ratio : ratio - 1.3;
+      pacingScore = Math.round(clamp(50 - (bandMiss / 0.6) * 50));
+    }
+    pacingScore = clamp(pacingScore);
+    pacingSub = `${(ratio * 100).toFixed(0)}% of expected · ${basis}`;
   }
-  pacingScore = clamp(pacingScore);
-  const pacingSub = config.daily_budget > 0
-    ? `${(pacingRatio * 100).toFixed(0)}% of daily budget`
-    : 'no daily budget set';
 
   const healthBreakdown: HealthBreakdown[] = [
     { label: 'Economics', score: economicsScore, tone: toneFromScore(economicsScore), weight: 30, sub: economicsSub },
