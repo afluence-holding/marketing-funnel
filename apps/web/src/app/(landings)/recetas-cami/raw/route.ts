@@ -8,22 +8,31 @@ type BundledManifestEntry = {
   data: string;
 };
 
-function unpackBundledLanding(rawHtml: string): string {
-  const manifestMatch = rawHtml.match(
-    /<script\s+type="__bundler\/manifest">\s*([\s\S]*?)\s*<\/script>/i,
-  );
-  const templateMatch = rawHtml.match(
-    /<script\s+type="__bundler\/template">\s*([\s\S]*?)\s*<\/script>/i,
-  );
-  const extResourcesMatch = rawHtml.match(
-    /<script\s+type="__bundler\/ext_resources">\s*([\s\S]*?)\s*<\/script>/i,
-  );
+let cachedFinalHtml: string | null = null;
 
-  if (!manifestMatch || !templateMatch) return rawHtml;
+function extractBundlerBlock(rawHtml: string, type: string): string | null {
+  const startTag = `<script type="${type}">`;
+  const start = rawHtml.indexOf(startTag);
+  if (start === -1) return null;
+
+  const contentStart = start + startTag.length;
+  const endTag = '\n  </script>';
+  const end = rawHtml.indexOf(endTag, contentStart);
+  if (end === -1) return null;
+
+  return rawHtml.slice(contentStart, end).trim();
+}
+
+function unpackBundledLanding(rawHtml: string): string {
+  const manifestRaw = extractBundlerBlock(rawHtml, '__bundler/manifest');
+  const templateRaw = extractBundlerBlock(rawHtml, '__bundler/template');
+  const extResourcesRaw = extractBundlerBlock(rawHtml, '__bundler/ext_resources');
+
+  if (!manifestRaw || !templateRaw) return rawHtml;
 
   try {
-    const manifest = JSON.parse(manifestMatch[1]) as Record<string, BundledManifestEntry>;
-    let template = JSON.parse(templateMatch[1]) as string;
+    const manifest = JSON.parse(manifestRaw) as Record<string, BundledManifestEntry>;
+    let template = JSON.parse(templateRaw) as string;
 
     const dataUrlsByUuid: Record<string, string> = {};
     for (const [uuid, entry] of Object.entries(manifest)) {
@@ -36,8 +45,8 @@ function unpackBundledLanding(rawHtml: string): string {
       template = template.split(uuid).join(dataUrl);
     }
 
-    if (extResourcesMatch) {
-      const extResources = JSON.parse(extResourcesMatch[1]) as Array<{
+    if (extResourcesRaw) {
+      const extResources = JSON.parse(extResourcesRaw) as Array<{
         id: string;
         uuid: string;
       }>;
@@ -131,16 +140,27 @@ function injectEmailCapture(html: string): string {
 }
 
 export async function GET() {
+  if (cachedFinalHtml) {
+    return new Response(cachedFinalHtml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
+      },
+    });
+  }
+
   const filePath = path.join(process.cwd(), 'src/app/(landings)/recetas-cami/landing.html');
   const rawHtml = await fs.readFile(filePath, 'utf-8');
   const unpackedHtml = unpackBundledLanding(rawHtml);
   const finalHtml = injectEmailCapture(unpackedHtml);
+  cachedFinalHtml = finalHtml;
 
   return new Response(finalHtml, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store, max-age=0',
+      'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
     },
   });
 }
