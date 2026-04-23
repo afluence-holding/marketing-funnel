@@ -135,6 +135,12 @@ const LANDING_HTML = `<!DOCTYPE html>
       color: #2f7d4b;
       min-height: 18px;
     }
+    .footer {
+      margin-top: 18px;
+      text-align: center;
+      color: #8f7c70;
+      font-size: 13px;
+    }
     @media (max-width: 768px) {
       .wrap { max-width: 430px; padding: 12px 12px 20px; }
       .hero { width: 86%; }
@@ -155,6 +161,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       }
       .note { font-size: 11px; }
       .msg { font-size: 12px; }
+      .footer { margin-top: 14px; font-size: 12px; }
     }
   </style>
 </head>
@@ -173,6 +180,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       <p class="note">Sin spam, sin promesas vacías. Solo aviso cuando salga y el descuento de lanzamiento.</p>
       <p id="msg" class="msg"></p>
     </form>
+    <p class="footer">© Cami cocina · hecho con cariño</p>
   </main>
 
   <script>
