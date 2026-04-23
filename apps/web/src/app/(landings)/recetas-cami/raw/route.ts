@@ -29,7 +29,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       padding: 12px 18px 24px;
     }
     .hero {
-      width: 64%;
+      width: 60%;
       max-width: 360px;
       margin: 0 auto;
       aspect-ratio: 4 / 5;
@@ -145,7 +145,7 @@ const LANDING_HTML = `<!DOCTYPE html>
     }
     @media (max-width: 768px) {
       .wrap { max-width: 430px; padding: 12px 12px 20px; }
-      .hero { width: 78%; max-width: 320px; }
+      .hero { width: 74%; max-width: 320px; }
       .sub { font-size: 12px; margin-bottom: 14px; }
       .card { border-radius: 14px; padding: 12px; }
       .card-title { font-size: 16px; margin-bottom: 4px; }
