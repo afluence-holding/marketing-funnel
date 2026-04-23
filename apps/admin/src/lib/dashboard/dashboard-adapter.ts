@@ -833,7 +833,7 @@ export async function loadDashboard(params: {
     return typeof override === 'number' ? override : kpi.breakeven_cpa;
   };
 
-  const ad_sets: AdSetRow[] = ((adsetRows ?? []) as AnyRow[]).map(s => {
+  const ad_setsUnsorted: AdSetRow[] = ((adsetRows ?? []) as AnyRow[]).map(s => {
     const m = adsetInsightsById.get(s.id as string);
     const spend = m?.spend ?? 0;
     const purchases = m?.purchases ?? 0;
@@ -866,6 +866,17 @@ export async function loadDashboard(params: {
       freq_daily_7d: adsetFreq7dById.get(s.id as string) ?? null,
       freq_lifetime: adsetFreqLifetimeById.get(s.id as string) ?? null,
     };
+  });
+
+  // Default order: ACTIVE first, everything else (PAUSED / INACTIVE / unknown)
+  // sunk to the bottom, both groups sorted by spend descending so the heaviest
+  // spenders surface first. Mirrors the `ad_performance` policy. The client
+  // table respects this ordering when no explicit sort is applied.
+  const ad_sets: AdSetRow[] = [...ad_setsUnsorted].sort((a, b) => {
+    const aActive = a.status === 'ACTIVE' ? 0 : 1;
+    const bActive = b.status === 'ACTIVE' ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    return b.spend - a.spend;
   });
 
   // ---------- 5. learning cards (real 7d window per adset) ----------
