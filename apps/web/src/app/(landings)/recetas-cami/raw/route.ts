@@ -29,7 +29,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       padding: 12px 18px 24px;
     }
     .hero {
-      width: 60%;
+      width: 54%;
       max-width: 360px;
       margin: 0 auto;
       aspect-ratio: 4 / 5;
