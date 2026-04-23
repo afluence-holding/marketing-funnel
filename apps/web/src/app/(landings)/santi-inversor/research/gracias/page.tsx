@@ -16,7 +16,7 @@ interface PageProps {
   searchParams: Promise<{ name?: string }>;
 }
 
-const WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/FUJiorfRS130Z17n2t1PGi';
+const WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/E420eXKj4zYAdoNt2B3K8J';
 const INSTAGRAM_URL = 'https://www.instagram.com/santinversor/';
 
 export default async function SantiInversorResearchGracias({ searchParams }: PageProps) {
