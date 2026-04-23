@@ -1,5 +1,66 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { gunzipSync } from 'node:zlib';
+
+type BundledManifestEntry = {
+  mime: string;
+  compressed?: boolean;
+  data: string;
+};
+
+function unpackBundledLanding(rawHtml: string): string {
+  const manifestMatch = rawHtml.match(
+    /<script\s+type="__bundler\/manifest">\s*([\s\S]*?)\s*<\/script>/i,
+  );
+  const templateMatch = rawHtml.match(
+    /<script\s+type="__bundler\/template">\s*([\s\S]*?)\s*<\/script>/i,
+  );
+  const extResourcesMatch = rawHtml.match(
+    /<script\s+type="__bundler\/ext_resources">\s*([\s\S]*?)\s*<\/script>/i,
+  );
+
+  if (!manifestMatch || !templateMatch) return rawHtml;
+
+  try {
+    const manifest = JSON.parse(manifestMatch[1]) as Record<string, BundledManifestEntry>;
+    let template = JSON.parse(templateMatch[1]) as string;
+
+    const dataUrlsByUuid: Record<string, string> = {};
+    for (const [uuid, entry] of Object.entries(manifest)) {
+      let bytes = Buffer.from(entry.data, 'base64');
+      if (entry.compressed) bytes = gunzipSync(bytes);
+      dataUrlsByUuid[uuid] = `data:${entry.mime};base64,${bytes.toString('base64')}`;
+    }
+
+    for (const [uuid, dataUrl] of Object.entries(dataUrlsByUuid)) {
+      template = template.split(uuid).join(dataUrl);
+    }
+
+    if (extResourcesMatch) {
+      const extResources = JSON.parse(extResourcesMatch[1]) as Array<{
+        id: string;
+        uuid: string;
+      }>;
+      const resourceMap: Record<string, string> = {};
+      for (const resource of extResources) {
+        const resolved = dataUrlsByUuid[resource.uuid];
+        if (resolved) resourceMap[resource.id] = resolved;
+      }
+
+      const resourcesScript = `<script>window.__resources=${JSON.stringify(resourceMap)};</script>`;
+      const headOpen = template.match(/<head[^>]*>/i);
+      if (headOpen) {
+        const insertAt = (headOpen.index ?? 0) + headOpen[0].length;
+        template = `${template.slice(0, insertAt)}${resourcesScript}${template.slice(insertAt)}`;
+      }
+    }
+
+    return template;
+  } catch {
+    // Fall back to raw HTML if bundle unpacking fails.
+    return rawHtml;
+  }
+}
 
 function injectEmailCapture(html: string): string {
   const emailCaptureScript = `
@@ -71,8 +132,9 @@ function injectEmailCapture(html: string): string {
 
 export async function GET() {
   const filePath = path.join(process.cwd(), 'src/app/(landings)/recetas-cami/landing.html');
-  const html = await fs.readFile(filePath, 'utf-8');
-  const finalHtml = injectEmailCapture(html);
+  const rawHtml = await fs.readFile(filePath, 'utf-8');
+  const unpackedHtml = unpackBundledLanding(rawHtml);
+  const finalHtml = injectEmailCapture(unpackedHtml);
 
   return new Response(finalHtml, {
     status: 200,
