@@ -24,12 +24,13 @@ const LANDING_HTML = `<!DOCTYPE html>
       min-height: 100vh;
     }
     .wrap {
-      max-width: 400px;
+      max-width: 760px;
       margin: 0 auto;
-      padding: 12px 12px 20px;
+      padding: 12px 18px 24px;
     }
     .hero {
-      width: 86%;
+      width: 74%;
+      max-width: 420px;
       margin: 0 auto;
       aspect-ratio: 4 / 5;
       object-fit: cover;
@@ -65,36 +66,38 @@ const LANDING_HTML = `<!DOCTYPE html>
     .sub {
       text-align: center;
       color: var(--muted);
-      font-size: 12px;
-      line-height: 1.4;
-      margin-bottom: 14px;
+      font-size: 15px;
+      line-height: 1.45;
+      max-width: 640px;
+      margin: 0 auto 16px;
     }
     .card {
       background: var(--card);
       border: 1px solid #eadfd0;
-      border-radius: 14px;
-      padding: 12px;
+      border-radius: 28px;
+      padding: 34px 36px 30px;
       box-shadow: 0 4px 14px rgba(49, 22, 10, 0.08);
       text-align: center;
     }
     .card-title {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: 16px;
+      font-size: 22px;
       font-weight: 700;
-      margin-bottom: 4px;
+      line-height: 1.05;
+      margin-bottom: 10px;
       color: #3d2a22;
     }
     .card-sub {
       color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
     }
     input[type="email"] {
       width: 100%;
-      min-height: 42px;
+      min-height: 62px;
       border: 1px solid #dccbbb;
-      border-radius: 10px;
-      padding: 0 12px;
+      border-radius: 16px;
+      padding: 0 22px;
       font-size: 15px;
       color: var(--text);
       background: #fff;
@@ -105,10 +108,10 @@ const LANDING_HTML = `<!DOCTYPE html>
       box-shadow: 0 0 0 3px rgba(160, 102, 80, 0.16);
     }
     button {
-      min-height: 44px;
+      min-height: 62px;
       width: 100%;
       border: none;
-      border-radius: 10px;
+      border-radius: 16px;
       padding: 0 16px;
       font-size: 15px;
       font-weight: 700;
@@ -131,6 +134,27 @@ const LANDING_HTML = `<!DOCTYPE html>
       font-size: 12px;
       color: #2f7d4b;
       min-height: 18px;
+    }
+    @media (max-width: 768px) {
+      .wrap { max-width: 430px; padding: 12px 12px 20px; }
+      .hero { width: 86%; }
+      .sub { font-size: 12px; margin-bottom: 14px; }
+      .card { border-radius: 14px; padding: 12px; }
+      .card-title { font-size: 16px; margin-bottom: 4px; }
+      .card-sub { font-size: 12px; margin-bottom: 8px; }
+      input[type="email"] {
+        min-height: 42px;
+        border-radius: 10px;
+        padding: 0 12px;
+        font-size: 15px;
+      }
+      button {
+        min-height: 44px;
+        border-radius: 10px;
+        font-size: 15px;
+      }
+      .note { font-size: 11px; }
+      .msg { font-size: 12px; }
     }
   </style>
 </head>
