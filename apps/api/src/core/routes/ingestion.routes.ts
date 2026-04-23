@@ -427,6 +427,11 @@ function getCapiCredentials(orgKey: string): { pixelId?: string; accessToken?: s
     const accessToken = process.env.META_CAPI_TOKEN_GERMAN_ROZ;
     if (pixelId && accessToken) return { pixelId, accessToken };
   }
+  if (orgKey === 'lucas-con-lucas') {
+    const pixelId = process.env.META_PIXEL_ID_LUCAS_CON_LUCAS;
+    const accessToken = process.env.META_CAPI_TOKEN_LUCAS_CON_LUCAS;
+    if (pixelId && accessToken) return { pixelId, accessToken };
+  }
   return {};
 }
 

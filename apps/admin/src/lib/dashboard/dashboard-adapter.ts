@@ -1,9 +1,11 @@
 /**
  * Dashboard data adapter — single source of truth = meta_ops schema.
  *
- * Loads every field the DI21 operator dashboard needs (mirrors
- * desinflamate21-report-2026-04-22.html section-by-section) from meta_ops
- * and returns a typed DashboardData contract consumed by the renderer.
+ * Generic loader parameterized by (organizer slug, BU slug). Every field the
+ * operator dashboard needs is derived from meta_ops entities/insights scoped
+ * to the selected BU, and returned as a typed DashboardData contract
+ * consumed by the renderer. Originally mirrored desinflamate21-report-...html
+ * but is BU-agnostic: add a new BU row + meta data in meta_ops and it renders.
  */
 
 import { supabaseAdminForSchema } from '@marketing-funnel/db';
@@ -314,7 +316,7 @@ function toYmd(d: Date): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRow = Record<string, any>;
 
-export async function loadDi21Dashboard(params: {
+export async function loadDashboard(params: {
   organizerSlug: string;
   buSlug: string;
   reportDate?: string;          // defaults to today
