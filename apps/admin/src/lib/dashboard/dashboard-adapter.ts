@@ -916,12 +916,16 @@ export async function loadDashboard(params: {
     const budgetLabel = s.daily_budget > 0 ? `$${Math.round(s.daily_budget)}/day` : '—';
     const note = `${budgetLabel} · BE CPA $${s.breakeven_cpa}${edit.recent ? ' · edit reciente (reset probable)' : ''}`;
 
-    const statusLabel = edit.recent
-      ? 'LEARNING (edit reset)'
-      : status === 'paused'
+    // Status precedence: hard delivery state (PAUSED/INACTIVE) wins over the
+    // edit-reset hint, otherwise pausing an ad set with a recent edit would
+    // still render as "LEARNING (edit reset)" — misleading the operator into
+    // thinking it's still spending and resetting learning.
+    const statusLabel = status === 'paused'
       ? 'PAUSED'
       : status === 'inactive'
       ? 'INACTIVE'
+      : edit.recent
+      ? 'LEARNING (edit reset)'
       : 'LEARNING (implícito)';
 
     return {
