@@ -992,8 +992,25 @@ export async function loadDashboard(params: {
         : 'All';
       rows.push({ label: 'Demographics', value: `Age ${demo.age_min}-${demo.age_max} · Gender: ${gender}` });
     }
-    if (t.custom_audiences?.length) rows.push({ label: 'Custom Audiences', value: (t.custom_audiences as string[]).join(', ') });
-    if (t.excluded_custom_audiences?.length) rows.push({ label: 'Excluded', value: (t.excluded_custom_audiences as string[]).join(', ') });
+    // Audiences come from Meta as `{ id, name }` objects (not raw strings).
+    // We render the friendly `name` and fall back to `id` for any audience
+    // missing a name. Anything else becomes `<unknown>` so we never leak
+    // the literal "[object Object]" into the UI.
+    const fmtAudience = (a: unknown): string => {
+      if (typeof a === 'string') return a;
+      if (a && typeof a === 'object') {
+        const o = a as { name?: unknown; id?: unknown };
+        if (typeof o.name === 'string' && o.name.trim()) return o.name;
+        if (o.id != null) return String(o.id);
+      }
+      return '<unknown>';
+    };
+    if (Array.isArray(t.custom_audiences) && t.custom_audiences.length) {
+      rows.push({ label: 'Custom Audiences', value: (t.custom_audiences as unknown[]).map(fmtAudience).join(', ') });
+    }
+    if (Array.isArray(t.excluded_custom_audiences) && t.excluded_custom_audiences.length) {
+      rows.push({ label: 'Excluded', value: (t.excluded_custom_audiences as unknown[]).map(fmtAudience).join(', ') });
+    }
     if (t.advantage_plus_audience != null) rows.push({
       label: 'Audience Expansion',
       value: t.advantage_plus_audience
