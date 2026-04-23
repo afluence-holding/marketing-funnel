@@ -21,13 +21,14 @@ const LANDING_HTML = `<!DOCTYPE html>
       min-height: 100vh;
     }
     .wrap {
-      max-width: 430px;
+      max-width: 400px;
       margin: 0 auto;
-      padding: 14px 14px 24px;
+      padding: 12px 12px 20px;
     }
     .hero {
-      width: 100%;
-      aspect-ratio: 3 / 4;
+      width: 92%;
+      margin: 0 auto;
+      aspect-ratio: 4 / 5;
       object-fit: cover;
       border-radius: 18px;
       display: block;
