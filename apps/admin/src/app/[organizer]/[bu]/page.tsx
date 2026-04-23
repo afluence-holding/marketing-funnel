@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 
 import {
   loadDashboard,
-  type AdPerfRow,
   type AdSetRow,
   type AlertItem,
   type DashboardData,
@@ -29,6 +28,7 @@ import { RefreshButton } from '@/components/refresh-button';
 import { BuSelector } from '@/components/bu-selector';
 import { DateRangeFilter } from '@/components/date-range-filter';
 import { ZoomableChart } from '@/components/zoomable-chart';
+import { AdPerformanceTable } from '@/components/ad-performance-table';
 
 // ---------------------------------------------------------------------------
 // Helpers & constants
@@ -154,7 +154,7 @@ export default async function DashboardPage({
       <CusSaturationSection data={data} />
       <TrendsSection trend={data.trend} />
       <FunnelSection steps={data.funnel} />
-      <AdPerformanceSection
+      <AdPerformanceTable
         rows={data.ad_performance}
         linkCtrTarget={data.bu.config.link_ctr_target}
         linkCtrWarn={data.bu.config.link_ctr_warn}
@@ -1282,135 +1282,10 @@ function FunnelSection({ steps }: { steps: FunnelStep[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 14. Ad Performance
+// 14. Ad Performance → moved to `@/components/ad-performance-table` (client
+// component with per-column sorting). The server page only renders the
+// wrapper via <AdPerformanceTable ... /> at the top of this file.
 // ---------------------------------------------------------------------------
-
-function AdPerformanceSection({
-  rows,
-  linkCtrTarget,
-  linkCtrWarn,
-}: {
-  rows: AdPerfRow[];
-  linkCtrTarget: number;
-  linkCtrWarn: number;
-}) {
-  return (
-    <div className="section">
-      <div className="section-title">Ad Performance ({rows.length} ads)</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Ad</th>
-              <th>Spend</th>
-              <th>Imp</th>
-              <th>Reach</th>
-              <th>Link Clicks</th>
-              <th>Link CTR</th>
-              <th>LP Views</th>
-              <th>Purchases</th>
-              <th>CPA</th>
-              <th>%Budget</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <AdPerfRowView
-                key={r.id}
-                row={r}
-                linkCtrTarget={linkCtrTarget}
-                linkCtrWarn={linkCtrWarn}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function AdPerfRowView({
-  row,
-  linkCtrTarget,
-  linkCtrWarn,
-}: {
-  row: AdPerfRow;
-  linkCtrTarget: number;
-  linkCtrWarn: number;
-}) {
-  const ctrColor =
-    row.link_ctr >= linkCtrTarget
-      ? 'var(--color-success)'
-      : row.link_ctr >= linkCtrWarn
-      ? 'var(--color-warning)'
-      : 'var(--color-critical)';
-
-  const statusColor =
-    row.status_dot === 'winner'
-      ? 'var(--color-success)'
-      : row.status_dot === 'watch'
-      ? 'var(--color-text-secondary)'
-      : row.status_dot === 'dead'
-      ? 'var(--color-text-secondary)'
-      : 'var(--color-accent)';
-
-  const waveBorder =
-    row.wave === 'W1'
-      ? '1px solid var(--color-text-secondary)'
-      : '1px solid var(--color-accent)';
-  const waveColor =
-    row.wave === 'W1' ? 'var(--color-text-secondary)' : 'var(--color-accent)';
-
-  return (
-    <tr>
-      <td>
-        <span className={`status-dot status-${row.status_dot}`} />
-        <span
-          style={{
-            fontSize: '0.65rem',
-            padding: '1px 4px',
-            borderRadius: 3,
-            background: 'var(--color-bg-hover)',
-            marginRight: 4,
-          }}
-        >
-          {row.format}
-        </span>
-        <span
-          style={{
-            fontSize: '0.6rem',
-            padding: '1px 3px',
-            borderRadius: 3,
-            border: waveBorder,
-            color: waveColor,
-            marginRight: 4,
-          }}
-        >
-          {row.wave}
-        </span>
-        {row.name}{' '}
-        <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.7rem' }}>
-          ({row.adset_role})
-        </span>
-      </td>
-      <td>${row.spend.toFixed(2)}</td>
-      <td>{fmtInt(row.impressions)}</td>
-      <td>{fmtInt(row.reach)}</td>
-      <td>{fmtInt(row.link_clicks)}</td>
-      <td style={{ color: ctrColor }}>{fmtPct(row.link_ctr, 2)}</td>
-      <td>{fmtInt(row.lp_views)}</td>
-      <td>{row.purchases}</td>
-      <td>{row.cpa == null ? '—' : fmtMoney2(row.cpa)}</td>
-      <td>{fmtPct(row.pct_of_budget, 1)}</td>
-      <td>
-        <span style={{ fontSize: '0.75rem', color: statusColor }}>
-          {row.manual_status}
-        </span>
-      </td>
-    </tr>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // 15. Matchups
