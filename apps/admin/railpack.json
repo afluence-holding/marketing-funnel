@@ -12,6 +12,9 @@
     "build": {
       "inputs": [{ "step": "install" }],
       "commands": [
+        { "cmd": "npm run build -w @marketing-funnel/config" },
+        { "cmd": "npm run build -w @marketing-funnel/db" },
+        { "cmd": "npm run build -w @marketing-funnel/meta-ads" },
         { "cmd": "npm run build -w @marketing-funnel/admin" }
       ]
     }
