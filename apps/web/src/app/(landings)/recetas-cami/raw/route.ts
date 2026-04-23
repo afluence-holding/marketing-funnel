@@ -3,7 +3,7 @@ const LANDING_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Liberate del "que cocino hoy?" - Lista de espera</title>
+  <title>Libérate del "¿qué cocino hoy?" - Lista de espera</title>
   <style>
     :root {
       --bg: #f5efe6;
@@ -133,15 +133,15 @@ const LANDING_HTML = `<!DOCTYPE html>
   <main class="wrap">
     <img class="hero" src="/recetas-cami/hero.png" alt="Recetas saludables" loading="eager" />
     <div class="tag">PROXIMAMENTE</div>
-    <h1>Liberate del <span>"que cocino hoy?"</span></h1>
-    <p class="sub">Una guia mensual pensada para personas que no tienen tiempo en el dia a dia y estan agotadas de decidir que hacer de comer. Se de los primeros en saber cuando sale.</p>
+    <h1>Libérate del <span>"¿qué cocino hoy?"</span></h1>
+    <p class="sub">Una guía mensual pensada para personas que no tienen tiempo en el día a día y están agotadas de decidir qué hacer de comer. Sé de los primeros en saber cuándo sale.</p>
 
     <form id="waitlist-form" class="card">
-      <p class="card-title">Unete a la lista de espera</p>
+      <p class="card-title">Únete a la lista de espera</p>
       <p class="card-sub">Acceso anticipado + precio especial para los primeros 100.</p>
       <input id="email" name="email" type="email" placeholder="tu@correo.com" autocomplete="email" required />
       <button id="submit-btn" type="submit">Quiero ser de los primeros</button>
-      <p class="note">Sin spam, sin promesas vacias. Solo aviso cuando salga y el descuento de lanzamiento.</p>
+      <p class="note">Sin spam, sin promesas vacías. Solo aviso cuando salga y el descuento de lanzamiento.</p>
       <p id="msg" class="msg"></p>
     </form>
   </main>
@@ -183,7 +183,7 @@ const LANDING_HTML = `<!DOCTYPE html>
         btn.textContent = 'Guardando...';
         try {
           const ok = await saveEmail('form-submit');
-          msg.textContent = ok ? 'Listo! Ya estas en lista de espera.' : 'No se pudo guardar. Intenta de nuevo.';
+          msg.textContent = ok ? '¡Listo! Ya estás en lista de espera.' : 'No se pudo guardar. Intenta de nuevo.';
         } catch (_error) {
           msg.textContent = 'No se pudo guardar. Intenta de nuevo.';
         } finally {
