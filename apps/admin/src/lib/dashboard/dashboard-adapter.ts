@@ -124,6 +124,15 @@ export interface LearningPhaseCard {
   early_winner: boolean;
   note: string;
   status_label: string;              // LEARNING (implícito) / LEARNING (edit reset)
+  // Semantic bucket used by the UI to pick colour. Keeps the render layer
+  // dumb: the adapter owns the rules, the card just maps bucket → badge.
+  // Precedence when computing the bucket:
+  //   paused          → status === 'paused'
+  //   inactive        → status === 'inactive'   (spent nothing in 7d)
+  //   early_winner    → ≥5 purchases 7d AND CPA ≤ breakeven
+  //   edit_reset      → recent edit (<24h) AND delivering
+  //   learning        → default, still below the 50/7d exit target
+  state: 'paused' | 'inactive' | 'early_winner' | 'edit_reset' | 'learning';
 }
 
 export interface RecentPurchase {
@@ -174,6 +183,7 @@ export interface AdPerfRow {
   id: string;
   name: string;
   adset_role: string;
+  adset_name: string;
   format: 'VID' | 'IMG';
   wave: 'W1' | 'W2' | 'W3';
   manual_status: string;                // Winner / Watch / Dead / Active / Testing
@@ -252,6 +262,16 @@ export interface HealthBreakdown {
   sub?: string;                      // short human-readable detail
 }
 
+export type RangePreset = '7d' | '30d' | '90d' | 'campaign' | 'custom';
+
+export interface DashboardRange {
+  start: string;                     // YYYY-MM-DD (inclusive)
+  end: string;                       // YYYY-MM-DD (inclusive)
+  preset: RangePreset;
+  label: string;                     // UI-friendly label (e.g. "Últimos 30 días")
+  days: number;                      // number of days in the range (inclusive)
+}
+
 export interface DashboardData {
   bu: {
     id: string;
@@ -291,6 +311,12 @@ export interface DashboardData {
   campaign_config: Array<{ label: string; value: string; full_row?: boolean }>;
   price_tiers: PriceTier[];
   revenue_tiles: RevenueTile[];
+  /**
+   * Last 5 calendar days immediately prior to the report date. Ordered from
+   * most recent (index 0) to oldest (index 4). Each tile mirrors the HOY
+   * card styling so operators can spot day-over-day momentum at a glance.
+   */
+  recent_daily_tiles: RevenueTile[];
   revenue_footer: string;
   kpis: KpiCell[];
   ad_sets: AdSetRow[];
@@ -306,6 +332,7 @@ export interface DashboardData {
   alerts: AlertItem[];
   hypotheses: HypothesisItem[];
   watch_signals: WatchSignalItem[];
+  range: DashboardRange;
 }
 
 // =============================================================================
@@ -343,13 +370,104 @@ function todayInTimezone(timeZone: string): string {
   }).format(new Date());
 }
 
+/**
+ * Current hour-of-day (0-23.999) in the given IANA timezone. We return a
+ * float so pacing can be normalised mid-hour (e.g. 10:30 → 10.5).
+ */
+function hourInTimezone(timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const h = Number(parts.find(p => p.type === 'hour')?.value ?? '0');
+  const m = Number(parts.find(p => p.type === 'minute')?.value ?? '0');
+  return h + m / 60;
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function isValidIsoDate(s: string | undefined | null): s is string {
+  return !!s && ISO_DATE_RE.test(s) && !Number.isNaN(new Date(`${s}T00:00:00Z`).getTime());
+}
+
+function rangeLabelFor(preset: RangePreset, start: string, end: string, days: number): string {
+  switch (preset) {
+    case '7d':       return 'Últimos 7 días';
+    case '30d':      return 'Últimos 30 días';
+    case '90d':      return 'Últimos 90 días';
+    case 'campaign': return 'Total campaña';
+    case 'custom':
+    default:         return `${start} → ${end} · ${days}d`;
+  }
+}
+
+function resolveRange(
+  input: { from?: string; to?: string; preset?: string } | undefined,
+  timezone: string,
+  campaignStart: string,
+  campaignEnd: string | null,
+): DashboardRange {
+  const today = todayInTimezone(timezone);
+  const campaignEffectiveEnd = campaignEnd && campaignEnd < today ? campaignEnd : today;
+
+  const rawPreset = input?.preset;
+  let preset: RangePreset;
+  if (rawPreset === '7d' || rawPreset === '30d' || rawPreset === '90d' || rawPreset === 'campaign' || rawPreset === 'custom') {
+    preset = rawPreset;
+  } else if (isValidIsoDate(input?.from) || isValidIsoDate(input?.to)) {
+    preset = 'custom';
+  } else {
+    preset = '30d';
+  }
+
+  let end: string;
+  let start: string;
+
+  if (preset === 'custom') {
+    // User-specified bounds (either from / to or both). Anything missing
+    // falls back to today / 30d-ago as a safety net.
+    end = isValidIsoDate(input?.to) ? (input!.to as string) : today;
+    if (end > today) end = today;
+    if (isValidIsoDate(input?.from)) {
+      start = input!.from as string;
+    } else {
+      const endMs = new Date(`${end}T00:00:00Z`).getTime();
+      start = toYmd(new Date(endMs - 29 * 86_400_000));
+    }
+  } else if (preset === 'campaign') {
+    start = campaignStart;
+    end   = campaignEffectiveEnd;
+  } else {
+    end = today;
+    const days = preset === '7d' ? 7 : preset === '90d' ? 90 : 30;
+    const endMs = new Date(`${end}T00:00:00Z`).getTime();
+    start = toYmd(new Date(endMs - (days - 1) * 86_400_000));
+  }
+
+  if (start > end) start = end;
+  const days = diffDays(start, end);
+  return { start, end, preset, label: rangeLabelFor(preset, start, end, days), days };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRow = Record<string, any>;
 
 export async function loadDashboard(params: {
   organizerSlug: string;
   buSlug: string;
-  reportDate?: string;          // defaults to today
+  /**
+   * Report "corte" (anchor date). Defaults to today in the BU's timezone.
+   * If `range` is provided, its `end` takes precedence over this field.
+   */
+  reportDate?: string;
+  /**
+   * User-selected date range. All range-aware sections (KPIs, trend, ad
+   * sets, ad performance, funnel, tile central) will respect this window.
+   * Lifetime-scoped sections (progress, Total campaña tile, Health Score,
+   * Learning cards) remain fixed regardless of this input.
+   */
+  range?: { from?: string; to?: string; preset?: string };
 }): Promise<DashboardData> {
   const meta = supabaseAdminForSchema('meta_ops');
 
@@ -377,6 +495,20 @@ export async function loadDashboard(params: {
   const timezone = config.timezone ?? 'America/Lima';
   const reportDate = params.reportDate ?? todayInTimezone(timezone);
   const buId = bu.id as string;
+
+  // Resolve the user-selected date range. Defaults to "Últimos 30 días".
+  // Range applies to: KPIs, trend chart, tile central (range tile), ad sets,
+  // ad performance, funnel. Fixed (lifetime-scoped) sections: progress bar /
+  // Day N of D, Total campaña tile, Health Score, Learning cards (7d), Recent
+  // purchases, Alerts, Watch signals, Frequency snapshot.
+  const range = resolveRange(
+    params.range,
+    timezone,
+    config.campaign_window.starts_on,
+    config.campaign_window.ends_on ?? null,
+  );
+  const rangeStart = range.start;
+  const rangeEnd = range.end;
 
   // ---------- 2. price_tiers ----------
   const { data: tiers } = await meta
@@ -489,50 +621,80 @@ export async function loadDashboard(params: {
         .order('date', { ascending: true })
     : { data: [] as AnyRow[] };
 
-  // Lifetime totals from campaign-daily rows, scoped to the campaign window
-  // so they stay consistent with `totalPurchases` / `totalRevenue` further
-  // below. Using the declared window prevents pre-launch or future rows in
-  // the DB from polluting "so far" aggregates and keeps KPIs (CPA, Funnel,
-  // etc.) aligned with the revenue tiles.
+  // Totals: two parallel accumulators over campaign-daily rows.
+  //   • `totalMetrics`  — scoped to the BU's declared campaign_window. Drives
+  //     the "Total campaña" tile, Health Score (economics / creative / funnel),
+  //     and anything else that must stay lifetime-constant.
+  //   • `windowMetrics` — scoped to the user-selected range. Drives KPI grid,
+  //     trend chart, range revenue tile, funnel, and (downstream) ad sets /
+  //     ad performance insights.
+  // A single pass over campInsights fills both so we never fetch twice.
   const lifetimeWindowStart = config.campaign_window.starts_on;
   const lifetimeWindowEnd   = config.campaign_window.ends_on && config.campaign_window.ends_on < reportDate
     ? config.campaign_window.ends_on
     : reportDate;
-  const lifetime = {
+  const emptyMetrics = () => ({
     spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
     lp_views: 0, initiate_checkout: 0, purchases: 0, purchase_value: 0,
-  };
-  let reachMax = 0;
+    revenue_tier: 0,
+  });
+  const totalMetrics  = emptyMetrics();
+  const windowMetrics = emptyMetrics();
+  let totalReachMax = 0;
+  let windowReachMax = 0;
   for (const r of (campInsights ?? []) as AnyRow[]) {
     const d = (r.date as string) ?? '';
-    if (d < lifetimeWindowStart || d > lifetimeWindowEnd) continue;
-    lifetime.spend          += Number(r.spend) || 0;
-    lifetime.impressions    += Number(r.impressions) || 0;
-    lifetime.clicks         += Number(r.clicks) || 0;
-    lifetime.link_clicks    += Number(r.link_clicks) || 0;
-    lifetime.lp_views       += Number(r.landing_page_views) || 0;
-    lifetime.initiate_checkout += Number(r.initiate_checkout) || 0;
-    lifetime.purchases      += Number(r.purchases) || 0;
-    lifetime.purchase_value += Number(r.purchase_value) || 0;
-    // Fix A4: Total Reach lifetime = MAX(daily reach) across the window.
-    // Summing would triple-count users; picking the last-non-zero row was a
-    // stale proxy and tended to under-report. MAX approximates Ads Manager's
-    // "daily unique reach max" within the window, which is what operators
-    // compare against.
-    const reachDaily = Number(r.reach) || 0;
-    if (reachDaily > reachMax) reachMax = reachDaily;
+    const spend       = Number(r.spend) || 0;
+    const impressions = Number(r.impressions) || 0;
+    const reach       = Number(r.reach) || 0;
+    const clicks      = Number(r.clicks) || 0;
+    const linkClicks  = Number(r.link_clicks) || 0;
+    const lpViews     = Number(r.landing_page_views) || 0;
+    const ic          = Number(r.initiate_checkout) || 0;
+    const purchases   = Number(r.purchases) || 0;
+    const purchaseVal = Number(r.purchase_value) || 0;
+    const price       = priceForDate(d);
+    if (d >= lifetimeWindowStart && d <= lifetimeWindowEnd) {
+      totalMetrics.spend             += spend;
+      totalMetrics.impressions       += impressions;
+      totalMetrics.clicks            += clicks;
+      totalMetrics.link_clicks       += linkClicks;
+      totalMetrics.lp_views          += lpViews;
+      totalMetrics.initiate_checkout += ic;
+      totalMetrics.purchases         += purchases;
+      totalMetrics.purchase_value    += purchaseVal;
+      totalMetrics.revenue_tier      += purchases * price;
+      // Fix A4: Total Reach lifetime = MAX(daily reach) across the window.
+      // Summing would triple-count users; picking the last-non-zero row was a
+      // stale proxy and tended to under-report. MAX approximates Ads Manager's
+      // "daily unique reach max" within the window.
+      if (reach > totalReachMax) totalReachMax = reach;
+    }
+    if (d >= rangeStart && d <= rangeEnd) {
+      windowMetrics.spend             += spend;
+      windowMetrics.impressions       += impressions;
+      windowMetrics.clicks            += clicks;
+      windowMetrics.link_clicks       += linkClicks;
+      windowMetrics.lp_views          += lpViews;
+      windowMetrics.initiate_checkout += ic;
+      windowMetrics.purchases         += purchases;
+      windowMetrics.purchase_value    += purchaseVal;
+      windowMetrics.revenue_tier      += purchases * price;
+      if (reach > windowReachMax) windowReachMax = reach;
+    }
   }
-  lifetime.reach = reachMax;
+  totalMetrics.reach  = totalReachMax;
+  windowMetrics.reach = windowReachMax;
 
   // Fix #10: guard every Number(r.field) with || 0 so that NULLs from the
   // DB don't poison the charts with NaN.
-  // Fix A8: scope the trend chart to the declared campaign_window so pre-
-  // launch / post-end rows don't drag the chart (flat zero days before
-  // launch tricked operators into thinking CTR crashed).
+  // Trend chart follows the user-selected range. Falls back to the lifetime
+  // window only when the range is exactly the campaign ("Total campaña"
+  // preset), so the chart always matches the tiles the operator is reading.
   const trend: TrendPoint[] = ((campInsights ?? []) as AnyRow[])
     .filter(r => {
       const d = (r.date as string) ?? '';
-      return d >= lifetimeWindowStart && d <= lifetimeWindowEnd;
+      return d >= rangeStart && d <= rangeEnd;
     })
     .map(r => {
       const spend       = Number(r.spend) || 0;
@@ -599,6 +761,10 @@ export async function loadDashboard(params: {
         .select('entity_id, date, spend, impressions, reach, link_clicks, landing_page_views, purchases, purchase_value, frequency')
         .in('entity_id', entityIds)
         .order('date', { ascending: true });
+      // The ad-set roll-up (`sum`) respects the user range so the table
+      // matches the KPI grid and trend. Daily rows (`daily`) remain global
+      // because Learning cards always compute over a rolling 7d window and
+      // per-role frequency needs every sample to weight correctly.
       const sum = new Map<string, AdsetAgg>();
       const daily = new Map<string, AdsetDaily[]>();
       for (const r of (ins ?? []) as AnyRow[]) {
@@ -612,6 +778,12 @@ export async function loadDashboard(params: {
         const purchases   = Number(r.purchases) || 0;
         const purchaseVal = Number(r.purchase_value) || 0;
         const frequency   = Number(r.frequency) || 0;
+
+        const list = daily.get(id) ?? [];
+        list.push({ date, spend, purchases, impressions, link_clicks: linkClicks, frequency });
+        daily.set(id, list);
+
+        if (date < rangeStart || date > rangeEnd) continue;
 
         const acc = sum.get(id) ?? {
           spend: 0, impressions: 0, reach: 0, link_clicks: 0, lp_views: 0,
@@ -632,10 +804,6 @@ export async function loadDashboard(params: {
           acc.freq_samples += 1;
         }
         sum.set(id, acc);
-
-        const list = daily.get(id) ?? [];
-        list.push({ date, spend, purchases, impressions, link_clicks: linkClicks, frequency });
-        daily.set(id, list);
       }
       for (const [adsetId, entityId] of adsetEntityByAdsetId.entries()) {
         const s = sum.get(entityId);
@@ -658,25 +826,26 @@ export async function loadDashboard(params: {
   // (impressions-weighted avg of meta_insights.frequency restricted to the
   // 7d window). The previous implementation collapsed the 7d value to the
   // lifetime ratio, making `freq_daily_7d` and `freq_lifetime` identical.
-  // If a BU has no frequency signal at all, both values stay null.
+  // Lifetime is derived from the full `daily` series (unaffected by the
+  // user-selected range), so the KPI sub-label "Lifetime: X" stays stable
+  // no matter which date window the operator picks.
   const sevenAgoStr = toYmd(new Date(new Date(reportDate).getTime() - 6 * 86_400_000));
   const adsetFreq7dById = new Map<string, number | null>();
   const adsetFreqLifetimeById = new Map<string, number | null>();
   for (const [adsetId, daily] of adsetDailyByAdsetId.entries()) {
-    const agg = adsetInsightsById.get(adsetId);
-    if (agg && agg.freq_weighted_den > 0) {
-      adsetFreqLifetimeById.set(adsetId, agg.freq_weighted_num / agg.freq_weighted_den);
-    } else {
-      adsetFreqLifetimeById.set(adsetId, null);
-    }
-
+    let numLife = 0, denLife = 0;
     let num = 0, den = 0;
     for (const d of daily) {
-      if (d.date < sevenAgoStr || d.date > reportDate) continue;
-      if (d.impressions <= 0 || d.frequency <= 0) continue;
-      num += d.impressions * d.frequency;
-      den += d.impressions;
+      if (d.impressions > 0 && d.frequency > 0) {
+        numLife += d.impressions * d.frequency;
+        denLife += d.impressions;
+      }
+      if (d.date >= sevenAgoStr && d.date <= reportDate && d.impressions > 0 && d.frequency > 0) {
+        num += d.impressions * d.frequency;
+        den += d.impressions;
+      }
     }
+    adsetFreqLifetimeById.set(adsetId, denLife > 0 ? numLife / denLife : null);
     adsetFreq7dById.set(adsetId, den > 0 ? num / den : null);
   }
 
@@ -689,7 +858,7 @@ export async function loadDashboard(params: {
     return typeof override === 'number' ? override : kpi.breakeven_cpa;
   };
 
-  const ad_sets: AdSetRow[] = ((adsetRows ?? []) as AnyRow[]).map(s => {
+  const ad_setsUnsorted: AdSetRow[] = ((adsetRows ?? []) as AnyRow[]).map(s => {
     const m = adsetInsightsById.get(s.id as string);
     const spend = m?.spend ?? 0;
     const purchases = m?.purchases ?? 0;
@@ -722,6 +891,17 @@ export async function loadDashboard(params: {
       freq_daily_7d: adsetFreq7dById.get(s.id as string) ?? null,
       freq_lifetime: adsetFreqLifetimeById.get(s.id as string) ?? null,
     };
+  });
+
+  // Default order: ACTIVE first, everything else (PAUSED / INACTIVE / unknown)
+  // sunk to the bottom, both groups sorted by spend descending so the heaviest
+  // spenders surface first. Mirrors the `ad_performance` policy. The client
+  // table respects this ordering when no explicit sort is applied.
+  const ad_sets: AdSetRow[] = [...ad_setsUnsorted].sort((a, b) => {
+    const aActive = a.status === 'ACTIVE' ? 0 : 1;
+    const bActive = b.status === 'ACTIVE' ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    return b.spend - a.spend;
   });
 
   // ---------- 5. learning cards (real 7d window per adset) ----------
@@ -773,13 +953,30 @@ export async function loadDashboard(params: {
     const budgetLabel = s.daily_budget > 0 ? `$${Math.round(s.daily_budget)}/day` : '—';
     const note = `${budgetLabel} · BE CPA $${s.breakeven_cpa}${edit.recent ? ' · edit reciente (reset probable)' : ''}`;
 
-    const statusLabel = edit.recent
-      ? 'LEARNING (edit reset)'
-      : status === 'paused'
-      ? 'PAUSED'
-      : status === 'inactive'
-      ? 'INACTIVE'
-      : 'LEARNING (implícito)';
+    // Status precedence: hard delivery state (PAUSED/INACTIVE) wins over the
+    // edit-reset hint, otherwise pausing an ad set with a recent edit would
+    // still render as "LEARNING (edit reset)" — misleading the operator into
+    // thinking it's still spending and resetting learning. Winner overrides
+    // the edit-reset hint because breaking CPA is the meaningful signal even
+    // if the ad set was just tweaked.
+    let state: LearningPhaseCard['state'];
+    let statusLabel: string;
+    if (status === 'paused') {
+      state = 'paused';
+      statusLabel = 'PAUSED';
+    } else if (status === 'inactive') {
+      state = 'inactive';
+      statusLabel = 'INACTIVE';
+    } else if (early_winner) {
+      state = 'early_winner';
+      statusLabel = 'EARLY WINNER';
+    } else if (edit.recent) {
+      state = 'edit_reset';
+      statusLabel = 'LEARNING (edit reset)';
+    } else {
+      state = 'learning';
+      statusLabel = 'LEARNING (implícito)';
+    }
 
     return {
       adset_id: s.id,
@@ -799,6 +996,7 @@ export async function loadDashboard(params: {
       early_winner,
       note,
       status_label: statusLabel,
+      state,
     };
   });
 
@@ -849,8 +1047,25 @@ export async function loadDashboard(params: {
         : 'All';
       rows.push({ label: 'Demographics', value: `Age ${demo.age_min}-${demo.age_max} · Gender: ${gender}` });
     }
-    if (t.custom_audiences?.length) rows.push({ label: 'Custom Audiences', value: (t.custom_audiences as string[]).join(', ') });
-    if (t.excluded_custom_audiences?.length) rows.push({ label: 'Excluded', value: (t.excluded_custom_audiences as string[]).join(', ') });
+    // Audiences come from Meta as `{ id, name }` objects (not raw strings).
+    // We render the friendly `name` and fall back to `id` for any audience
+    // missing a name. Anything else becomes `<unknown>` so we never leak
+    // the literal "[object Object]" into the UI.
+    const fmtAudience = (a: unknown): string => {
+      if (typeof a === 'string') return a;
+      if (a && typeof a === 'object') {
+        const o = a as { name?: unknown; id?: unknown };
+        if (typeof o.name === 'string' && o.name.trim()) return o.name;
+        if (o.id != null) return String(o.id);
+      }
+      return '<unknown>';
+    };
+    if (Array.isArray(t.custom_audiences) && t.custom_audiences.length) {
+      rows.push({ label: 'Custom Audiences', value: (t.custom_audiences as unknown[]).map(fmtAudience).join(', ') });
+    }
+    if (Array.isArray(t.excluded_custom_audiences) && t.excluded_custom_audiences.length) {
+      rows.push({ label: 'Excluded', value: (t.excluded_custom_audiences as unknown[]).map(fmtAudience).join(', ') });
+    }
     if (t.advantage_plus_audience != null) rows.push({
       label: 'Audience Expansion',
       value: t.advantage_plus_audience
@@ -902,44 +1117,217 @@ export async function loadDashboard(params: {
   };
 
   // ---------- 9. Ad performance + matchups + frequency + alerts ----------
-  const { data: adPerfRaw } = await meta
-    .from('v_ad_performance')
-    .select('ad_id, ad_name, ad_set_id, manual_status, wave, format, spend, impressions, reach, clicks, link_clicks, landing_page_views, purchases, purchase_value, link_ctr, cpa')
-    .eq('business_unit_id', buId)
-    .order('spend', { ascending: false });
-  // map ad_set_id → role via adsetRows
-  const adsetRoleById = new Map<string, string>();
+  // map ad_set_id → role / name / daily_budget. Role is shown in the table;
+  // name populates the new "Ad Set" column; daily budget feeds the
+  // auto-classification thresholds below (e.g. an ad with spend ≥ 1× ad_set
+  // daily_budget and zero purchases enters "watch").
+  const adsetRoleById   = new Map<string, string>();
+  const adsetNameById   = new Map<string, string>();
+  const adsetBudgetById = new Map<string, number>();
   for (const s of (adsetRows ?? []) as AnyRow[]) {
     adsetRoleById.set(s.id as string, (s.role as string) ?? '—');
+    adsetNameById.set(s.id as string, (s.name as string) ?? '—');
+    adsetBudgetById.set(s.id as string, Number(s.daily_budget) || 0);
   }
-  const totalSpendAds = ((adPerfRaw ?? []) as AnyRow[]).reduce((s, r) => s + (Number(r.spend) || 0), 0);
-  const ad_performance: AdPerfRow[] = ((adPerfRaw ?? []) as AnyRow[]).map(r => {
-    const status = ((r.manual_status as string) ?? 'Testing');
-    let dot: AdPerfRow['status_dot'] = 'testing';
-    if (/^winner$/i.test(status))  dot = 'winner';
-    else if (/^watch$/i.test(status)) dot = 'watch';
-    else if (/^dead$/i.test(status))  dot = 'dead';
-    else if (/^active$/i.test(status)) dot = 'active';
-    const spend = Number(r.spend) || 0;
-    return {
-      id: r.ad_id as string,
-      name: r.ad_name as string,
-      adset_role: adsetRoleById.get(r.ad_set_id as string) ?? '—',
-      format: ((r.format as string) ?? 'IMG') as 'VID' | 'IMG',
-      wave: ((r.wave as string) ?? 'W1') as 'W1' | 'W2' | 'W3',
-      manual_status: status,
+
+  // Ad-level performance must respect the user range as well. The
+  // `v_ad_performance` view aggregates lifetime so we reconstruct the rows
+  // directly from `ads` + `meta_entities` + `meta_insights` filtered by
+  // [rangeStart, rangeEnd]. Ads with zero rows in the window still surface
+  // (with zeros) so operators can see an ad is paused / not delivering.
+  // NOTE: `meta_ops.ads.id` is text and is itself the Meta ad id (the table
+  // does not expose a separate `meta_id` column, unlike ad_sets / campaigns).
+  // We therefore project `id` and use it as both the row key and the join
+  // value against `meta_entities.meta_id` below.
+  const { data: adMeta } = await meta
+    .from('ads')
+    .select('id, name, ad_set_id, manual_status, wave, format, status, effective_status')
+    .eq('business_unit_id', buId);
+
+  const { data: adEntities } = await meta
+    .from('meta_entities')
+    .select('id, meta_id')
+    .eq('business_unit_id', buId)
+    .eq('entity_type', 'ad');
+  const adEntityMetaToId = new Map<string, string>();
+  const adEntityIds: string[] = [];
+  for (const e of (adEntities ?? []) as AnyRow[]) {
+    adEntityMetaToId.set(e.meta_id as string, e.id as string);
+    adEntityIds.push(e.id as string);
+  }
+
+  interface AdAgg {
+    spend: number;
+    impressions: number;
+    reach: number;
+    link_clicks: number;
+    lp_views: number;
+    purchases: number;
+    purchase_value: number;
+  }
+  const adAggByEntityId = new Map<string, AdAgg>();
+  if (adEntityIds.length) {
+    const { data: adInsRows } = await meta
+      .from('meta_insights')
+      .select('entity_id, date, spend, impressions, reach, link_clicks, landing_page_views, purchases, purchase_value')
+      .in('entity_id', adEntityIds)
+      .gte('date', rangeStart)
+      .lte('date', rangeEnd);
+    for (const r of (adInsRows ?? []) as AnyRow[]) {
+      const id = r.entity_id as string;
+      const acc = adAggByEntityId.get(id) ?? {
+        spend: 0, impressions: 0, reach: 0, link_clicks: 0, lp_views: 0,
+        purchases: 0, purchase_value: 0,
+      };
+      acc.spend       += Number(r.spend) || 0;
+      acc.impressions += Number(r.impressions) || 0;
+      const reach = Number(r.reach) || 0;
+      if (reach > acc.reach) acc.reach = reach;         // MAX daily reach
+      acc.link_clicks += Number(r.link_clicks) || 0;
+      acc.lp_views    += Number(r.landing_page_views) || 0;
+      acc.purchases   += Number(r.purchases) || 0;
+      acc.purchase_value += Number(r.purchase_value) || 0;
+      adAggByEntityId.set(id, acc);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Auto-classification: derive a status_dot from live metrics so the table
+  // is meaningful even when nobody has touched `manual_status`. The bootstrap
+  // seed leaves every ad as 'Testing', which made the column useless.
+  //
+  // Precedence:
+  //   1. Hard delivery state from Meta (PAUSED / DELETED) → 'dead'.
+  //   2. Explicit operator override (manual_status set to something other
+  //      than the bootstrap 'Testing') → respect it. This keeps an escape
+  //      hatch for humans without changing the schema.
+  //   3. Auto rules from spend / purchases / CPA vs the BU's breakeven_cpa,
+  //      kill_cpa and the ad set's daily_budget (used as a "delivery unit"
+  //      to decide when an ad has had a fair chance).
+  //
+  // Rules (evaluated top-down, first match wins):
+  //   • winner : purchases ≥ 3 AND cpa ≤ breakeven
+  //   • active : purchases ≥ 1 AND cpa ≤ kill_cpa
+  //   • dead   : (cpa > kill_cpa)  OR  (spend ≥ 3× daily_budget AND zero purchases)
+  //   • watch  : spend ≥ 1× daily_budget AND zero purchases (warming, no signal yet)
+  //   • testing: anything below those thresholds — typically too little spend
+  //              to judge.
+  // -----------------------------------------------------------------------
+  const beForRole = (role: string): number => {
+    const overrides = kpi.breakeven_cpa_by_role ?? {};
+    const r = role as keyof typeof overrides;
+    return overrides[r] ?? kpi.breakeven_cpa;
+  };
+  const PAUSED_RE = /^(PAUSED|ARCHIVED|DELETED|DISAPPROVED)$/i;
+
+  const classifyAd = (params: {
+    purchases: number;
+    spend: number;
+    cpa: number | null;
+    role: string;
+    adsetBudget: number;
+    effectiveStatus: string | null;
+    metaStatus: string | null;
+  }): AdPerfRow['status_dot'] => {
+    const { purchases, spend, cpa, role, adsetBudget, effectiveStatus, metaStatus } = params;
+    if (effectiveStatus && PAUSED_RE.test(effectiveStatus)) return 'dead';
+    if (metaStatus && PAUSED_RE.test(metaStatus))           return 'dead';
+    const be   = beForRole(role);
+    const kill = kpi.kill_cpa;
+    if (purchases >= 3 && cpa != null && cpa <= be)   return 'winner';
+    if (purchases >= 1 && cpa != null && cpa <= kill) return 'active';
+    if (cpa != null && cpa > kill)                    return 'dead';
+    if (adsetBudget > 0 && spend >= adsetBudget * 3 && purchases === 0) return 'dead';
+    if (adsetBudget > 0 && spend >= adsetBudget       && purchases === 0) return 'watch';
+    return 'testing';
+  };
+
+  // Map dot back to a human label so the badge text matches the colour.
+  const labelForDot: Record<AdPerfRow['status_dot'], string> = {
+    winner:  'Winner',
+    active:  'Active',
+    watch:   'Watch',
+    dead:    'Dead',
+    testing: 'Testing',
+  };
+
+  const adPerfRows: AdPerfRow[] = [];
+  for (const a of (adMeta ?? []) as AnyRow[]) {
+    // `ads.id` IS the Meta ad id, so we look up the entity row by it.
+    const entityId = adEntityMetaToId.get(a.id as string);
+    const agg = entityId ? adAggByEntityId.get(entityId) : undefined;
+    const spend       = agg?.spend ?? 0;
+    const impressions = agg?.impressions ?? 0;
+    const purchases   = agg?.purchases ?? 0;
+    const linkClicks  = agg?.link_clicks ?? 0;
+    const linkCtr     = impressions > 0 ? (linkClicks * 100) / impressions : 0;
+    const cpa         = purchases > 0 ? spend / purchases : null;
+    const role        = adsetRoleById.get(a.ad_set_id as string) ?? '—';
+    const adsetBudget = adsetBudgetById.get(a.ad_set_id as string) ?? 0;
+
+    // Auto-derived classification.
+    const autoDot = classifyAd({
+      purchases,
+      spend,
+      cpa,
+      role,
+      adsetBudget,
+      effectiveStatus: (a.effective_status as string | null) ?? null,
+      metaStatus:      (a.status as string | null)           ?? null,
+    });
+
+    // Operator override: only respected when manual_status is one of the
+    // recognised tokens AND not the bootstrap default 'Testing'. A literal
+    // 'Testing' value is treated as "no opinion" → fall back to auto.
+    const manualRaw  = ((a.manual_status as string) ?? '').trim();
+    const manualNorm = manualRaw.toLowerCase();
+    const overrideDot: AdPerfRow['status_dot'] | null =
+      manualNorm === 'winner' ? 'winner' :
+      manualNorm === 'active' ? 'active' :
+      manualNorm === 'watch'  ? 'watch'  :
+      manualNorm === 'dead'   ? 'dead'   :
+      null;
+    const dot   = overrideDot ?? autoDot;
+    const label = overrideDot
+      ? labelForDot[overrideDot]
+      : `${labelForDot[autoDot]} (auto)`;
+
+    adPerfRows.push({
+      id: a.id as string,
+      name: a.name as string,
+      adset_role: role,
+      adset_name: adsetNameById.get(a.ad_set_id as string) ?? '—',
+      format: ((a.format as string) ?? 'IMG') as 'VID' | 'IMG',
+      wave: ((a.wave as string) ?? 'W1') as 'W1' | 'W2' | 'W3',
+      manual_status: label,
       status_dot: dot,
       spend,
-      impressions: Number(r.impressions) || 0,
-      reach: Number(r.reach) || 0,
-      link_clicks: Number(r.link_clicks) || 0,
-      link_ctr: Number(r.link_ctr) || 0,
-      lp_views: Number(r.landing_page_views) || 0,
-      purchases: Number(r.purchases) || 0,
-      cpa: r.cpa != null ? Number(r.cpa) : null,
-      pct_of_budget: totalSpendAds > 0 ? (spend * 100) / totalSpendAds : 0,
-    };
+      impressions,
+      reach: agg?.reach ?? 0,
+      link_clicks: linkClicks,
+      link_ctr: linkCtr,
+      lp_views: agg?.lp_views ?? 0,
+      purchases,
+      cpa,
+      pct_of_budget: 0,   // filled below once we know total spend in range
+    });
+  }
+  const totalSpendAds = adPerfRows.reduce((s, r) => s + r.spend, 0);
+  for (const r of adPerfRows) {
+    r.pct_of_budget = totalSpendAds > 0 ? (r.spend * 100) / totalSpendAds : 0;
+  }
+  // Default order: active ads first (sorted by spend desc), then dead ads
+  // pushed to the bottom (also spend desc among themselves). This keeps the
+  // operator's eye on what's actually delivering without losing historical
+  // context. The client table respects this ordering when no explicit sort
+  // is applied.
+  adPerfRows.sort((a, b) => {
+    const aDead = a.status_dot === 'dead' ? 1 : 0;
+    const bDead = b.status_dot === 'dead' ? 1 : 0;
+    if (aDead !== bDead) return aDead - bDead;
+    return b.spend - a.spend;
   });
+  const ad_performance: AdPerfRow[] = adPerfRows;
 
   const { data: matchupRows } = await meta
     .from('ad_matchups')
@@ -1108,31 +1496,18 @@ export async function loadDashboard(params: {
   const todayRow = ((campInsights ?? []) as AnyRow[]).find(r => r.date === reportDate);
   const todayPurchases = Number(todayRow?.purchases ?? 0);
   const todayRevenue = todayPurchases * priceForDate(reportDate);
+  const todaySpend = Number(todayRow?.spend ?? 0);
 
-  const sevenAgo = toYmd(new Date(new Date(reportDate).getTime() - 6 * 86_400_000));
-  let last7Purchases = 0, last7Spend = 0, last7Revenue = 0;
-  for (const r of (campInsights ?? []) as AnyRow[]) {
-    if ((r.date as string) >= sevenAgo && (r.date as string) <= reportDate) {
-      last7Purchases += Number(r.purchases) || 0;
-      last7Spend += Number(r.spend) || 0;
-      last7Revenue += (Number(r.purchases) || 0) * priceForDate(r.date as string);
-    }
-  }
-  // Fix #9: totals are scoped to the campaign window declared on the BU
-  // config (starts_on..ends_on). We clamp ends_on to reportDate so future
-  // rows (if any leaked in) don't contaminate "so far" totals.
-  const windowStart = config.campaign_window.starts_on;
-  const windowEnd   = config.campaign_window.ends_on && config.campaign_window.ends_on < reportDate
-    ? config.campaign_window.ends_on
-    : reportDate;
-  let totalPurchases = 0, totalSpendCampaign = 0, totalRevenue = 0;
-  for (const r of (campInsights ?? []) as AnyRow[]) {
-    const d = r.date as string;
-    if (d < windowStart || d > windowEnd) continue;
-    totalPurchases += Number(r.purchases) || 0;
-    totalSpendCampaign += Number(r.spend) || 0;
-    totalRevenue += (Number(r.purchases) || 0) * priceForDate(d);
-  }
+  // Convenience aliases: the "range" tile + KPI grid read from windowMetrics.
+  const rangePurchases = windowMetrics.purchases;
+  const rangeSpend     = windowMetrics.spend;
+  const rangeRevenue   = windowMetrics.revenue_tier;
+
+  // Total campaña (lifetime-scoped, unaffected by the user range).
+  const totalPurchases       = totalMetrics.purchases;
+  const totalSpendCampaign   = totalMetrics.spend;
+  const totalRevenue         = totalMetrics.revenue_tier;
+
   const revenue_tiles: RevenueTile[] = [
     {
       label: `Hoy · ${reportDate}`, date_range: '', amount: todayRevenue,
@@ -1140,8 +1515,10 @@ export async function loadDashboard(params: {
       color: 'ok',
     },
     {
-      label: 'Últimos 7 días (rolling)', date_range: '', amount: last7Revenue,
-      sub: `${last7Purchases} compras · spend ${money(last7Spend)} · ROAS ${last7Spend > 0 ? (last7Revenue / last7Spend).toFixed(2) : '0'}x`,
+      label: range.label,
+      date_range: `${range.start} → ${range.end}`,
+      amount: rangeRevenue,
+      sub: `${rangePurchases} compras · spend ${money(rangeSpend)} · ROAS ${rangeSpend > 0 ? (rangeRevenue / rangeSpend).toFixed(2) : '0'}x`,
       color: 'accent',
     },
     {
@@ -1157,45 +1534,82 @@ export async function loadDashboard(params: {
       return `$${t.price} ${i === 0 ? 'hasta' : 'del'} ${range}${t.ends_on ? '–' + t.ends_on.slice(5) : ''}`;
     }).join(', ')}.`;
 
+  // ---------- Recent 5 days (per-day revenue tiles, mirrors HOY card) ----------
+  // Anchor = reportDate - 1 (yesterday) so the HOY tile above stays the sole
+  // "today" reference. Rows are lookup by date against the full campInsights
+  // set (not filtered by the user range) because these are context tiles.
+  const insightsByDate = new Map<string, AnyRow>();
+  for (const r of (campInsights ?? []) as AnyRow[]) {
+    insightsByDate.set(r.date as string, r);
+  }
+  const recent_daily_tiles: RevenueTile[] = [];
+  const reportMs = new Date(`${reportDate}T00:00:00Z`).getTime();
+  for (let i = 1; i <= 5; i += 1) {
+    const iso = toYmd(new Date(reportMs - i * 86_400_000));
+    const row = insightsByDate.get(iso);
+    const purchases = Number(row?.purchases ?? 0);
+    const spend     = Number(row?.spend ?? 0);
+    const price     = priceForDate(iso);
+    const revenue   = purchases * price;
+    const roas      = spend > 0 ? revenue / spend : 0;
+    recent_daily_tiles.push({
+      label: `${iso}`,
+      date_range: iso,
+      amount: revenue,
+      sub: `${purchases} compras × $${price} · spend ${money(spend)}${spend > 0 ? ` · ROAS ${roas.toFixed(2)}x` : ''}`,
+      color: 'ok',
+    });
+  }
+
   // ---------- KPI grid ----------
-  const cpa = totalPurchases > 0 ? lifetime.spend / totalPurchases : 0;
-  const cpc = lifetime.link_clicks > 0 ? lifetime.spend / lifetime.link_clicks : 0;
-  const cpm = lifetime.impressions > 0 ? (lifetime.spend * 1000) / lifetime.impressions : 0;
-  const linkCtrPct = lifetime.impressions > 0 ? (lifetime.link_clicks * 100) / lifetime.impressions : 0;
-  const clickToLp = lifetime.link_clicks > 0 ? (lifetime.lp_views * 100) / lifetime.link_clicks : 0;
+  // KPI cells read from `windowMetrics` so the grid reflects the range the
+  // user selected. Sub-labels that reference "today" still use the single
+  // `todayRow` because they are explicitly time-anchored.
+  const cpa        = windowMetrics.purchases > 0    ? windowMetrics.spend / windowMetrics.purchases   : 0;
+  const cpc        = windowMetrics.link_clicks > 0  ? windowMetrics.spend / windowMetrics.link_clicks : 0;
+  const cpm        = windowMetrics.impressions > 0  ? (windowMetrics.spend * 1000) / windowMetrics.impressions : 0;
+  const linkCtrPct = windowMetrics.impressions > 0  ? (windowMetrics.link_clicks * 100) / windowMetrics.impressions : 0;
+  const clickToLp  = windowMetrics.link_clicks > 0  ? (windowMetrics.lp_views * 100)  / windowMetrics.link_clicks : 0;
+  const roasEst    = windowMetrics.spend > 0        ? windowMetrics.revenue_tier / windowMetrics.spend : 0;
+  // Health-Score inputs (always lifetime-scoped — they describe the whole
+  // campaign, not the currently visible window).
+  const totalCpa          = totalMetrics.purchases > 0    ? totalMetrics.spend / totalMetrics.purchases : 0;
+  const totalLinkCtrPct   = totalMetrics.impressions > 0  ? (totalMetrics.link_clicks * 100) / totalMetrics.impressions : 0;
+  const totalClickToLp    = totalMetrics.link_clicks > 0  ? (totalMetrics.lp_views * 100) / totalMetrics.link_clicks : 0;
   // Fix #6 + #12: Meta does not expose rolling unique reach via daily
   // campaign insights; summing daily reach double-counts users across days.
-  // Use max(reach) in the 7d window as a conservative approximation
-  // ("reach pico 7d"). Any hardcoded fallback has been removed — a 0 means
-  // "no reach data in window" and the UI must render it as-is or "—".
-  const last7Reach = ((campInsights ?? []) as AnyRow[])
-    .filter(r => (r.date as string) >= sevenAgo && (r.date as string) <= reportDate)
-    .reduce((m, r) => Math.max(m, Number(r.reach) || 0), 0);
-  const roasEst = totalSpendCampaign > 0 ? totalRevenue / totalSpendCampaign : 0;
+  // We surface max(reach) within the user-selected range as "reach pico".
+  const rangeReach = windowMetrics.reach;
   const pacingTone = (n: number, warn: number, bad: number): KpiCell['tone'] => n <= warn ? 'ok' : n <= bad ? 'warn' : 'bad';
 
-  const todaySpend = Number(todayRow?.spend ?? 0);
+  // Short label used inside KPI sub-lines to hint at the active window.
+  const rangeShort =
+    range.preset === 'campaign' ? 'lifetime'
+    : range.preset === 'custom' ? `${range.days}d`
+    : range.preset;
 
   const kpis: KpiCell[] = [
     {
-      label: 'Total Spend', value: money(lifetime.spend), tone: 'neutral',
-      sub: `${money(todaySpend)} today`,
+      label: 'Total Spend', value: money(windowMetrics.spend), tone: 'neutral',
+      sub: `${money(todaySpend)} today · ${rangeShort}`,
     },
     {
       label: 'CPA (Purchase)', value: money(cpa), tone: cpa <= kpi.target_cpa ? 'ok' : cpa <= kpi.breakeven_cpa ? 'warn' : 'bad',
       sub: `Breakeven tier $${priceNow}: $${kpi.breakeven_cpa} | Kill: >$${kpi.kill_cpa}`,
     },
     {
-      label: 'Total Reach', value: num(lifetime.reach), tone: 'neutral',
+      label: `Reach (${rangeShort})`, value: num(rangeReach), tone: 'neutral',
       sub: ad_sets.map(s => `${s.role}: ${num(s.reach)}`).join(' · '),
     },
     {
-      label: 'Reach 7d', value: num(last7Reach), tone: 'neutral',
+      label: 'Reach 7d', value: num(((campInsights ?? []) as AnyRow[])
+        .filter(r => (r.date as string) >= sevenAgoStr && (r.date as string) <= reportDate)
+        .reduce((m, r) => Math.max(m, Number(r.reach) || 0), 0)), tone: 'neutral',
       sub: cusRow?.freq_daily_7d != null ? `Freq 7d (CUS): ${cusRow.freq_daily_7d.toFixed(2)}` : 'Freq 7d: —',
     },
     {
       label: 'ROAS (Est.)', value: `${roasEst.toFixed(1)}x`, tone: roasEst >= kpi.target_roas ? 'ok' : 'warn',
-      sub: `${totalPurchases}p blended @ ${money(totalRevenue / Math.max(1, totalPurchases))} = ${money(totalRevenue)}`,
+      sub: `${rangePurchases}p blended @ ${money(rangeRevenue / Math.max(1, rangePurchases))} = ${money(rangeRevenue)}`,
     },
     {
       label: 'Link CTR', value: pct(linkCtrPct, 2), tone: linkCtrPct >= config.link_ctr_target ? 'ok' : linkCtrPct >= config.link_ctr_warn ? 'warn' : 'bad',
@@ -1221,11 +1635,11 @@ export async function loadDashboard(params: {
       };
     })(),
     {
-      label: 'Purchases', value: String(totalPurchases), tone: 'ok',
-      sub: `${todayPurchases} today`,
+      label: 'Purchases', value: String(rangePurchases), tone: 'ok',
+      sub: `${todayPurchases} today · ${rangeShort}`,
     },
     {
-      label: 'LP Views', value: num(lifetime.lp_views), tone: 'neutral',
+      label: 'LP Views', value: num(windowMetrics.lp_views), tone: 'neutral',
       sub: `${clickToLp.toFixed(0)}% click-to-LP`,
     },
     {
@@ -1233,7 +1647,7 @@ export async function loadDashboard(params: {
       sub: `Target >${config.click_to_lp_target}%`,
     },
     {
-      label: 'Impressions', value: num(lifetime.impressions), tone: 'neutral',
+      label: 'Impressions', value: num(windowMetrics.impressions), tone: 'neutral',
       sub: `${num(Number(todayRow?.impressions ?? 0))} today`,
     },
     {
@@ -1243,11 +1657,11 @@ export async function loadDashboard(params: {
   ];
 
   const funnel_raw = [
-    { label: 'Impressions',   value: lifetime.impressions },
-    { label: 'Link Clicks',   value: lifetime.link_clicks },
-    { label: 'LP Views',      value: lifetime.lp_views },
-    { label: 'Init Checkout', value: lifetime.initiate_checkout },
-    { label: 'Purchase',      value: totalPurchases },
+    { label: 'Impressions',   value: windowMetrics.impressions },
+    { label: 'Link Clicks',   value: windowMetrics.link_clicks },
+    { label: 'LP Views',      value: windowMetrics.lp_views },
+    { label: 'Init Checkout', value: windowMetrics.initiate_checkout },
+    { label: 'Purchase',      value: windowMetrics.purchases },
   ];
   const funnel: FunnelStep[] = funnel_raw.map((s, i, arr) => {
     if (i === 0) return { ...s, conv_pct_from_prev: null, drop_pct_from_prev: null };
@@ -1268,27 +1682,28 @@ export async function loadDashboard(params: {
   // Economics (30%): CPA vs target / breakeven / kill. Piecewise-linear so
   // the dial degrades smoothly as CPA drifts above target. When we have no
   // purchases (cpa=0), we keep the slot at 50 (insufficient signal) rather
-  // than rewarding an absence of cost.
+  // than rewarding an absence of cost. Uses lifetime CPA so the score does
+  // not swing with the user-selected range.
   let economicsScore: number;
   let economicsSub: string;
-  if (totalPurchases === 0) {
+  if (totalMetrics.purchases === 0) {
     economicsScore = 50;
     economicsSub = 'no purchases yet';
-  } else if (cpa <= kpi.target_cpa) {
+  } else if (totalCpa <= kpi.target_cpa) {
     economicsScore = 100;
-    economicsSub = `CPA ${money(cpa)} ≤ target ${money(kpi.target_cpa)}`;
-  } else if (cpa <= kpi.breakeven_cpa) {
+    economicsSub = `CPA ${money(totalCpa)} ≤ target ${money(kpi.target_cpa)}`;
+  } else if (totalCpa <= kpi.breakeven_cpa) {
     // Interpolate 100 → 50 between target and breakeven.
     const span = Math.max(1, kpi.breakeven_cpa - kpi.target_cpa);
-    economicsScore = Math.round(100 - 50 * ((cpa - kpi.target_cpa) / span));
-    economicsSub = `CPA ${money(cpa)} ∈ (target ${money(kpi.target_cpa)}, BE ${money(kpi.breakeven_cpa)}]`;
-  } else if (cpa <= kpi.kill_cpa) {
+    economicsScore = Math.round(100 - 50 * ((totalCpa - kpi.target_cpa) / span));
+    economicsSub = `CPA ${money(totalCpa)} ∈ (target ${money(kpi.target_cpa)}, BE ${money(kpi.breakeven_cpa)}]`;
+  } else if (totalCpa <= kpi.kill_cpa) {
     const span = Math.max(1, kpi.kill_cpa - kpi.breakeven_cpa);
-    economicsScore = Math.round(50 - 50 * ((cpa - kpi.breakeven_cpa) / span));
-    economicsSub = `CPA ${money(cpa)} ∈ (BE ${money(kpi.breakeven_cpa)}, kill ${money(kpi.kill_cpa)}]`;
+    economicsScore = Math.round(50 - 50 * ((totalCpa - kpi.breakeven_cpa) / span));
+    economicsSub = `CPA ${money(totalCpa)} ∈ (BE ${money(kpi.breakeven_cpa)}, kill ${money(kpi.kill_cpa)}]`;
   } else {
     economicsScore = 0;
-    economicsSub = `CPA ${money(cpa)} > kill ${money(kpi.kill_cpa)}`;
+    economicsSub = `CPA ${money(totalCpa)} > kill ${money(kpi.kill_cpa)}`;
   }
   economicsScore = clamp(economicsScore);
 
@@ -1303,40 +1718,89 @@ export async function loadDashboard(params: {
   const signalScore = daysWithPurchases7d >= 5 ? 100 : daysWithPurchases7d >= 2 ? 50 : 0;
   const signalSub = `${daysWithPurchases7d}/7 days with purchases`;
 
-  // Creative (20%): link CTR vs configured target / warn.
+  // Creative (20%): link CTR vs configured target / warn. Lifetime-scoped so
+  // the dial doesn't move when the user picks a noisy short range.
   let creativeScore: number;
-  if (linkCtrPct >= config.link_ctr_target) creativeScore = 100;
-  else if (linkCtrPct >= config.link_ctr_warn) creativeScore = 50;
+  if (totalLinkCtrPct >= config.link_ctr_target) creativeScore = 100;
+  else if (totalLinkCtrPct >= config.link_ctr_warn) creativeScore = 50;
   else creativeScore = 0;
-  const creativeSub = `Link CTR ${linkCtrPct.toFixed(2)}% (target ${config.link_ctr_target}% / warn ${config.link_ctr_warn}%)`;
+  const creativeSub = `Link CTR ${totalLinkCtrPct.toFixed(2)}% (target ${config.link_ctr_target}% / warn ${config.link_ctr_warn}%)`;
 
   // Funnel (15%): click-to-LP vs target. Soft floor at 70% of target.
   let funnelScore: number;
-  if (clickToLp >= config.click_to_lp_target) funnelScore = 100;
-  else if (clickToLp >= config.click_to_lp_target * 0.7) funnelScore = 50;
+  if (totalClickToLp >= config.click_to_lp_target) funnelScore = 100;
+  else if (totalClickToLp >= config.click_to_lp_target * 0.7) funnelScore = 50;
   else funnelScore = 0;
-  const funnelSub = `Click→LP ${clickToLp.toFixed(1)}% (target ${config.click_to_lp_target}%)`;
+  const funnelSub = `Click→LP ${totalClickToLp.toFixed(1)}% (target ${config.click_to_lp_target}%)`;
 
-  // Pacing (15%): today's spend vs daily budget. Continuous around 1.0 so a
-  // campaign at 0.61x doesn't score identically to one at 1.29x. Outside
-  // [0.6, 1.3] the score drops linearly toward 0.
-  const pacingRatio = config.daily_budget > 0 ? todaySpend / config.daily_budget : 0;
+  // Pacing (15%): spend vs daily budget. Measures whether the campaign is
+  // actually consuming the allocated budget — a proxy for "Meta is delivering
+  // what we asked for and nothing is mis-paused".
+  //
+  // Two historical issues drove this logic:
+  //
+  //   1. At 02:00 AM in the BU's tz the day has barely started and Meta also
+  //      delays reporting by 1-3h, so `todaySpend` is near zero. The old
+  //      formula collapsed the score to 0 even though yesterday's pacing was
+  //      perfectly healthy.
+  //   2. `config.daily_budget` is a static number that drifts out of sync
+  //      when ad sets are paused (e.g. DI21 has $595 configured but only
+  //      $490 in active ad set budgets). That inflates the denominator and
+  //      under-scores pacing.
+  //
+  // Fixes:
+  //   • Prefer the real-time sum of ACTIVE ad sets as the denominator; fall
+  //     back to the configured number when none are active (or data is
+  //     missing). This mirrors operator reality.
+  //   • Before 06:00 local time, or between 06:00-12:00 when Meta still
+  //     hasn't reported anything, fall back to **yesterday** (the last full
+  //     day). After 12:00, normalise `todaySpend` by the fraction of the
+  //     day elapsed so "10:00 AM with ~42% of budget spent" scores near 100.
+  const activeAdsetBudget = ad_setsUnsorted
+    .filter(s => s.status === 'ACTIVE')
+    .reduce((sum, s) => sum + (s.daily_budget || 0), 0);
+  const pacingBudget = activeAdsetBudget > 0 ? activeAdsetBudget : config.daily_budget;
+
+  const yesterdayDate = toYmd(new Date(new Date(reportDate).getTime() - 86_400_000));
+  const yesterdayRow = ((campInsights ?? []) as AnyRow[]).find(r => r.date === yesterdayDate);
+  const yesterdaySpend = Number(yesterdayRow?.spend ?? 0);
+
+  const hourLocal = hourInTimezone(timezone);
+
   let pacingScore: number;
-  if (config.daily_budget <= 0) {
+  let pacingSub: string;
+  if (pacingBudget <= 0) {
     pacingScore = 50;
-  } else if (pacingRatio >= 0.6 && pacingRatio <= 1.3) {
-    // Inside the healthy band: peak at 1.0, mild penalty at edges.
-    const dist = Math.abs(pacingRatio - 1);
-    pacingScore = Math.round(100 - 30 * (dist / 0.3));
+    pacingSub = 'no daily budget set';
   } else {
-    // Outside the band: fall off to 0 over the same distance again.
-    const bandMiss = pacingRatio < 0.6 ? 0.6 - pacingRatio : pacingRatio - 1.3;
-    pacingScore = Math.round(clamp(50 - (bandMiss / 0.6) * 50));
+    let ratio: number;
+    let basis: string;
+    if (hourLocal < 6) {
+      // Too early for today's data to be meaningful. Use yesterday.
+      ratio = yesterdaySpend / pacingBudget;
+      basis = `yesterday ${money(yesterdaySpend)} / budget ${money(pacingBudget)}`;
+    } else if (hourLocal < 12 && todaySpend === 0) {
+      // Morning but Meta still hasn't reported for today → yesterday proxy.
+      ratio = yesterdaySpend / pacingBudget;
+      basis = `yesterday ${money(yesterdaySpend)} / budget ${money(pacingBudget)} (today not reported yet)`;
+    } else {
+      // Normalise today's spend by fraction of day elapsed, so 42% of budget
+      // spent at 10:00 AM (10/24 = 0.417) scores as "on pace" (~1.0).
+      const expectedSoFar = (pacingBudget * hourLocal) / 24;
+      ratio = expectedSoFar > 0 ? todaySpend / expectedSoFar : 0;
+      basis = `today ${money(todaySpend)} vs expected ${money(expectedSoFar)} at ${hourLocal.toFixed(1)}h`;
+    }
+
+    if (ratio >= 0.6 && ratio <= 1.3) {
+      const dist = Math.abs(ratio - 1);
+      pacingScore = Math.round(100 - 30 * (dist / 0.3));
+    } else {
+      const bandMiss = ratio < 0.6 ? 0.6 - ratio : ratio - 1.3;
+      pacingScore = Math.round(clamp(50 - (bandMiss / 0.6) * 50));
+    }
+    pacingScore = clamp(pacingScore);
+    pacingSub = `${(ratio * 100).toFixed(0)}% of expected · ${basis}`;
   }
-  pacingScore = clamp(pacingScore);
-  const pacingSub = config.daily_budget > 0
-    ? `${(pacingRatio * 100).toFixed(0)}% of daily budget`
-    : 'no daily budget set';
 
   const healthBreakdown: HealthBreakdown[] = [
     { label: 'Economics', score: economicsScore, tone: toneFromScore(economicsScore), weight: 30, sub: economicsSub },
@@ -1421,6 +1885,7 @@ export async function loadDashboard(params: {
     campaign_config,
     price_tiers,
     revenue_tiles,
+    recent_daily_tiles,
     revenue_footer,
     kpis,
     ad_sets,
@@ -1436,5 +1901,6 @@ export async function loadDashboard(params: {
     alerts,
     hypotheses,
     watch_signals,
+    range,
   };
 }

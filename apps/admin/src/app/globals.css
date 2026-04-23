@@ -94,6 +94,8 @@ body {
 .badge-yellow   { background: rgba(234,179,8,0.15);  color: var(--color-warning);  }
 .badge-red      { background: rgba(239,68,68,0.15);  color: var(--color-critical); }
 .badge-blue     { background: rgba(59,130,246,0.15); color: var(--color-accent);   }
+.badge-orange   { background: rgba(249,115,22,0.15); color: #f97316;               }
+.badge-gray     { background: rgba(148,163,184,0.15); color: #94a3b8;              }
 
 .date-label {
   font-size: 0.78rem;

@@ -5,8 +5,6 @@ export const dynamic = 'force-dynamic';
 
 import {
   loadDashboard,
-  type AdPerfRow,
-  type AdSetRow,
   type AlertItem,
   type DashboardData,
   type FrequencyScope,
@@ -15,18 +13,22 @@ import {
   type HypothesisItem,
   type KpiCell,
   type LearningPhaseCard,
-  type MatchupRow,
   type PriceTier,
-  type RecentPurchase,
   type RevenueTile,
   type TargetingBlock,
   type TrendPoint,
-  type WatchSignalItem,
 } from '@/lib/dashboard/dashboard-adapter';
 import { listBuOptions, type BuOption } from '@/lib/dashboard/bu-options';
 import { CtrCpmChart, SpendPurchasesChart } from '@/components/trends-chart';
 import { RefreshButton } from '@/components/refresh-button';
 import { BuSelector } from '@/components/bu-selector';
+import { DateRangeFilter } from '@/components/date-range-filter';
+import { ZoomableChart } from '@/components/zoomable-chart';
+import { AdPerformanceTable } from '@/components/ad-performance-table';
+import { AdSetTable } from '@/components/ad-set-table';
+import { RecentPurchasesTable } from '@/components/recent-purchases-table';
+import { MatchupsTable } from '@/components/matchups-table';
+import { WatchSignalsTable } from '@/components/watch-signals-table';
 
 // ---------------------------------------------------------------------------
 // Helpers & constants
@@ -101,14 +103,28 @@ function phaseLabel(
 
 export default async function DashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ organizer: string; bu: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { organizer, bu } = await params;
+  const sp = (await searchParams) ?? {};
+  const pickString = (v: string | string[] | undefined): string | undefined =>
+    Array.isArray(v) ? v[0] : v;
+  const rangeInput = {
+    from:   pickString(sp.from),
+    to:     pickString(sp.to),
+    preset: pickString(sp.preset),
+  };
 
   let data: DashboardData;
   try {
-    data = await loadDashboard({ organizerSlug: organizer, buSlug: bu });
+    data = await loadDashboard({
+      organizerSlug: organizer,
+      buSlug: bu,
+      range: rangeInput,
+    });
   } catch {
     notFound();
   }
@@ -127,26 +143,30 @@ export default async function DashboardPage({
       />
       <ProgressBar data={data} />
       <HealthAndConfig data={data} />
-      <PriceTierSchedule tiers={data.price_tiers} />
-      <RevenueSection tiles={data.revenue_tiles} footer={data.revenue_footer} />
+      <PriceAndRevenueSection
+        tiers={data.price_tiers}
+        tiles={data.revenue_tiles}
+        footer={data.revenue_footer}
+      />
+      <TrendsSection trend={data.trend} />
+      <RecentDailyRevenueSection tiles={data.recent_daily_tiles} />
       <KpisSection kpis={data.kpis} />
-      <AdSetTableSection rows={data.ad_sets} />
+      <AdSetTable rows={data.ad_sets} />
       <LearningPhaseSection cards={data.learning_cards} />
-      <RecentPurchasesSection rows={data.recent_purchases} />
+      <RecentPurchasesTable rows={data.recent_purchases} />
       <TargetingSection blocks={data.targeting_blocks} />
       <CusSaturationSection data={data} />
-      <TrendsSection trend={data.trend} />
       <FunnelSection steps={data.funnel} />
-      <AdPerformanceSection
+      <AdPerformanceTable
         rows={data.ad_performance}
         linkCtrTarget={data.bu.config.link_ctr_target}
         linkCtrWarn={data.bu.config.link_ctr_warn}
       />
-      <MatchupsSection rows={data.matchups} />
+      <MatchupsTable rows={data.matchups} />
       <FrequencySection scopes={data.frequency} />
       <AlertsSection alerts={data.alerts} />
       <HypothesesSection items={data.hypotheses} />
-      <WatchSignalsSection items={data.watch_signals} />
+      <WatchSignalsTable items={data.watch_signals} />
       <Footer reportDate={data.header.report_date} />
     </>
   );
@@ -199,6 +219,18 @@ function Header({
             Report: {header.report_date} · Day {header.day_index} of{' '}
             {header.total_days} · {header.adset_summary}
           </span>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              color: 'var(--color-text-secondary)',
+              padding: '2px 8px',
+              border: '1px solid var(--color-border)',
+              borderRadius: 4,
+            }}
+            title={`KPIs, trends, ad sets & funnel respetan este rango. Learning cards, Health Score y Total campaña se mantienen fijos.`}
+          >
+            Rango: {data.range.label} · {data.range.start} → {data.range.end} ({data.range.days}d)
+          </span>
           <span className="freshness">
             <span className="freshness-dot" /> Data pulled {header.freshness_utc}
           </span>
@@ -206,6 +238,12 @@ function Header({
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <BuSelector options={buOptions} currentPath={currentPath} />
+        <DateRangeFilter
+          currentPreset={data.range.preset}
+          currentStart={data.range.start}
+          currentEnd={data.range.end}
+          currentLabel={data.range.label}
+        />
         <RefreshButton organizerSlug={organizerSlug} buSlug={buSlug} />
         <span className={`badge ${statusClass}`}>{header.status_badge}</span>
         <span className={`badge ${healthClass}`}>{header.health_label}</span>
@@ -403,17 +441,62 @@ function CampaignConfigCard({
 // 4. Price tier schedule
 // ---------------------------------------------------------------------------
 
-function PriceTierSchedule({ tiers }: { tiers: PriceTier[] }) {
+/**
+ * Price tiers + revenue tiles share the same "pricing + money" mental model,
+ * so collapsing them into a single horizontal row (instead of two sections)
+ * saves ~160px of vertical real estate. Compact revenue tiles (1.25rem money,
+ * shrunk padding) sit on the same baseline as tier chips, separated by a
+ * vertical divider. Wraps on narrow viewports to avoid clipping.
+ */
+function PriceAndRevenueSection({
+  tiers,
+  tiles,
+  footer,
+}: {
+  tiers: PriceTier[];
+  tiles: RevenueTile[];
+  footer: string;
+}) {
   return (
     <div className="section">
+      <div className="section-title">Price Tier & Revenue</div>
       <div className="card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
-        <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 8 }}>
-          Price Tier Schedule
-        </p>
-        <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 16,
+            alignItems: 'stretch',
+            flexWrap: 'wrap',
+          }}
+        >
           {tiers.map((t, i) => (
             <TierAndArrow key={`${t.label}-${i}`} tier={t} isLast={i === tiers.length - 1} />
           ))}
+
+          <div
+            style={{
+              width: 1,
+              background: 'var(--color-border)',
+              alignSelf: 'stretch',
+              margin: '0 8px',
+            }}
+            aria-hidden="true"
+          />
+
+          {tiles.map((tile, i) => (
+            <RevenueTileView key={i} tile={tile} />
+          ))}
+        </div>
+        <div
+          style={{
+            marginTop: 12,
+            fontSize: '0.7rem',
+            color: 'var(--color-text-secondary)',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 10,
+          }}
+        >
+          {footer}
         </div>
       </div>
     </div>
@@ -432,24 +515,25 @@ function TierAndArrow({ tier, isLast }: { tier: PriceTier; isLast: boolean }) {
       <div
         style={{
           textAlign: 'center',
-          padding: '12px 20px',
+          padding: '10px 14px',
           background: 'var(--color-bg-hover)',
           borderRadius: 8,
           border: `2px solid ${borderColor}`,
+          minWidth: 96,
         }}
       >
-        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--color-text-secondary)', letterSpacing: '0.05em' }}>
           {tier.status.toUpperCase()}
         </div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 700, color }}>
+        <div style={{ fontSize: '1.25rem', fontWeight: 700, color, lineHeight: 1.15, marginTop: 2 }}>
           ${tier.price}
         </div>
-        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
           {formatTierDateRange(tier)}
         </div>
       </div>
       {!isLast && (
-        <div style={{ color: 'var(--color-text-secondary)' }}>→</div>
+        <div style={{ color: 'var(--color-text-secondary)', alignSelf: 'center' }}>→</div>
       )}
     </>
   );
@@ -471,46 +555,8 @@ function formatMonthDay(ymd: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Revenue
+// 5. Revenue tile (consumed by PriceAndRevenueSection)
 // ---------------------------------------------------------------------------
-
-function RevenueSection({
-  tiles,
-  footer,
-}: {
-  tiles: RevenueTile[];
-  footer: string;
-}) {
-  return (
-    <div className="section">
-      <div className="section-title">Revenue (priced por tier de precio del día)</div>
-      <div className="card">
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 16,
-          }}
-        >
-          {tiles.map((tile, i) => (
-            <RevenueTileView key={i} tile={tile} />
-          ))}
-        </div>
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: '0.7rem',
-            color: 'var(--color-text-secondary)',
-            borderTop: '1px solid var(--color-border)',
-            paddingTop: 10,
-          }}
-        >
-          {footer}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function RevenueTileView({ tile }: { tile: RevenueTile }) {
   const color =
@@ -522,15 +568,17 @@ function RevenueTileView({ tile }: { tile: RevenueTile }) {
   return (
     <div
       style={{
-        padding: 16,
+        padding: '10px 14px',
         background: 'var(--color-bg-hover)',
         borderRadius: 8,
-        borderLeft: `4px solid ${color}`,
+        borderLeft: `3px solid ${color}`,
+        minWidth: 150,
+        flex: '1 1 150px',
       }}
     >
       <div
         style={{
-          fontSize: '0.7rem',
+          fontSize: '0.62rem',
           color: 'var(--color-text-secondary)',
           textTransform: 'uppercase',
           letterSpacing: '0.05em',
@@ -538,17 +586,63 @@ function RevenueTileView({ tile }: { tile: RevenueTile }) {
       >
         {tile.label}
       </div>
-      <div style={{ fontSize: '2rem', fontWeight: 700, color, marginTop: 4 }}>
+      <div
+        style={{
+          fontSize: '1.25rem',
+          fontWeight: 700,
+          color,
+          marginTop: 2,
+          lineHeight: 1.15,
+        }}
+      >
         {fmtMoney2(tile.amount)}
       </div>
       <div
         style={{
-          fontSize: '0.75rem',
+          fontSize: '0.65rem',
           color: 'var(--color-text-secondary)',
-          marginTop: 4,
+          marginTop: 2,
         }}
       >
         {tile.sub}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 5b. Recent daily revenue (last 5 days, newest → oldest, left → right)
+// ---------------------------------------------------------------------------
+
+function RecentDailyRevenueSection({ tiles }: { tiles: RevenueTile[] }) {
+  if (!tiles || tiles.length === 0) return null;
+  return (
+    <div className="section">
+      <div className="section-title">Revenue Diario — últimos 5 días</div>
+      <div className="card">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: 12,
+          }}
+        >
+          {tiles.map((tile, i) => (
+            <RevenueTileView key={i} tile={tile} />
+          ))}
+        </div>
+        <div
+          style={{
+            marginTop: 10,
+            fontSize: '0.7rem',
+            color: 'var(--color-text-secondary)',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 8,
+          }}
+        >
+          De más reciente (izquierda) a más antiguo (derecha). Cada día se
+          valoriza al tier de precio vigente en esa fecha.
+        </div>
       </div>
     </div>
   );
@@ -588,138 +682,6 @@ function KpisSection({ kpis }: { kpis: KpiCell[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Ad Set Performance
-// ---------------------------------------------------------------------------
-
-function AdSetTableSection({ rows }: { rows: AdSetRow[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">Ad Set Performance</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Ad Set</th>
-              <th>Status</th>
-              <th>Budget</th>
-              <th>Spend</th>
-              <th>Purchases</th>
-              <th>CPA</th>
-              <th>BE CPA</th>
-              <th>Margin/sale</th>
-              <th>ROAS (Est.)</th>
-              <th>Link CTR</th>
-              <th>Reach</th>
-              <th>
-                Freq Daily
-                <br />
-                <span style={{ fontWeight: 400, fontSize: '0.65rem' }}>
-                  (7d avg · Lifetime)
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <AdSetRowView key={r.id} row={r} />
-            ))}
-          </tbody>
-        </table>
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: '0.7rem',
-            color: 'var(--color-text-secondary)',
-            borderTop: '1px solid var(--color-border)',
-            paddingTop: 8,
-          }}
-        >
-          Freq daily = avg 7d impressions-weighted (real signal). Lifetime =
-          acumulado desde launch. BE CPA tier actual = breakeven usado para
-          juzgar margen. CARTAB con &lt;$300 spend se considera en learning.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdSetRowView({ row }: { row: AdSetRow }) {
-  const statusBadge =
-    row.status === 'ACTIVE'
-      ? 'badge-green'
-      : row.status === 'PAUSED'
-      ? 'badge-yellow'
-      : 'badge-red';
-
-  const cpaColor =
-    row.cpa == null
-      ? 'var(--color-text-secondary)'
-      : row.cpa <= row.breakeven_cpa
-      ? 'var(--color-success)'
-      : 'var(--color-warning)';
-
-  const marginColor =
-    row.margin_per_sale == null
-      ? 'var(--color-text-secondary)'
-      : row.margin_per_sale >= 0
-      ? 'var(--color-success)'
-      : 'var(--color-critical)';
-
-  const roasValue = row.roas ?? 0;
-  const roasColor =
-    row.roas == null
-      ? 'var(--color-text-secondary)'
-      : roasValue >= row.roas_target
-      ? 'var(--color-success)'
-      : 'var(--color-warning)';
-
-  const freqWatchColor =
-    row.freq_daily_7d == null || row.freq_daily_7d < 3
-      ? 'var(--color-success)'
-      : 'var(--color-warning)';
-
-  return (
-    <tr>
-      <td>
-        <strong>{row.role}</strong>{' '}
-        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
-          {row.name_subtitle}
-        </span>
-      </td>
-      <td>
-        <span className={`badge ${statusBadge}`}>{row.status}</span>
-      </td>
-      <td>${row.daily_budget}/day</td>
-      <td>${row.spend.toFixed(2)}</td>
-      <td>{row.purchases}</td>
-      <td style={{ color: cpaColor }}>
-        {row.cpa == null ? '—' : fmtMoney2(row.cpa)}
-      </td>
-      <td style={{ color: 'var(--color-text-secondary)' }}>
-        ${row.breakeven_cpa}
-      </td>
-      <td style={{ color: marginColor }}>
-        {row.margin_per_sale == null
-          ? '—'
-          : `${row.margin_per_sale >= 0 ? '+' : ''}${fmtMoney2(row.margin_per_sale)}`}
-      </td>
-      <td style={{ color: roasColor }}>{roasValue.toFixed(1)}x</td>
-      <td>{fmtPct(row.link_ctr, 2)}</td>
-      <td>{fmtInt(row.reach)}</td>
-      <td>
-        <strong style={{ color: freqWatchColor }}>
-          {row.freq_daily_7d == null ? '—' : row.freq_daily_7d.toFixed(2)}
-        </strong>{' '}
-        ·{' '}
-        <span style={{ color: 'var(--color-text-secondary)' }}>
-          {row.freq_lifetime == null ? '—' : row.freq_lifetime.toFixed(2)}
-        </span>
-      </td>
-    </tr>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // 8. Learning phase status
 // ---------------------------------------------------------------------------
 
@@ -754,26 +716,65 @@ function LearningPhaseSection({ cards }: { cards: LearningPhaseCard[] }) {
           padding: '10px 14px',
           fontSize: '0.7rem',
           color: 'var(--color-text-secondary)',
+          display: 'grid',
+          gap: 8,
         }}
       >
-        Meta exige 50 eventos de conversión / 7d para salir de learning. Si un
-        adset está en LEARNING LIMITED explícito = hay un problema
-        (budget/señal/audience). Edits significativos reinician learning (regla
-        1-edit-por-24h para conservar ciclo). Signals: <code>learning_stage_info</code>{' '}
-        + purchases 7d + <code>updated_time</code>.
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <span className="badge badge-green">EARLY WINNER</span>
+          <span style={{ lineHeight: '22px' }}>≥5 compras 7d · CPA ≤ breakeven</span>
+          <span className="badge badge-yellow">LEARNING</span>
+          <span style={{ lineHeight: '22px' }}>delivering, &lt;50 compras 7d</span>
+          <span className="badge badge-orange">EDIT RESET</span>
+          <span style={{ lineHeight: '22px' }}>edit &lt;24h · probable reset</span>
+          <span className="badge badge-gray">PAUSED</span>
+          <span style={{ lineHeight: '22px' }}>no delivering por decisión</span>
+          <span className="badge badge-red">INACTIVE</span>
+          <span style={{ lineHeight: '22px' }}>ACTIVE en Meta pero sin spend 7d</span>
+        </div>
+        <div>
+          Meta exige 50 eventos de conversión / 7d para salir de learning. Si un
+          adset está en LEARNING LIMITED explícito = hay un problema
+          (budget/señal/audience). Edits significativos reinician learning (regla
+          1-edit-por-24h para conservar ciclo). Signals:{' '}
+          <code>learning_stage_info</code> + purchases 7d +{' '}
+          <code>updated_time</code>.
+        </div>
       </div>
     </div>
   );
 }
 
+// Maps each learning state to its visual theme. Keeping it as a lookup
+// table (vs. branching inline) makes the legend easy to read and the
+// design trivially extensible if we add more states later.
+const LEARNING_STATE_STYLE: Record<
+  LearningPhaseCard['state'],
+  { badge: string; accent: string; fill: string; dim: boolean }
+> = {
+  paused:       { badge: 'badge-gray',    accent: 'var(--color-text-secondary)', fill: 'var(--color-text-secondary)', dim: true  },
+  inactive:     { badge: 'badge-red',     accent: 'var(--color-critical)',       fill: 'var(--color-critical)',       dim: true  },
+  early_winner: { badge: 'badge-green',   accent: 'var(--color-success)',        fill: 'var(--color-success)',        dim: false },
+  edit_reset:   { badge: 'badge-orange',  accent: '#f97316',                     fill: '#f97316',                     dim: false },
+  learning:     { badge: 'badge-yellow',  accent: 'var(--color-warning)',        fill: 'var(--color-warning)',        dim: false },
+};
+
 function LearningCard({ card }: { card: LearningPhaseCard }) {
   const roleColor = ROLE_COLOR[card.role] ?? 'var(--color-text-secondary)';
+  const theme = LEARNING_STATE_STYLE[card.state];
   const pct = Math.min(100, Math.max(0, card.progress_pct));
   const etaLine = card.eta_days != null && card.eta_date
     ? `Gap ${card.gap} compras · ~${card.eta_days}d al ritmo actual (${(card.purchases_7d / 7).toFixed(1)}/d) → sale ~${card.eta_date}`
     : `Gap ${card.gap} compras · sin compras 7d → timeline no calculable`;
   return (
-    <div className="card" style={{ borderTop: `3px solid ${roleColor}` }}>
+    <div
+      className="card"
+      style={{
+        borderTop: `3px solid ${roleColor}`,
+        borderLeft: `3px solid ${theme.accent}`,
+        opacity: theme.dim ? 0.72 : 1,
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -791,7 +792,7 @@ function LearningCard({ card }: { card: LearningPhaseCard }) {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <span className="badge badge-yellow">{card.status_label}</span>
+          <span className={`badge ${theme.badge}`}>{card.status_label}</span>
         </div>
       </div>
       <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginBottom: 6 }}>
@@ -800,7 +801,7 @@ function LearningCard({ card }: { card: LearningPhaseCard }) {
       <div className="pacing-bar">
         <div
           className="pacing-fill"
-          style={{ width: `${pct.toFixed(1)}%`, background: 'var(--color-warning)' }}
+          style={{ width: `${pct.toFixed(1)}%`, background: theme.fill }}
         />
       </div>
       <div
@@ -855,91 +856,6 @@ function LearningCard({ card }: { card: LearningPhaseCard }) {
         {card.note}
       </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 9. Recent purchases
-// ---------------------------------------------------------------------------
-
-function RecentPurchasesSection({ rows }: { rows: RecentPurchase[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">Últimas 10 Compras (incluye hoy)</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <div
-          style={{
-            fontSize: '0.75rem',
-            color: 'var(--color-text-secondary)',
-            marginBottom: 12,
-          }}
-        >
-          Meta API no expone eventos de compra individuales. Esta tabla muestra
-          las combinaciones ad × día con compras ordenadas por fecha
-          descendente (granularidad máxima disponible). Incluye compras del día
-          de hoy.
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Compras</th>
-              <th>Ad Set</th>
-              <th>Ad</th>
-              <th>Temperatura</th>
-              <th>Spend día</th>
-              <th>CPA día</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <RecentPurchaseRow key={i} row={r} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function RecentPurchaseRow({ row }: { row: RecentPurchase }) {
-  const roleColor = ROLE_COLOR[row.adset_role] ?? 'var(--color-text-secondary)';
-  const cpa = row.cpa_day;
-  const cpaColor =
-    cpa == null
-      ? 'var(--color-text-secondary)'
-      : cpa <= row.cpa_target
-      ? 'var(--color-success)'
-      : cpa <= row.cpa_breakeven
-      ? 'var(--color-warning)'
-      : 'var(--color-critical)';
-  return (
-    <tr>
-      <td style={{ whiteSpace: 'nowrap' }}>{row.date}</td>
-      <td style={{ fontWeight: 600 }}>{row.purchases}</td>
-      <td>
-        <span
-          style={{
-            fontSize: '0.7rem',
-            padding: '2px 6px',
-            borderRadius: 4,
-            border: `1px solid ${roleColor}`,
-            color: roleColor,
-            fontWeight: 700,
-          }}
-        >
-          {row.adset_role}
-        </span>
-      </td>
-      <td style={{ fontSize: '0.8rem' }}>{row.ad_name}</td>
-      <td style={{ fontSize: '0.7rem', color: roleColor, fontWeight: 600 }}>
-        {row.temperature_label}
-      </td>
-      <td>${row.spend_day.toFixed(2)}</td>
-      <td style={{ color: cpaColor }}>
-        {cpa == null ? '—' : fmtMoney2(cpa)}
-      </td>
-    </tr>
   );
 }
 
@@ -1117,7 +1033,9 @@ function TrendsSection({ trend }: { trend: TrendPoint[] }) {
             Spend + Purchases
           </p>
           <div className="chart-container">
-            <SpendPurchasesChart trend={trend} />
+            <ZoomableChart title="Spend + Purchases" subtitle="Trend daily">
+              <SpendPurchasesChart trend={trend} />
+            </ZoomableChart>
           </div>
         </div>
         <div className="card">
@@ -1125,7 +1043,9 @@ function TrendsSection({ trend }: { trend: TrendPoint[] }) {
             CTR + CPM
           </p>
           <div className="chart-container">
-            <CtrCpmChart trend={trend} />
+            <ZoomableChart title="CTR + CPM" subtitle="Trend daily">
+              <CtrCpmChart trend={trend} />
+            </ZoomableChart>
           </div>
         </div>
       </div>
@@ -1148,11 +1068,17 @@ function FunnelSection({ steps }: { steps: FunnelStep[] }) {
       <div className="card">
         <div className="funnel">
           {steps.map((step, i) => {
+            // Funnel magnitudes usually span 3-4 orders of magnitude (661k
+            // impressions → 144 purchases). A linear scale against the top
+            // of funnel collapses every downstream stage to <2% width, which
+            // visually tells you nothing. A square-root scale preserves the
+            // decreasing order while keeping every bar legibly sized, so the
+            // user can actually compare step-to-step delivery at a glance.
             const widthPct =
               i === 0
                 ? 100
-                : firstValue > 0
-                ? Math.max(5, (step.value / firstValue) * 100)
+                : firstValue > 0 && step.value > 0
+                ? Math.max(6, Math.sqrt(step.value / firstValue) * 100)
                 : 0;
             const opacity = 1 - (i * 0.6) / Math.max(1, steps.length - 1);
             const showDrop =
@@ -1205,179 +1131,23 @@ function FunnelSection({ steps }: { steps: FunnelStep[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 14. Ad Performance
+// 14. Ad Performance → moved to `@/components/ad-performance-table` (client
+// component with per-column sorting). The server page only renders the
+// wrapper via <AdPerformanceTable ... /> at the top of this file.
 // ---------------------------------------------------------------------------
-
-function AdPerformanceSection({
-  rows,
-  linkCtrTarget,
-  linkCtrWarn,
-}: {
-  rows: AdPerfRow[];
-  linkCtrTarget: number;
-  linkCtrWarn: number;
-}) {
-  return (
-    <div className="section">
-      <div className="section-title">Ad Performance ({rows.length} ads)</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Ad</th>
-              <th>Spend</th>
-              <th>Imp</th>
-              <th>Reach</th>
-              <th>Link Clicks</th>
-              <th>Link CTR</th>
-              <th>LP Views</th>
-              <th>Purchases</th>
-              <th>CPA</th>
-              <th>%Budget</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <AdPerfRowView
-                key={r.id}
-                row={r}
-                linkCtrTarget={linkCtrTarget}
-                linkCtrWarn={linkCtrWarn}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function AdPerfRowView({
-  row,
-  linkCtrTarget,
-  linkCtrWarn,
-}: {
-  row: AdPerfRow;
-  linkCtrTarget: number;
-  linkCtrWarn: number;
-}) {
-  const ctrColor =
-    row.link_ctr >= linkCtrTarget
-      ? 'var(--color-success)'
-      : row.link_ctr >= linkCtrWarn
-      ? 'var(--color-warning)'
-      : 'var(--color-critical)';
-
-  const statusColor =
-    row.status_dot === 'winner'
-      ? 'var(--color-success)'
-      : row.status_dot === 'watch'
-      ? 'var(--color-text-secondary)'
-      : row.status_dot === 'dead'
-      ? 'var(--color-text-secondary)'
-      : 'var(--color-accent)';
-
-  const waveBorder =
-    row.wave === 'W1'
-      ? '1px solid var(--color-text-secondary)'
-      : '1px solid var(--color-accent)';
-  const waveColor =
-    row.wave === 'W1' ? 'var(--color-text-secondary)' : 'var(--color-accent)';
-
-  return (
-    <tr>
-      <td>
-        <span className={`status-dot status-${row.status_dot}`} />
-        <span
-          style={{
-            fontSize: '0.65rem',
-            padding: '1px 4px',
-            borderRadius: 3,
-            background: 'var(--color-bg-hover)',
-            marginRight: 4,
-          }}
-        >
-          {row.format}
-        </span>
-        <span
-          style={{
-            fontSize: '0.6rem',
-            padding: '1px 3px',
-            borderRadius: 3,
-            border: waveBorder,
-            color: waveColor,
-            marginRight: 4,
-          }}
-        >
-          {row.wave}
-        </span>
-        {row.name}{' '}
-        <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.7rem' }}>
-          ({row.adset_role})
-        </span>
-      </td>
-      <td>${row.spend.toFixed(2)}</td>
-      <td>{fmtInt(row.impressions)}</td>
-      <td>{fmtInt(row.reach)}</td>
-      <td>{fmtInt(row.link_clicks)}</td>
-      <td style={{ color: ctrColor }}>{fmtPct(row.link_ctr, 2)}</td>
-      <td>{fmtInt(row.lp_views)}</td>
-      <td>{row.purchases}</td>
-      <td>{row.cpa == null ? '—' : fmtMoney2(row.cpa)}</td>
-      <td>{fmtPct(row.pct_of_budget, 1)}</td>
-      <td>
-        <span style={{ fontSize: '0.75rem', color: statusColor }}>
-          {row.manual_status}
-        </span>
-      </td>
-    </tr>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 15. Matchups
-// ---------------------------------------------------------------------------
-
-function MatchupsSection({ rows }: { rows: MatchupRow[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">Format Test: Video vs Static</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Matchup</th>
-              <th>Video CTR</th>
-              <th>Static CTR</th>
-              <th>Video Purchases</th>
-              <th>Static Purchases</th>
-              <th>Early Winner</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i}>
-                <td>{r.label}</td>
-                <td>{fmtPct(r.video_ctr, 2)}</td>
-                <td>{fmtPct(r.static_ctr, 2)}</td>
-                <td>{r.video_purchases}</td>
-                <td>{r.static_purchases}</td>
-                <td>{r.early_winner}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // 16. Frequency distribution
 // ---------------------------------------------------------------------------
 
 function FrequencySection({ scopes }: { scopes: FrequencyScope[] }) {
+  const bars = (
+    <div>
+      {scopes.map(scope => (
+        <FrequencyBar key={scope.scope} scope={scope} />
+      ))}
+    </div>
+  );
   return (
     <div className="section">
       <div className="section-title">Frequency Distribution (last 7d)</div>
@@ -1393,9 +1163,12 @@ function FrequencySection({ scopes }: { scopes: FrequencyScope[] }) {
           mayoría en 1-3. Zona de fatigue: reach acumulado en 6+ impressions
           supera ~15-25%.
         </div>
-        {scopes.map(scope => (
-          <FrequencyBar key={scope.scope} scope={scope} />
-        ))}
+        <ZoomableChart
+          title="Frequency Distribution"
+          subtitle="Last 7d · click para ampliar"
+        >
+          {bars}
+        </ZoomableChart>
         <div style={{ overflowX: 'auto', marginTop: 18 }}>
           <table>
             <thead>
@@ -1568,65 +1341,6 @@ function HypothesesSection({ items }: { items: HypothesisItem[] }) {
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 19. Watch signals
-// ---------------------------------------------------------------------------
-
-function WatchSignalsSection({ items }: { items: WatchSignalItem[] }) {
-  return (
-    <div className="section">
-      <div className="section-title">What to Watch Next</div>
-      <div className="card" style={{ overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Signal</th>
-              <th>Threshold</th>
-              <th>Current</th>
-              <th>Status</th>
-              <th>Action if Breached</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((sig, i) => {
-              const badgeClass =
-                sig.status === 'ok'
-                  ? 'badge-green'
-                  : sig.status === 'watch'
-                  ? 'badge-yellow'
-                  : 'badge-red';
-              const badgeLabel =
-                sig.status === 'ok'
-                  ? 'OK'
-                  : sig.status === 'watch'
-                  ? 'WATCH'
-                  : 'BREACH';
-              return (
-                <tr key={i}>
-                  <td>{sig.label}</td>
-                  <td>{sig.threshold}</td>
-                  <td>{sig.current}</td>
-                  <td>
-                    <span className={`badge ${badgeClass}`}>{badgeLabel}</span>
-                  </td>
-                  <td
-                    style={{
-                      fontSize: '0.8rem',
-                      color: 'var(--color-text-secondary)',
-                    }}
-                  >
-                    {sig.action}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   );
