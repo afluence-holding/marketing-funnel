@@ -45,6 +45,12 @@ export interface BuConfig {
   link_ctr_warn: number;
   cpm_threshold: number;
   click_to_lp_target: number;
+  /**
+   * Explicit Meta campaign id to pin the dashboard to a specific campaign
+   * entity for this BU. When present, skips the spend-based fallback and
+   * guarantees operators don't accidentally see stats from a test campaign.
+   */
+  campaign_meta_id?: string;
 }
 
 export interface KpiTargets {
@@ -55,6 +61,12 @@ export interface KpiTargets {
   revenue_per_conv: number;
   target_roas: number;
   target_total_conversions: number;
+  /**
+   * Optional per-role breakeven overrides. Cart-abandon (CARTAB) ships at a
+   * tighter BE because its audience is post-purchase intent; we want the UI
+   * to reflect this without baking role-specific literals in the renderer.
+   */
+  breakeven_cpa_by_role?: Partial<Record<'CUS' | 'ASC' | 'RMK' | 'CARTAB' | 'INT', number>>;
 }
 
 export interface PriceTier {
@@ -84,9 +96,10 @@ export interface AdSetRow {
   spend: number;
   purchases: number;
   cpa: number | null;
-  breakeven_cpa: number;
+  breakeven_cpa: number;             // effective BE for this role (override-aware)
   margin_per_sale: number | null;    // BE_CPA - CPA (null when no purchases)
   roas: number | null;               // revenue_tier / spend (tier-valued revenue)
+  roas_target: number;               // target ROAS from kpi_targets (for UI chip)
   link_ctr: number;
   reach: number;
   freq_daily_7d: number | null;      // avg daily freq (7d); null when no freq data
@@ -121,6 +134,9 @@ export interface RecentPurchase {
   temperature_label: string;
   spend_day: number;
   cpa_day: number | null;
+  cpa_target: number;
+  cpa_breakeven: number;
+  cpa_kill: number;
 }
 
 export interface TargetingBlock {
@@ -261,7 +277,8 @@ export interface DashboardData {
     total_days: number;
     spend_so_far: number;
     total_budget: number;
-    progress_pct: number;
+    progress_pct: number;                // by day (matches blueprint 15/19 = 78.9%)
+    progress_pct_budget: number;         // by spend vs total_budget (side metric)
     current_phase_key: string;           // scaling
     phases: BuConfig['phases'];
   };
@@ -386,18 +403,82 @@ export async function loadDashboard(params: {
   };
 
   // ---------- 3. Campaign entity + daily trend ----------
-  // Fix #8: multi-campaign defensive — take most recently created campaign
-  // entity for the BU. If operators later create a v2 campaign, the dashboard
-  // keeps pointing at the newest one instead of throwing on maybeSingle().
-  // Trade-off: older campaign rows go ignored; acceptable for this dashboard.
-  const { data: campEntity } = await meta
-    .from('meta_entities')
-    .select('id, meta_id, name')
-    .eq('business_unit_id', buId)
-    .eq('entity_type', 'campaign')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Fix C1: resolve the campaign to render in this order:
+  //   1) `config.campaign_meta_id` pinning (explicit override, single source
+  //      of truth when operators want to lock a campaign for the BU).
+  //   2) Otherwise, among all campaigns for this BU, pick the one with the
+  //      highest lifetime `spend` sum in meta_insights. This beats the old
+  //      "most recent" heuristic, which would latch onto empty test campaigns
+  //      as soon as they were created.
+  //   3) If nothing has spend (or only one candidate), fall back to the most
+  //      recent by created_at to preserve prior behaviour for fresh BUs.
+  let campEntity: { id: string; meta_id: string; name: string } | null = null;
+  if (config.campaign_meta_id) {
+    const { data: pinned } = await meta
+      .from('meta_entities')
+      .select('id, meta_id, name')
+      .eq('business_unit_id', buId)
+      .eq('entity_type', 'campaign')
+      .eq('meta_id', config.campaign_meta_id)
+      .maybeSingle();
+    if (pinned) {
+      campEntity = pinned as { id: string; meta_id: string; name: string };
+      console.info(
+        `[dashboard] campaign resolved via config.campaign_meta_id=${config.campaign_meta_id} (${campEntity.name})`,
+      );
+    } else {
+      console.warn(
+        `[dashboard] campaign_meta_id=${config.campaign_meta_id} not found in meta_entities for BU ${buId}; falling back to spend heuristic`,
+      );
+    }
+  }
+
+  if (!campEntity) {
+    const { data: candidates } = await meta
+      .from('meta_entities')
+      .select('id, meta_id, name, created_at')
+      .eq('business_unit_id', buId)
+      .eq('entity_type', 'campaign')
+      .order('created_at', { ascending: false });
+    const candList = (candidates ?? []) as AnyRow[];
+    if (candList.length === 1) {
+      campEntity = {
+        id: candList[0].id as string,
+        meta_id: candList[0].meta_id as string,
+        name: candList[0].name as string,
+      };
+      console.info(`[dashboard] campaign resolved (sole candidate): ${campEntity.name}`);
+    } else if (candList.length > 1) {
+      const candidateIds = candList.map(c => c.id as string);
+      const { data: spendRows } = await meta
+        .from('meta_insights')
+        .select('entity_id, spend')
+        .in('entity_id', candidateIds);
+      const spendByEntity = new Map<string, number>();
+      for (const r of (spendRows ?? []) as AnyRow[]) {
+        const id = r.entity_id as string;
+        spendByEntity.set(id, (spendByEntity.get(id) ?? 0) + (Number(r.spend) || 0));
+      }
+      const sorted = [...candList].sort((a, b) => {
+        const sa = spendByEntity.get(a.id as string) ?? 0;
+        const sb = spendByEntity.get(b.id as string) ?? 0;
+        if (sb !== sa) return sb - sa;
+        // Tie-break: most recent created_at (stable with prior behaviour).
+        return (b.created_at as string).localeCompare(a.created_at as string);
+      });
+      const chosen = sorted[0];
+      campEntity = {
+        id: chosen.id as string,
+        meta_id: chosen.meta_id as string,
+        name: chosen.name as string,
+      };
+      console.info(
+        `[dashboard] campaign resolved via spend heuristic: ${campEntity.name} ` +
+          `(spend=${(spendByEntity.get(chosen.id as string) ?? 0).toFixed(2)}, ` +
+          `${candList.length} candidates)`,
+      );
+    }
+  }
   const campaignEntityId = campEntity?.id as string | undefined;
 
   const { data: campInsights } = campaignEntityId
@@ -421,7 +502,7 @@ export async function loadDashboard(params: {
     spend: 0, impressions: 0, reach: 0, clicks: 0, link_clicks: 0,
     lp_views: 0, initiate_checkout: 0, purchases: 0, purchase_value: 0,
   };
-  let reachLatest = 0;
+  let reachMax = 0;
   for (const r of (campInsights ?? []) as AnyRow[]) {
     const d = (r.date as string) ?? '';
     if (d < lifetimeWindowStart || d > lifetimeWindowEnd) continue;
@@ -433,25 +514,39 @@ export async function loadDashboard(params: {
     lifetime.initiate_checkout += Number(r.initiate_checkout) || 0;
     lifetime.purchases      += Number(r.purchases) || 0;
     lifetime.purchase_value += Number(r.purchase_value) || 0;
-    if ((Number(r.reach) || 0) > 0) reachLatest = Number(r.reach) || 0;
+    // Fix A4: Total Reach lifetime = MAX(daily reach) across the window.
+    // Summing would triple-count users; picking the last-non-zero row was a
+    // stale proxy and tended to under-report. MAX approximates Ads Manager's
+    // "daily unique reach max" within the window, which is what operators
+    // compare against.
+    const reachDaily = Number(r.reach) || 0;
+    if (reachDaily > reachMax) reachMax = reachDaily;
   }
-  lifetime.reach = reachLatest;
+  lifetime.reach = reachMax;
 
   // Fix #10: guard every Number(r.field) with || 0 so that NULLs from the
   // DB don't poison the charts with NaN.
-  const trend: TrendPoint[] = ((campInsights ?? []) as AnyRow[]).map(r => {
-    const spend       = Number(r.spend) || 0;
-    const purchases   = Number(r.purchases) || 0;
-    const impressions = Number(r.impressions) || 0;
-    const linkClicks  = Number(r.link_clicks) || 0;
-    return {
-      date: (r.date as string).slice(5),     // MM-DD
-      spend,
-      purchases,
-      ctr: impressions > 0 ? (linkClicks * 100) / impressions : 0,
-      cpm: impressions > 0 ? (spend * 1000) / impressions : 0,
-    };
-  });
+  // Fix A8: scope the trend chart to the declared campaign_window so pre-
+  // launch / post-end rows don't drag the chart (flat zero days before
+  // launch tricked operators into thinking CTR crashed).
+  const trend: TrendPoint[] = ((campInsights ?? []) as AnyRow[])
+    .filter(r => {
+      const d = (r.date as string) ?? '';
+      return d >= lifetimeWindowStart && d <= lifetimeWindowEnd;
+    })
+    .map(r => {
+      const spend       = Number(r.spend) || 0;
+      const purchases   = Number(r.purchases) || 0;
+      const impressions = Number(r.impressions) || 0;
+      const linkClicks  = Number(r.link_clicks) || 0;
+      return {
+        date: (r.date as string).slice(5),     // MM-DD
+        spend,
+        purchases,
+        ctr: impressions > 0 ? (linkClicks * 100) / impressions : 0,
+        cpm: impressions > 0 ? (spend * 1000) / impressions : 0,
+      };
+    });
 
   // ---------- 4. Ad sets + lifetime metrics ----------
   const { data: adsetRows } = await meta
@@ -479,6 +574,7 @@ export async function loadDashboard(params: {
     purchases: number;
     impressions: number;
     link_clicks: number;
+    frequency: number;   // daily avg frequency (impressions / reach); 0 when no signal
   }
   const adsetInsightsById = new Map<string, AdsetAgg>();
   const adsetDailyByAdsetId = new Map<string, AdsetDaily[]>();
@@ -538,7 +634,7 @@ export async function loadDashboard(params: {
         sum.set(id, acc);
 
         const list = daily.get(id) ?? [];
-        list.push({ date, spend, purchases, impressions, link_clicks: linkClicks });
+        list.push({ date, spend, purchases, impressions, link_clicks: linkClicks, frequency });
         daily.set(id, list);
       }
       for (const [adsetId, entityId] of adsetEntityByAdsetId.entries()) {
@@ -558,15 +654,15 @@ export async function loadDashboard(params: {
     CARTAB: 'Cart-Abandon 180d (Hottest)',
   };
 
-  // Fix #13: compute 7d freq per adset from real per-day insights (impressions-
-  // weighted avg of meta_insights.frequency). If a BU doesn't have any reach
-  // signal (early days / no delivery), both freqs stay null and the UI shows "—".
+  // Fix C5: compute 7d freq per adset from real per-day frequency values
+  // (impressions-weighted avg of meta_insights.frequency restricted to the
+  // 7d window). The previous implementation collapsed the 7d value to the
+  // lifetime ratio, making `freq_daily_7d` and `freq_lifetime` identical.
+  // If a BU has no frequency signal at all, both values stay null.
   const sevenAgoStr = toYmd(new Date(new Date(reportDate).getTime() - 6 * 86_400_000));
   const adsetFreq7dById = new Map<string, number | null>();
   const adsetFreqLifetimeById = new Map<string, number | null>();
   for (const [adsetId, daily] of adsetDailyByAdsetId.entries()) {
-    // Lifetime freq: impressions-weighted avg of daily frequencies; we pull
-    // from the raw aggregate since adsetInsightsById already contains sums.
     const agg = adsetInsightsById.get(adsetId);
     if (agg && agg.freq_weighted_den > 0) {
       adsetFreqLifetimeById.set(adsetId, agg.freq_weighted_num / agg.freq_weighted_den);
@@ -574,23 +670,24 @@ export async function loadDashboard(params: {
       adsetFreqLifetimeById.set(adsetId, null);
     }
 
-    // 7d rolling: recompute from daily rows in window.
     let num = 0, den = 0;
     for (const d of daily) {
       if (d.date < sevenAgoStr || d.date > reportDate) continue;
-      if (d.impressions <= 0) continue;
-      // frequency on the day is impressions/reach (generated); we already have
-      // impressions on the daily struct but not frequency — approximate by
-      // redistributing from the lifetime agg when possible. Simpler and more
-      // faithful: fetch frequency lazily via a second query is wasteful, so we
-      // fall back to the lifetime value for the adset if freq_samples ≥ 1.
-      // This keeps the 7d number informative (it's the lifetime proxy) while
-      // avoiding a second DB roundtrip. When no freq signal, leave null.
-      num += d.impressions * (agg?.freq_weighted_den ? agg.freq_weighted_num / agg.freq_weighted_den : 0);
+      if (d.impressions <= 0 || d.frequency <= 0) continue;
+      num += d.impressions * d.frequency;
       den += d.impressions;
     }
-    adsetFreq7dById.set(adsetId, den > 0 && num > 0 ? num / den : null);
+    adsetFreq7dById.set(adsetId, den > 0 ? num / den : null);
   }
+
+  // Fix A7: per-role breakeven override (CARTAB in particular ships a tighter
+  // BE — ~$22 vs the campaign default). Resolve once per ad set so the UI
+  // can render BE CPA and margin directly from the row without re-hashing
+  // role-specific constants.
+  const resolveBreakevenForRole = (role: string): number => {
+    const override = kpi.breakeven_cpa_by_role?.[role as keyof NonNullable<KpiTargets['breakeven_cpa_by_role']>];
+    return typeof override === 'number' ? override : kpi.breakeven_cpa;
+  };
 
   const ad_sets: AdSetRow[] = ((adsetRows ?? []) as AnyRow[]).map(s => {
     const m = adsetInsightsById.get(s.id as string);
@@ -604,11 +701,12 @@ export async function loadDashboard(params: {
     // purchase_value Meta echoes back, which subreports vs our own DB.
     const revenueTier = m?.revenue_tier ?? 0;
     const roas = spend > 0 && revenueTier > 0 ? revenueTier / spend : null;
-    const be = kpi.breakeven_cpa;
+    const role = (s.role as string) ?? '—';
+    const be = resolveBreakevenForRole(role);
     return {
       id: s.id as string,
-      role: (s.role as string) ?? '—',
-      name_subtitle: roleSubtitle[s.role as string] ?? (s.name as string),
+      role,
+      name_subtitle: roleSubtitle[role] ?? (s.name as string),
       temperature_label: (s.temperature_label as string) ?? '',
       status: (s.status as string) ?? '—',
       daily_budget: Number(s.daily_budget ?? 0),
@@ -618,6 +716,7 @@ export async function loadDashboard(params: {
       breakeven_cpa: be,
       margin_per_sale: cpa != null ? be - cpa : null,
       roas,
+      roas_target: kpi.target_roas,
       link_ctr: linkCtr,
       reach: m?.reach ?? 0,
       freq_daily_7d: adsetFreq7dById.get(s.id as string) ?? null,
@@ -670,9 +769,9 @@ export async function loadDashboard(params: {
     else if (spend7 <= 0) status = 'inactive';
     else status = 'active'; // has spend but no purchases yet — still delivering
 
-    const early_winner = p7 >= 5 && cpa7 != null && cpa7 <= kpi.breakeven_cpa;
+    const early_winner = p7 >= 5 && cpa7 != null && cpa7 <= s.breakeven_cpa;
     const budgetLabel = s.daily_budget > 0 ? `$${Math.round(s.daily_budget)}/day` : '—';
-    const note = `${budgetLabel} · CPA target $${kpi.breakeven_cpa}${edit.recent ? ' · edit reciente (reset probable)' : ''}`;
+    const note = `${budgetLabel} · BE CPA $${s.breakeven_cpa}${edit.recent ? ' · edit reciente (reset probable)' : ''}`;
 
     const statusLabel = edit.recent
       ? 'LEARNING (edit reset)'
@@ -713,15 +812,24 @@ export async function loadDashboard(params: {
     .order('date', { ascending: false })
     .order('purchases', { ascending: false })
     .limit(10);
-  const recent_purchases: RecentPurchase[] = ((recent ?? []) as AnyRow[]).map(r => ({
-    date: r.date as string,
-    purchases: Number(r.purchases ?? 0),
-    adset_role: (r.ad_set_role as string) ?? '—',
-    ad_name: r.ad_name as string,
-    temperature_label: (r.temperature_label as string) ?? '',
-    spend_day: Number(r.spend ?? 0),
-    cpa_day: r.cpa_day != null ? Number(r.cpa_day) : null,
-  }));
+  const recent_purchases: RecentPurchase[] = ((recent ?? []) as AnyRow[]).map(r => {
+    const role = (r.ad_set_role as string) ?? '—';
+    return {
+      date: r.date as string,
+      purchases: Number(r.purchases ?? 0),
+      adset_role: role,
+      ad_name: r.ad_name as string,
+      temperature_label: (r.temperature_label as string) ?? '',
+      spend_day: Number(r.spend ?? 0),
+      cpa_day: r.cpa_day != null ? Number(r.cpa_day) : null,
+      // Fix A6/A7: carry CPA thresholds from kpi_targets into each row. BE
+      // respects the per-role override (e.g. CARTAB $22 tgt) via the same
+      // resolver used for ad sets, so UI tone stays consistent across tables.
+      cpa_target: kpi.target_cpa,
+      cpa_breakeven: resolveBreakevenForRole(role),
+      cpa_kill: kpi.kill_cpa,
+    };
+  });
 
   // ---------- 7. Targeting blocks ----------
   const { data: adsetFull } = await meta
@@ -770,11 +878,11 @@ export async function loadDashboard(params: {
   const cusDaily = cusAdsetId ? adsetDailyByAdsetId.get(cusAdsetId) ?? [] : [];
   const cusAgg = cusAdsetId ? adsetInsightsById.get(cusAdsetId) : undefined;
   let cusPeakDay: number | null = null;
-  if (cusAgg && cusAgg.freq_weighted_den > 0) {
-    // We don't have per-day freq materialized in adsetDailyByAdsetId. Use the
-    // lifetime-weighted mean as an upper-bound proxy for peak, which is safer
-    // than hardcoding a number. Once per-day frequency is stored on the daily
-    // struct we can take Math.max across the window.
+  for (const d of cusDaily) {
+    if (d.date < sevenAgoStr || d.date > reportDate) continue;
+    if (d.frequency > (cusPeakDay ?? 0)) cusPeakDay = d.frequency;
+  }
+  if (cusPeakDay == null && cusAgg && cusAgg.freq_weighted_den > 0) {
     cusPeakDay = cusAgg.freq_weighted_num / cusAgg.freq_weighted_den;
   }
   const cus_saturation: CusSaturationBlock = {
@@ -1148,88 +1256,94 @@ export async function loadDashboard(params: {
     return { ...s, conv_pct_from_prev: conv, drop_pct_from_prev: 100 - conv };
   });
 
-  // ---------- Health score (Fix #3) ----------
-  // Heuristic, fully documented inline. All sub-scores are bounded to [0,100]
-  // and combined as a weighted average. Keeping it computable end-to-end so
-  // the gauge reflects real campaign posture instead of a fixture constant.
+  // ---------- Health score (Fix C4) ----------
+  // Blueprint weights: Economics 30% · Signal 20% · Creative 20% · Funnel 15%
+  // · Pacing 15%. Each sub-score is bounded to [0,100]. We no longer surface
+  // Learning / Frequency in the breakdown (they were dominated by the
+  // placeholder Frequency=80, which masked real economic problems).
   const toneFromScore = (s: number): HealthBreakdown['tone'] =>
     s >= 80 ? 'ok' : s >= 50 ? 'warn' : 'bad';
+  const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 
-  // Pacing (30%): today's spend relative to the declared daily budget.
+  // Economics (30%): CPA vs target / breakeven / kill. Piecewise-linear so
+  // the dial degrades smoothly as CPA drifts above target. When we have no
+  // purchases (cpa=0), we keep the slot at 50 (insufficient signal) rather
+  // than rewarding an absence of cost.
+  let economicsScore: number;
+  let economicsSub: string;
+  if (totalPurchases === 0) {
+    economicsScore = 50;
+    economicsSub = 'no purchases yet';
+  } else if (cpa <= kpi.target_cpa) {
+    economicsScore = 100;
+    economicsSub = `CPA ${money(cpa)} ≤ target ${money(kpi.target_cpa)}`;
+  } else if (cpa <= kpi.breakeven_cpa) {
+    // Interpolate 100 → 50 between target and breakeven.
+    const span = Math.max(1, kpi.breakeven_cpa - kpi.target_cpa);
+    economicsScore = Math.round(100 - 50 * ((cpa - kpi.target_cpa) / span));
+    economicsSub = `CPA ${money(cpa)} ∈ (target ${money(kpi.target_cpa)}, BE ${money(kpi.breakeven_cpa)}]`;
+  } else if (cpa <= kpi.kill_cpa) {
+    const span = Math.max(1, kpi.kill_cpa - kpi.breakeven_cpa);
+    economicsScore = Math.round(50 - 50 * ((cpa - kpi.breakeven_cpa) / span));
+    economicsSub = `CPA ${money(cpa)} ∈ (BE ${money(kpi.breakeven_cpa)}, kill ${money(kpi.kill_cpa)}]`;
+  } else {
+    economicsScore = 0;
+    economicsSub = `CPA ${money(cpa)} > kill ${money(kpi.kill_cpa)}`;
+  }
+  economicsScore = clamp(economicsScore);
+
+  // Signal (20%): # of days with purchases > 0 in the last 7d window
+  // (proxy for conversion signal density feeding the optimiser).
+  let daysWithPurchases7d = 0;
+  for (const r of (campInsights ?? []) as AnyRow[]) {
+    const d = r.date as string;
+    if (d < sevenAgoStr || d > reportDate) continue;
+    if ((Number(r.purchases) || 0) > 0) daysWithPurchases7d += 1;
+  }
+  const signalScore = daysWithPurchases7d >= 5 ? 100 : daysWithPurchases7d >= 2 ? 50 : 0;
+  const signalSub = `${daysWithPurchases7d}/7 days with purchases`;
+
+  // Creative (20%): link CTR vs configured target / warn.
+  let creativeScore: number;
+  if (linkCtrPct >= config.link_ctr_target) creativeScore = 100;
+  else if (linkCtrPct >= config.link_ctr_warn) creativeScore = 50;
+  else creativeScore = 0;
+  const creativeSub = `Link CTR ${linkCtrPct.toFixed(2)}% (target ${config.link_ctr_target}% / warn ${config.link_ctr_warn}%)`;
+
+  // Funnel (15%): click-to-LP vs target. Soft floor at 70% of target.
+  let funnelScore: number;
+  if (clickToLp >= config.click_to_lp_target) funnelScore = 100;
+  else if (clickToLp >= config.click_to_lp_target * 0.7) funnelScore = 50;
+  else funnelScore = 0;
+  const funnelSub = `Click→LP ${clickToLp.toFixed(1)}% (target ${config.click_to_lp_target}%)`;
+
+  // Pacing (15%): today's spend vs daily budget. Continuous around 1.0 so a
+  // campaign at 0.61x doesn't score identically to one at 1.29x. Outside
+  // [0.6, 1.3] the score drops linearly toward 0.
   const pacingRatio = config.daily_budget > 0 ? todaySpend / config.daily_budget : 0;
-  const pacingScore = pacingRatio >= 0.6 && pacingRatio <= 1.3 ? 100 : 50;
+  let pacingScore: number;
+  if (config.daily_budget <= 0) {
+    pacingScore = 50;
+  } else if (pacingRatio >= 0.6 && pacingRatio <= 1.3) {
+    // Inside the healthy band: peak at 1.0, mild penalty at edges.
+    const dist = Math.abs(pacingRatio - 1);
+    pacingScore = Math.round(100 - 30 * (dist / 0.3));
+  } else {
+    // Outside the band: fall off to 0 over the same distance again.
+    const bandMiss = pacingRatio < 0.6 ? 0.6 - pacingRatio : pacingRatio - 1.3;
+    pacingScore = Math.round(clamp(50 - (bandMiss / 0.6) * 50));
+  }
+  pacingScore = clamp(pacingScore);
   const pacingSub = config.daily_budget > 0
     ? `${(pacingRatio * 100).toFixed(0)}% of daily budget`
-    : 'no budget set';
-
-  // Economics (20%): blended ROAS vs target.
-  const economicsScore = roasEst >= Math.max(2, kpi.target_roas)
-    ? 100
-    : roasEst >= 1 ? 70 : 30;
-  const economicsSub = `ROAS ${roasEst.toFixed(2)}x`;
-
-  // Learning (20%): at least one adset with purchases in the 7d window counts
-  // as "learning is alive". We reuse the learning_cards already derived.
-  const activeLearningAdsets = learning_cards.filter(
-    c => c.status === 'active' && c.purchases_7d > 0,
-  ).length;
-  const learningScore = activeLearningAdsets >= 1 ? 100 : 50;
-  const learningSub = `${activeLearningAdsets} ad set(s) learning`;
-
-  // Creative (15%): impressions-weighted hook rate across ads of the BU in
-  // the 7d rolling window. `v_ad_performance` doesn't expose hook_rate so we
-  // aggregate directly from `meta_insights` at ad level.
-  let hookImprSum = 0;
-  let hookViewsSum = 0;
-  let hookAdsCount = 0;
-  {
-    const { data: adEntitiesHook } = await meta
-      .from('meta_entities')
-      .select('id')
-      .eq('business_unit_id', buId)
-      .eq('entity_type', 'ad');
-    const adEntityIds = ((adEntitiesHook ?? []) as AnyRow[]).map(e => e.id as string);
-    if (adEntityIds.length > 0) {
-      const { data: hookRows } = await meta
-        .from('meta_insights')
-        .select('entity_id, impressions, video_3s_views')
-        .in('entity_id', adEntityIds)
-        .gte('date', sevenAgoStr)
-        .lte('date', reportDate);
-      const perAd = new Map<string, { impr: number; views: number }>();
-      for (const r of (hookRows ?? []) as AnyRow[]) {
-        const id = r.entity_id as string;
-        const acc = perAd.get(id) ?? { impr: 0, views: 0 };
-        acc.impr += Number(r.impressions) || 0;
-        acc.views += Number(r.video_3s_views) || 0;
-        perAd.set(id, acc);
-      }
-      for (const { impr, views } of perAd.values()) {
-        if (impr >= 500) {
-          hookImprSum += impr;
-          hookViewsSum += views;
-          hookAdsCount += 1;
-        }
-      }
-    }
-  }
-  const avgHookRate = hookImprSum > 0 ? hookViewsSum / hookImprSum : 0;
-  const creativeScore = avgHookRate >= 0.25 ? 100 : avgHookRate >= 0.15 ? 70 : 40;
-  const creativeSub = hookAdsCount > 0
-    ? `hook rate ${(avgHookRate * 100).toFixed(1)}% (${hookAdsCount} ads ≥500 impr, 7d)`
-    : 'no hook_rate data';
-
-  // Frequency (15%): placeholder until we surface rolling unique reach. Until
-  // then we keep a steady 80 so this component doesn't dominate either way.
-  const frequencyScore = 80;
-  const frequencySub = 'placeholder (pending rolling reach)';
+    : 'no daily budget set';
 
   const healthBreakdown: HealthBreakdown[] = [
-    { label: 'Pacing',    score: pacingScore,    tone: toneFromScore(pacingScore),    weight: 30, sub: pacingSub },
-    { label: 'Economics', score: economicsScore, tone: toneFromScore(economicsScore), weight: 20, sub: economicsSub },
-    { label: 'Learning',  score: learningScore,  tone: toneFromScore(learningScore),  weight: 20, sub: learningSub },
-    { label: 'Creative',  score: creativeScore,  tone: toneFromScore(creativeScore),  weight: 15, sub: creativeSub },
-    { label: 'Frequency', score: frequencyScore, tone: toneFromScore(frequencyScore), weight: 15, sub: frequencySub },
+    { label: 'Economics', score: economicsScore, tone: toneFromScore(economicsScore), weight: 30, sub: economicsSub },
+    { label: 'Signal',    score: signalScore,    tone: toneFromScore(signalScore),    weight: 20, sub: signalSub },
+    { label: 'Creative',  score: creativeScore,  tone: toneFromScore(creativeScore),  weight: 20, sub: creativeSub },
+    { label: 'Funnel',    score: funnelScore,    tone: toneFromScore(funnelScore),    weight: 15, sub: funnelSub },
+    { label: 'Pacing',    score: pacingScore,    tone: toneFromScore(pacingScore),    weight: 15, sub: pacingSub },
   ];
   const healthScore = Math.round(
     healthBreakdown.reduce((sum, b) => sum + (b.weight ?? 0) * b.score, 0) / 100,
@@ -1290,7 +1404,16 @@ export async function loadDashboard(params: {
       total_days: config.campaign_window.duration_days,
       spend_so_far: totalSpendCampaign,
       total_budget: config.total_budget,
-      progress_pct: (totalSpendCampaign / config.total_budget) * 100,
+      // Fix A3: progress bar reflects calendar progress (day N of D_total),
+      // matching the blueprint's 15/19 = 78.9% rather than spend / budget
+      // (which under-reads when we're pacing below plan). The spend-based
+      // figure is still exposed for any ancillary UI that needs it.
+      progress_pct: config.campaign_window.duration_days > 0
+        ? (dayIndex / config.campaign_window.duration_days) * 100
+        : 0,
+      progress_pct_budget: config.total_budget > 0
+        ? (totalSpendCampaign / config.total_budget) * 100
+        : 0,
       current_phase_key: currentPhase.key,
       phases: config.phases,
     },

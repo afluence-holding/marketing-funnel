@@ -345,7 +345,11 @@ function HealthGaugeCard({
               color: 'var(--color-text-secondary)',
             }}
           >
-            (Economics 30% · Signal 20% · Creative 20% · Funnel 15% · Pacing 15%)
+            (
+            {health.breakdown
+              .map(b => `${b.label} ${b.weight ?? 0}%`)
+              .join(' · ')}
+            )
           </span>
         </p>
         <div className="health-breakdown">
@@ -662,7 +666,12 @@ function AdSetRowView({ row }: { row: AdSetRow }) {
       : 'var(--color-critical)';
 
   const roasValue = row.roas ?? 0;
-  const roasColor = roasValue >= 2 ? 'var(--color-success)' : 'var(--color-warning)';
+  const roasColor =
+    row.roas == null
+      ? 'var(--color-text-secondary)'
+      : roasValue >= row.roas_target
+      ? 'var(--color-success)'
+      : 'var(--color-warning)';
 
   const freqWatchColor =
     row.freq_daily_7d == null || row.freq_daily_7d < 3
@@ -899,9 +908,9 @@ function RecentPurchaseRow({ row }: { row: RecentPurchase }) {
   const cpaColor =
     cpa == null
       ? 'var(--color-text-secondary)'
-      : cpa <= 40
+      : cpa <= row.cpa_target
       ? 'var(--color-success)'
-      : cpa <= 58
+      : cpa <= row.cpa_breakeven
       ? 'var(--color-warning)'
       : 'var(--color-critical)';
   return (
