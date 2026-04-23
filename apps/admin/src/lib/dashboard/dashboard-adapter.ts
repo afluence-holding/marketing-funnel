@@ -1077,9 +1077,13 @@ export async function loadDashboard(params: {
   // directly from `ads` + `meta_entities` + `meta_insights` filtered by
   // [rangeStart, rangeEnd]. Ads with zero rows in the window still surface
   // (with zeros) so operators can see an ad is paused / not delivering.
+  // NOTE: `meta_ops.ads.id` is text and is itself the Meta ad id (the table
+  // does not expose a separate `meta_id` column, unlike ad_sets / campaigns).
+  // We therefore project `id` and use it as both the row key and the join
+  // value against `meta_entities.meta_id` below.
   const { data: adMeta } = await meta
     .from('ads')
-    .select('id, meta_id, name, ad_set_id, manual_status, wave, format')
+    .select('id, name, ad_set_id, manual_status, wave, format, status, effective_status')
     .eq('business_unit_id', buId);
 
   const { data: adEntities } = await meta
@@ -1131,7 +1135,8 @@ export async function loadDashboard(params: {
 
   const adPerfRows: AdPerfRow[] = [];
   for (const a of (adMeta ?? []) as AnyRow[]) {
-    const entityId = adEntityMetaToId.get(a.meta_id as string);
+    // `ads.id` IS the Meta ad id, so we look up the entity row by it.
+    const entityId = adEntityMetaToId.get(a.id as string);
     const agg = entityId ? adAggByEntityId.get(entityId) : undefined;
     const status = ((a.manual_status as string) ?? 'Testing');
     let dot: AdPerfRow['status_dot'] = 'testing';
