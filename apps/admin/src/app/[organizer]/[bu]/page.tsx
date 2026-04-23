@@ -28,6 +28,7 @@ import { CtrCpmChart, SpendPurchasesChart } from '@/components/trends-chart';
 import { RefreshButton } from '@/components/refresh-button';
 import { BuSelector } from '@/components/bu-selector';
 import { DateRangeFilter } from '@/components/date-range-filter';
+import { ZoomableChart } from '@/components/zoomable-chart';
 
 // ---------------------------------------------------------------------------
 // Helpers & constants
@@ -1150,7 +1151,9 @@ function TrendsSection({ trend }: { trend: TrendPoint[] }) {
             Spend + Purchases
           </p>
           <div className="chart-container">
-            <SpendPurchasesChart trend={trend} />
+            <ZoomableChart title="Spend + Purchases" subtitle="Trend daily">
+              <SpendPurchasesChart trend={trend} />
+            </ZoomableChart>
           </div>
         </div>
         <div className="card">
@@ -1158,7 +1161,9 @@ function TrendsSection({ trend }: { trend: TrendPoint[] }) {
             CTR + CPM
           </p>
           <div className="chart-container">
-            <CtrCpmChart trend={trend} />
+            <ZoomableChart title="CTR + CPM" subtitle="Trend daily">
+              <CtrCpmChart trend={trend} />
+            </ZoomableChart>
           </div>
         </div>
       </div>
@@ -1175,49 +1180,55 @@ function FunnelSection({ steps }: { steps: FunnelStep[] }) {
   const last = steps[steps.length - 1];
   const lpToCheckout = steps.length >= 4 ? steps[3].conv_pct_from_prev : null;
   const checkoutToPurchase = last?.conv_pct_from_prev ?? null;
+  const funnelBars = (
+    <div className="funnel">
+      {steps.map((step, i) => {
+        const widthPct =
+          i === 0
+            ? 100
+            : firstValue > 0
+            ? Math.max(5, (step.value / firstValue) * 100)
+            : 0;
+        const opacity = 1 - (i * 0.6) / Math.max(1, steps.length - 1);
+        const showDrop =
+          step.conv_pct_from_prev != null && step.value > 0;
+        return (
+          <div className="funnel-step" key={step.label}>
+            <span className="funnel-label">{step.label}</span>
+            <div className="funnel-bar-bg">
+              <div
+                className="funnel-bar"
+                style={{
+                  width: `${widthPct.toFixed(1)}%`,
+                  background: 'var(--color-accent)',
+                  opacity,
+                }}
+              >
+                {fmtInt(step.value)}
+              </div>
+            </div>
+            <span className="funnel-value">{fmtInt(step.value)}</span>
+            <span className="funnel-drop">
+              {showDrop
+                ? `${fmtPct(step.conv_pct_from_prev!, 1)} conv | ${fmtPct(
+                    step.drop_pct_from_prev ?? 0,
+                    1
+                  )} drop`
+                : ''}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="section">
       <div className="section-title">Funnel Analysis</div>
       <div className="card">
-        <div className="funnel">
-          {steps.map((step, i) => {
-            const widthPct =
-              i === 0
-                ? 100
-                : firstValue > 0
-                ? Math.max(5, (step.value / firstValue) * 100)
-                : 0;
-            const opacity = 1 - (i * 0.6) / Math.max(1, steps.length - 1);
-            const showDrop =
-              step.conv_pct_from_prev != null && step.value > 0;
-            return (
-              <div className="funnel-step" key={step.label}>
-                <span className="funnel-label">{step.label}</span>
-                <div className="funnel-bar-bg">
-                  <div
-                    className="funnel-bar"
-                    style={{
-                      width: `${widthPct.toFixed(1)}%`,
-                      background: 'var(--color-accent)',
-                      opacity,
-                    }}
-                  >
-                    {fmtInt(step.value)}
-                  </div>
-                </div>
-                <span className="funnel-value">{fmtInt(step.value)}</span>
-                <span className="funnel-drop">
-                  {showDrop
-                    ? `${fmtPct(step.conv_pct_from_prev!, 1)} conv | ${fmtPct(
-                        step.drop_pct_from_prev ?? 0,
-                        1
-                      )} drop`
-                    : ''}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        <ZoomableChart title="Funnel Analysis" subtitle="Click para ampliar">
+          {funnelBars}
+        </ZoomableChart>
         <div
           style={{
             marginTop: 16,
@@ -1411,6 +1422,13 @@ function MatchupsSection({ rows }: { rows: MatchupRow[] }) {
 // ---------------------------------------------------------------------------
 
 function FrequencySection({ scopes }: { scopes: FrequencyScope[] }) {
+  const bars = (
+    <div>
+      {scopes.map(scope => (
+        <FrequencyBar key={scope.scope} scope={scope} />
+      ))}
+    </div>
+  );
   return (
     <div className="section">
       <div className="section-title">Frequency Distribution (last 7d)</div>
@@ -1426,9 +1444,12 @@ function FrequencySection({ scopes }: { scopes: FrequencyScope[] }) {
           mayoría en 1-3. Zona de fatigue: reach acumulado en 6+ impressions
           supera ~15-25%.
         </div>
-        {scopes.map(scope => (
-          <FrequencyBar key={scope.scope} scope={scope} />
-        ))}
+        <ZoomableChart
+          title="Frequency Distribution"
+          subtitle="Last 7d · click para ampliar"
+        >
+          {bars}
+        </ZoomableChart>
         <div style={{ overflowX: 'auto', marginTop: 18 }}>
           <table>
             <thead>
