@@ -3,11 +3,11 @@ import Script from 'next/script';
 import { LandingConfig } from '@/components/landing-config';
 
 export const metadata: Metadata = {
-  title: '¡Gracias! — Santi Inversor',
+  title: '¡Gracias! — Santinversor',
   description: 'Recibimos tus respuestas. Pronto nos pondremos en contacto contigo.',
   robots: { index: false, follow: false },
   openGraph: {
-    title: '¡Gracias! — Santi Inversor',
+    title: '¡Gracias! — Santinversor',
     description: 'Recibimos tus respuestas. Pronto nos pondremos en contacto contigo.',
   },
 };
