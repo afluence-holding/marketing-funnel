@@ -130,7 +130,6 @@ export async function GET(request: Request) {
     total_original: totalOriginal,
     total_unicos: totalUnicos,
     duplicados_detectados: duplicadosDetectados,
-    records,
   });
 }
 
