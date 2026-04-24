@@ -143,6 +143,26 @@ const LANDING_HTML = `<!DOCTYPE html>
       color: #8f7c70;
       font-size: 13px;
     }
+    .hidden {
+      display: none;
+    }
+    .thanks {
+      margin-top: 14px;
+    }
+    .thanks-title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 30px;
+      line-height: 1.1;
+      margin-bottom: 10px;
+      color: #3d2a22;
+    }
+    .thanks-text {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.45;
+      max-width: 520px;
+      margin: 0 auto;
+    }
     @media (max-width: 768px) {
       .wrap { max-width: 430px; padding: 12px 12px 20px; }
       .hero { width: 74%; max-width: 320px; }
@@ -164,6 +184,8 @@ const LANDING_HTML = `<!DOCTYPE html>
       .note { font-size: 11px; }
       .msg { font-size: 12px; }
       .footer { margin-top: 14px; font-size: 12px; }
+      .thanks-title { font-size: 22px; }
+      .thanks-text { font-size: 14px; }
     }
   </style>
 </head>
@@ -182,6 +204,12 @@ const LANDING_HTML = `<!DOCTYPE html>
       <p class="note">Sin spam, sin promesas vacías. Solo aviso cuando salga y el descuento de lanzamiento.</p>
       <p id="msg" class="msg"></p>
     </form>
+
+    <section id="thanks-screen" class="card thanks hidden" aria-live="polite">
+      <p class="card-title thanks-title">¡Gracias por unirte a la lista de espera!</p>
+      <p class="thanks-text">Pronto te contactaremos por correo con novedades y acceso anticipado.</p>
+    </section>
+
     <p class="footer">© Cami cocina · hecho con cariño</p>
   </main>
 
@@ -192,6 +220,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       const input = document.getElementById('email');
       const msg = document.getElementById('msg');
       const btn = document.getElementById('submit-btn');
+      const thanksScreen = document.getElementById('thanks-screen');
       const EMAIL_REGEX = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
 
       async function saveEmail(source) {
@@ -222,7 +251,13 @@ const LANDING_HTML = `<!DOCTYPE html>
         btn.textContent = 'Guardando...';
         try {
           const ok = await saveEmail('form-submit');
-          msg.textContent = ok ? '¡Listo! Ya estás en lista de espera.' : 'No se pudo guardar. Intenta de nuevo.';
+          if (ok) {
+            form.classList.add('hidden');
+            thanksScreen.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            msg.textContent = 'No se pudo guardar. Intenta de nuevo.';
+          }
         } catch (_error) {
           msg.textContent = 'No se pudo guardar. Intenta de nuevo.';
         } finally {
