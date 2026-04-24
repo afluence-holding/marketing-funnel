@@ -1,0 +1,74 @@
+name: Backup Recetas Cami Emails
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Backup unique emails CSV
+        env:
+          EXPORT_TOKEN: ${{ secrets.RECETAS_CAMI_EXPORT_TOKEN }}
+        run: |
+          python - <<'PY'
+          import csv
+          import datetime as dt
+          import glob
+          import json
+          import os
+          import pathlib
+          import urllib.request
+
+          root = pathlib.Path("backups/recetas-cami")
+          root.mkdir(parents=True, exist_ok=True)
+
+          token = os.environ.get("EXPORT_TOKEN", "").strip()
+          headers = {}
+          if token:
+            headers["x-export-token"] = token
+
+          def fetch(url: str) -> str:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as r:
+              return r.read().decode("utf-8", "ignore")
+
+          csv_content = fetch("https://marketing.byafluence.com/api/recetas-cami/emails/unique?format=csv")
+          stats_content = fetch("https://marketing.byafluence.com/api/recetas-cami/emails")
+
+          today = dt.datetime.utcnow().strftime("%Y-%m-%d")
+          dated_csv = root / f"emails-{today}.csv"
+          latest_csv = root / "emails-latest.csv"
+          stats_json = root / "stats-latest.json"
+
+          dated_csv.write_text(csv_content, encoding="utf-8")
+          latest_csv.write_text(csv_content, encoding="utf-8")
+          stats_json.write_text(stats_content, encoding="utf-8")
+
+          # Keep only the most recent 60 dated backups.
+          files = sorted(glob.glob(str(root / "emails-????-??-??.csv")))
+          for old in files[:-60]:
+            pathlib.Path(old).unlink(missing_ok=True)
+
+          # Also persist a plain newline list for quick copy/paste.
+          rows = list(csv.reader(csv_content.splitlines()))
+          emails = [r[0].strip() for r in rows[1:] if r and r[0].strip()]
+          (root / "emails-latest.txt").write_text("\n".join(emails) + ("\n" if emails else ""), encoding="utf-8")
+          PY
+
+      - name: Commit backup changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backups/recetas-cami
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(backup): daily Recetas Cami emails snapshot"
+          git push
