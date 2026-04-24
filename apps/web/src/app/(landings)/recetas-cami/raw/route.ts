@@ -9,7 +9,7 @@ const LANDING_HTML = `<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f5efe6;
+      --bg: #ecebe8;
       --card: #e1d5c2;
       --text: #332018;
       --muted: #7a6357;
