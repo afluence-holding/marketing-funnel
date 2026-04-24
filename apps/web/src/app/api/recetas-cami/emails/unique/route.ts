@@ -2,7 +2,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STORAGE_FILE_PATH = path.join(process.cwd(), 'data', 'recetas-cami-emails.ndjson');
+const GOOGLE_SHEETS_CSV_URL =
+  process.env.GOOGLE_SHEETS_CSV_URL_RECETAS_CAMI ??
+  'https://docs.google.com/spreadsheets/d/1lGsDCRZbnGKX0ey_bU1UvhipxochN4J5_qezW2TzeCY/export?format=csv&gid=0';
 const EXPORT_TOKEN = process.env.RECETAS_CAMI_EXPORT_TOKEN ?? '';
 
 type StoredRecord = {
@@ -36,6 +40,20 @@ function getUniqueEmails(records: StoredRecord[]): string[] {
   );
 }
 
+async function readEmailsFromGoogleSheet(): Promise<string[]> {
+  try {
+    const response = await fetch(GOOGLE_SHEETS_CSV_URL, { cache: 'no-store' });
+    if (!response.ok) return [];
+    const csv = await response.text();
+    return csv
+      .split(/\r?\n/)
+      .map((line) => (line.split(',')[0] ?? '').trim().replace(/^"|"$/g, '').toLowerCase())
+      .filter((email) => EMAIL_REGEX.test(email));
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
@@ -43,7 +61,9 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const format = (url.searchParams.get('format') ?? 'json').toLowerCase();
-  const emails = getUniqueEmails(await readAllRecords());
+  const localEmails = getUniqueEmails(await readAllRecords());
+  const sheetEmails = await readEmailsFromGoogleSheet();
+  const emails = Array.from(new Set([...sheetEmails, ...localEmails]));
 
   if (format === 'csv') {
     const csv = ['email', ...emails].join('\n') + '\n';

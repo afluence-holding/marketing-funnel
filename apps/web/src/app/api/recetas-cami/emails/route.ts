@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STORAGE_FILE_PATH = path.join(process.cwd(), 'data', 'recetas-cami-emails.ndjson');
 const GOOGLE_SHEETS_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL_RECETAS_CAMI ?? '';
+const GOOGLE_SHEETS_CSV_URL =
+  process.env.GOOGLE_SHEETS_CSV_URL_RECETAS_CAMI ??
+  'https://docs.google.com/spreadsheets/d/1lGsDCRZbnGKX0ey_bU1UvhipxochN4J5_qezW2TzeCY/export?format=csv&gid=0';
 const EXPORT_TOKEN = process.env.RECETAS_CAMI_EXPORT_TOKEN ?? '';
 
 type EmailPayload = {
@@ -78,23 +81,24 @@ async function readAllRecords(): Promise<StoredRecord[]> {
   }
 }
 
-async function compactStorageByEmail(): Promise<{
-  before: number;
-  after: number;
-  removed: number;
-}> {
-  const records = await readAllRecords();
-  const deduped = dedupeRecordsByEmail(records);
-  const lines = deduped.map((record) => JSON.stringify(record));
+async function readEmailsFromGoogleSheet(): Promise<string[]> {
+  try {
+    const response = await fetch(GOOGLE_SHEETS_CSV_URL, { cache: 'no-store' });
+    if (!response.ok) return [];
+    const csv = await response.text();
+    return csv
+      .split(/\r?\n/)
+      .map((line) => (line.split(',')[0] ?? '').trim().replace(/^"|"$/g, '').toLowerCase())
+      .filter((email) => EMAIL_REGEX.test(email));
+  } catch {
+    return [];
+  }
+}
 
-  await fs.mkdir(path.dirname(STORAGE_FILE_PATH), { recursive: true });
-  await fs.writeFile(STORAGE_FILE_PATH, lines.length ? `${lines.join('\n')}\n` : '', 'utf-8');
-
-  return {
-    before: records.length,
-    after: deduped.length,
-    removed: records.length - deduped.length,
-  };
+async function getUniqueEmailsFromSources(): Promise<string[]> {
+  const [sheetEmails, localRecords] = await Promise.all([readEmailsFromGoogleSheet(), readAllRecords()]);
+  const localEmails = localRecords.map((record) => String(record.email ?? '').trim().toLowerCase());
+  return Array.from(new Set([...sheetEmails, ...localEmails].filter((email) => EMAIL_REGEX.test(email))));
 }
 
 function isAuthorized(request: Request): boolean {
@@ -110,29 +114,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
   }
 
-  const originalRecords = await readAllRecords();
-  const records = dedupeRecordsByEmail(originalRecords);
-  const totalOriginal = originalRecords.length;
-  const totalUnicos = records.length;
-  const duplicadosDetectados = totalOriginal - totalUnicos;
-  const url = new URL(request.url);
-  const format = (url.searchParams.get('format') ?? 'json').toLowerCase();
-
-  if (format === 'csv') {
-    const csv = toCsv(records);
-    return new Response(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="recetas-cami-emails.csv"',
-        'Cache-Control': 'no-store, max-age=0',
-      },
-    });
-  }
+  const uniqueEmails = await getUniqueEmailsFromSources();
 
   return NextResponse.json({
     ok: true,
-    total: totalUnicos,
+    total: uniqueEmails.length,
   });
 }
 
@@ -153,8 +139,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: 'No valid emails to import' }, { status: 400 });
       }
 
-      const existing = await readAllRecords();
-      const existingEmails = new Set(existing.map((record) => record.email));
+      const existingEmails = new Set(await getUniqueEmailsFromSources());
       const uniqueIncoming = Array.from(new Set(normalizedIncoming));
       const newEmails = uniqueIncoming.filter((email) => !existingEmails.has(email));
 
@@ -163,7 +148,7 @@ export async function POST(request: Request) {
           ok: true,
           imported: 0,
           skipped_existing: uniqueIncoming.length,
-          total_after: dedupeRecordsByEmail(existing).length,
+          total_after: existingEmails.size,
         });
       }
 
@@ -187,13 +172,11 @@ export async function POST(request: Request) {
         'utf-8',
       );
 
-      const compact = await compactStorageByEmail();
       return NextResponse.json({
         ok: true,
         imported: newEmails.length,
         skipped_existing: uniqueIncoming.length - newEmails.length,
-        compacted_removed: compact.removed,
-        total_after: compact.after,
+        total_after: (await getUniqueEmailsFromSources()).length,
       });
     }
 
@@ -256,81 +239,17 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
-  }
-
-  try {
-    const result = await compactStorageByEmail();
-    return NextResponse.json({
-      ok: true,
-      compacted: true,
-      ...result,
-    });
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Failed to compact records' }, { status: 500 });
-  }
+  void request;
+  return NextResponse.json(
+    { ok: false, error: 'Compaction disabled to prevent accidental data loss' },
+    { status: 405 },
+  );
 }
 
 export async function PUT(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
-  }
-
-  try {
-    const payload = (await request.json()) as BulkImportPayload;
-    const incoming = Array.isArray(payload.emails) ? payload.emails : [];
-    const normalizedIncoming = incoming
-      .map((email) => String(email ?? '').trim().toLowerCase())
-      .filter((email) => EMAIL_REGEX.test(email));
-
-    if (!normalizedIncoming.length) {
-      return NextResponse.json({ ok: false, error: 'No valid emails to import' }, { status: 400 });
-    }
-
-    const existing = await readAllRecords();
-    const existingEmails = new Set(existing.map((record) => record.email));
-    const uniqueIncoming = Array.from(new Set(normalizedIncoming));
-    const newEmails = uniqueIncoming.filter((email) => !existingEmails.has(email));
-
-    if (!newEmails.length) {
-      return NextResponse.json({
-        ok: true,
-        imported: 0,
-        skipped_existing: uniqueIncoming.length,
-        total_after: dedupeRecordsByEmail(existing).length,
-      });
-    }
-
-    const nowIso = new Date().toISOString();
-    const source = String(payload.source ?? 'bulk-import');
-    const pathValue = String(payload.path ?? '/recetas-cami/import');
-    const recordsToAppend: StoredRecord[] = newEmails.map((email) => ({
-      email,
-      source,
-      path: pathValue,
-      submittedAt: nowIso,
-      storedAt: nowIso,
-      ip: 'bulk-import',
-      userAgent: 'bulk-import',
-    }));
-
-    await fs.mkdir(path.dirname(STORAGE_FILE_PATH), { recursive: true });
-    await fs.appendFile(
-      STORAGE_FILE_PATH,
-      `${recordsToAppend.map((record) => JSON.stringify(record)).join('\n')}\n`,
-      'utf-8',
-    );
-
-    const compact = await compactStorageByEmail();
-    return NextResponse.json({
-      ok: true,
-      imported: newEmails.length,
-      skipped_existing: uniqueIncoming.length - newEmails.length,
-      compacted_removed: compact.removed,
-      total_after: compact.after,
-    });
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Failed to import emails' }, { status: 500 });
-  }
+  void request;
+  return NextResponse.json(
+    { ok: false, error: 'Use POST with emails[] for bulk import' },
+    { status: 405 },
+  );
 }
