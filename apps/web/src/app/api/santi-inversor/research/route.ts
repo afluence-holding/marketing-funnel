@@ -7,6 +7,14 @@ const BACKEND_BASE_URL =
 
 const TARGET_INGEST_PATH = '/api/orgs/santi-inversor/bus/research/ingest';
 
+function parseJsonSafe(text: string) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
@@ -28,11 +36,12 @@ export async function POST(request: Request) {
 
     const bodyText = await response.text();
     const contentType = response.headers.get('content-type') ?? '';
-    const isJsonResponse = contentType.includes('application/json');
+    const parsedJson = contentType.includes('application/json')
+      ? parseJsonSafe(bodyText)
+      : null;
 
-    if (isJsonResponse) {
-      const body = bodyText ? JSON.parse(bodyText) : {};
-      return NextResponse.json(body, { status: response.status });
+    if (parsedJson !== null) {
+      return NextResponse.json(parsedJson, { status: response.status });
     }
 
     return new NextResponse(bodyText, {
@@ -41,9 +50,13 @@ export async function POST(request: Request) {
         'Content-Type': contentType || 'text/plain; charset=utf-8',
       },
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { ok: false, error: 'Failed to ingest santi-inversor lead' },
+      {
+        ok: false,
+        error: 'Failed to ingest santi-inversor lead',
+        details: error instanceof Error ? error.message : 'unknown_error',
+      },
       { status: 500 },
     );
   }

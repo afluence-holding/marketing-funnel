@@ -10,6 +10,14 @@ const TARGET_STATS_PATH = '/api/orgs/santi-inversor/bus/research/stats';
 const TARGET_EXPORT_PATH = '/api/orgs/santi-inversor/bus/research/export';
 const DEFAULT_SOURCE = 'landing-santi-inversor-research-home';
 
+function parseJsonSafe(text: string) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function proxyRequest(targetUrl: URL, options: RequestInit = {}) {
   const response = await fetch(targetUrl.toString(), {
     cache: 'no-store',
@@ -18,11 +26,12 @@ async function proxyRequest(targetUrl: URL, options: RequestInit = {}) {
 
   const bodyText = await response.text();
   const contentType = response.headers.get('content-type') ?? '';
-  const isJsonResponse = contentType.includes('application/json');
+  const parsedJson = contentType.includes('application/json')
+    ? parseJsonSafe(bodyText)
+    : null;
 
-  if (isJsonResponse) {
-    const body = bodyText ? JSON.parse(bodyText) : {};
-    return NextResponse.json(body, { status: response.status });
+  if (parsedJson !== null) {
+    return NextResponse.json(parsedJson, { status: response.status });
   }
 
   return new NextResponse(bodyText, {
@@ -99,9 +108,13 @@ export async function POST(request: Request) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(normalizedPayload),
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { ok: false, error: 'Failed to store santi-inversor email' },
+      {
+        ok: false,
+        error: 'Failed to store santi-inversor email',
+        details: error instanceof Error ? error.message : 'unknown_error',
+      },
       { status: 500 },
     );
   }
