@@ -5,9 +5,6 @@ import { NextResponse } from 'next/server';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STORAGE_FILE_PATH = path.join(process.cwd(), 'data', 'recetas-cami-emails.ndjson');
 const GOOGLE_SHEETS_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL_RECETAS_CAMI ?? '';
-const GOOGLE_SHEETS_CSV_URL =
-  process.env.GOOGLE_SHEETS_CSV_URL_RECETAS_CAMI ??
-  'https://docs.google.com/spreadsheets/d/1lGsDCRZbnGKX0ey_bU1UvhipxochN4J5_qezW2TzeCY/export?format=csv&gid=0';
 const EXPORT_TOKEN = process.env.RECETAS_CAMI_EXPORT_TOKEN ?? '';
 
 type EmailPayload = {
@@ -81,24 +78,10 @@ async function readAllRecords(): Promise<StoredRecord[]> {
   }
 }
 
-async function readEmailsFromGoogleSheet(): Promise<string[]> {
-  try {
-    const response = await fetch(GOOGLE_SHEETS_CSV_URL, { cache: 'no-store' });
-    if (!response.ok) return [];
-    const csv = await response.text();
-    return csv
-      .split(/\r?\n/)
-      .map((line) => (line.split(',')[0] ?? '').trim().replace(/^"|"$/g, '').toLowerCase())
-      .filter((email) => EMAIL_REGEX.test(email));
-  } catch {
-    return [];
-  }
-}
-
 async function getUniqueEmailsFromSources(): Promise<string[]> {
-  const [sheetEmails, localRecords] = await Promise.all([readEmailsFromGoogleSheet(), readAllRecords()]);
+  const localRecords = await readAllRecords();
   const localEmails = localRecords.map((record) => String(record.email ?? '').trim().toLowerCase());
-  return Array.from(new Set([...sheetEmails, ...localEmails].filter((email) => EMAIL_REGEX.test(email))));
+  return Array.from(new Set(localEmails.filter((email) => EMAIL_REGEX.test(email))));
 }
 
 function isAuthorized(request: Request): boolean {
