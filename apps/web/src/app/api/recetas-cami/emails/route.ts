@@ -138,7 +138,65 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const payload = (await request.json()) as EmailPayload;
+    const payload = (await request.json()) as EmailPayload & BulkImportPayload;
+
+    if (Array.isArray(payload.emails)) {
+      if (!isAuthorized(request)) {
+        return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
+      }
+
+      const normalizedIncoming = payload.emails
+        .map((email) => String(email ?? '').trim().toLowerCase())
+        .filter((email) => EMAIL_REGEX.test(email));
+
+      if (!normalizedIncoming.length) {
+        return NextResponse.json({ ok: false, error: 'No valid emails to import' }, { status: 400 });
+      }
+
+      const existing = await readAllRecords();
+      const existingEmails = new Set(existing.map((record) => record.email));
+      const uniqueIncoming = Array.from(new Set(normalizedIncoming));
+      const newEmails = uniqueIncoming.filter((email) => !existingEmails.has(email));
+
+      if (!newEmails.length) {
+        return NextResponse.json({
+          ok: true,
+          imported: 0,
+          skipped_existing: uniqueIncoming.length,
+          total_after: dedupeRecordsByEmail(existing).length,
+        });
+      }
+
+      const nowIso = new Date().toISOString();
+      const source = String(payload.source ?? 'bulk-import');
+      const pathValue = String(payload.path ?? '/recetas-cami/import');
+      const recordsToAppend: StoredRecord[] = newEmails.map((email) => ({
+        email,
+        source,
+        path: pathValue,
+        submittedAt: nowIso,
+        storedAt: nowIso,
+        ip: 'bulk-import',
+        userAgent: 'bulk-import',
+      }));
+
+      await fs.mkdir(path.dirname(STORAGE_FILE_PATH), { recursive: true });
+      await fs.appendFile(
+        STORAGE_FILE_PATH,
+        `${recordsToAppend.map((record) => JSON.stringify(record)).join('\n')}\n`,
+        'utf-8',
+      );
+
+      const compact = await compactStorageByEmail();
+      return NextResponse.json({
+        ok: true,
+        imported: newEmails.length,
+        skipped_existing: uniqueIncoming.length - newEmails.length,
+        compacted_removed: compact.removed,
+        total_after: compact.after,
+      });
+    }
+
     const email = String(payload.email ?? '').trim().toLowerCase();
 
     if (!email || !EMAIL_REGEX.test(email)) {
