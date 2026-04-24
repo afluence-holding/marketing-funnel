@@ -560,6 +560,7 @@ h1 em { color: #E8622A; font-style: normal; }
 .success-title { font-size: 22px; font-weight: 900; margin-bottom: 6px; }
 .success-sub { font-size: 14px; color: #999; margin-bottom: 24px; line-height: 1.5; }
 .success-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
-.btn-wa { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; max-width: 100%; white-space: nowrap; background: linear-gradient(135deg, #29d76d 0%, #22c45f 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 10px 18px; font-size: 12px; font-weight: 700; letter-spacing: 0.15px; color: #fff; cursor: pointer; font-family: inherit; text-decoration: none; transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.btn-wa { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; max-width: 100%; white-space: nowrap; background: linear-gradient(135deg, #29d76d 0%, #22c45f 100%); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 10px 14px; font-size: clamp(10px, 2.9vw, 12px); line-height: 1.2; font-weight: 600; letter-spacing: -0.05px; color: #fff; cursor: pointer; font-family: inherit; text-decoration: none; transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.btn-wa svg { flex-shrink: 0; width: 15px; height: 15px; }
 .btn-wa:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 10px 26px rgba(37, 211, 102, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
 `;
