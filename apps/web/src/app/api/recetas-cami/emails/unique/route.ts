@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   const format = (url.searchParams.get('format') ?? 'json').toLowerCase();
   const [records, sheetEmails] = await Promise.all([readAllRecords(), readEmailsFromGoogleSheet()]);
   const localEmails = getUniqueEmails(records);
-  const emails = Array.from(new Set([...localEmails, ...sheetEmails]));
+  const emails = sheetEmails.length ? Array.from(new Set(sheetEmails)) : localEmails;
 
   if (format === 'csv') {
     const csv = ['email', ...emails].join('\n') + '\n';

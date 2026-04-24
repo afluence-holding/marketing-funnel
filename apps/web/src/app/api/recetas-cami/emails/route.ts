@@ -105,6 +105,20 @@ async function getUniqueEmailsFromSources(): Promise<string[]> {
   );
 }
 
+async function getPersistedUniqueEmails(): Promise<string[]> {
+  const sheetEmails = await readEmailsFromGoogleSheet();
+  if (sheetEmails.length) return Array.from(new Set(sheetEmails));
+
+  const localRecords = await readAllRecords();
+  return Array.from(
+    new Set(
+      localRecords
+        .map((record) => String(record.email ?? '').trim().toLowerCase())
+        .filter((email) => EMAIL_REGEX.test(email)),
+    ),
+  );
+}
+
 function isAuthorized(request: Request): boolean {
   if (!EXPORT_TOKEN) return true;
   const url = new URL(request.url);
@@ -118,7 +132,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
   }
 
-  const uniqueEmails = await getUniqueEmailsFromSources();
+  const uniqueEmails = await getPersistedUniqueEmails();
 
   return NextResponse.json({
     ok: true,
@@ -169,6 +183,23 @@ export async function POST(request: Request) {
         userAgent: 'bulk-import',
       }));
 
+      let syncedToGoogleSheets = 0;
+      if (GOOGLE_SHEETS_WEBHOOK_URL) {
+        for (const record of recordsToAppend) {
+          try {
+            const webhookResponse = await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(record),
+              cache: 'no-store',
+            });
+            if (webhookResponse.ok) syncedToGoogleSheets += 1;
+          } catch {
+            // Best-effort sync: local storage still receives the record below.
+          }
+        }
+      }
+
       await fs.mkdir(path.dirname(STORAGE_FILE_PATH), { recursive: true });
       await fs.appendFile(
         STORAGE_FILE_PATH,
@@ -180,6 +211,7 @@ export async function POST(request: Request) {
         ok: true,
         imported: newEmails.length,
         skipped_existing: uniqueIncoming.length - newEmails.length,
+        synced_to_google_sheets: syncedToGoogleSheets,
         total_after: (await getUniqueEmailsFromSources()).length,
       });
     }
