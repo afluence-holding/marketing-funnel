@@ -19,9 +19,7 @@ async function loadHtml(): Promise<string> {
     process.cwd(),
     'src/app/(landings)/santi-inversor/research/home/landing.html',
   );
-  const raw = await fs.readFile(filePath, 'utf-8');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-  return raw.replace(/__API_URL__/g, apiUrl);
+  return fs.readFile(filePath, 'utf-8');
 }
 
 export default async function SantiInversorResearchHomeLanding() {

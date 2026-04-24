@@ -72,6 +72,162 @@ const videoEventSchema = z.object({
     .optional(),
 });
 
+const SANTI_INVERSOR_RESEARCH_SOURCE = 'landing-santi-inversor-research-home';
+const SANTI_INVERSOR_EXPORT_TOKEN = process.env.SANTI_INVERSOR_EXPORT_TOKEN ?? '';
+const SANTI_EXPORT_BASE_HEADERS = [
+  'lead_id',
+  'email',
+  'first_name',
+  'last_name',
+  'phone',
+  'source',
+  'created_at',
+  'updated_at',
+];
+
+function getQueryValue(value: unknown): string {
+  if (Array.isArray(value)) return String(value[0] ?? '');
+  return String(value ?? '');
+}
+
+function escapeCsv(value: string): string {
+  const normalized = String(value ?? '');
+  if (
+    normalized.includes('"') ||
+    normalized.includes(',') ||
+    normalized.includes('\n')
+  ) {
+    return `"${normalized.replace(/"/g, '""')}"`;
+  }
+  return normalized;
+}
+
+function isSantiInversorResearchScope(orgKey: string, buKey: string) {
+  return orgKey === 'santi-inversor' && buKey === 'research';
+}
+
+type LeadExportRow = {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  source: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type CustomFieldDefinitionRow = {
+  id: string;
+  field_key: string;
+};
+
+type CustomFieldValueRow = {
+  entity_id: string;
+  field_definition_id: string;
+  value: string | null;
+};
+
+async function fetchAllSantiLeads(organizationId: string): Promise<LeadExportRow[]> {
+  const pageSize = 1000;
+  let page = 0;
+  const allRows: LeadExportRow[] = [];
+
+  while (true) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error } = await supabaseAdmin
+      .from('leads')
+      .select('id, email, first_name, last_name, phone, source, created_at, updated_at')
+      .eq('organization_id', organizationId)
+      .eq('source', SANTI_INVERSOR_RESEARCH_SOURCE)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const rows = (data ?? []) as LeadExportRow[];
+    allRows.push(...rows);
+    if (rows.length < pageSize) break;
+    page += 1;
+  }
+
+  return allRows;
+}
+
+async function buildSantiExportRows(organizationId: string) {
+  const leads = await fetchAllSantiLeads(organizationId);
+  const leadIds = leads.map((lead) => lead.id);
+
+  const { data: definitions, error: defsError } = await supabaseAdmin
+    .from('custom_field_definitions')
+    .select('id, field_key')
+    .eq('organization_id', organizationId)
+    .eq('entity_type', 'lead');
+
+  if (defsError) throw defsError;
+
+  const typedDefinitions = (definitions ?? []) as CustomFieldDefinitionRow[];
+
+  const fieldKeyByDefinitionId = new Map<string, string>();
+  for (const definition of typedDefinitions) {
+    fieldKeyByDefinitionId.set(definition.id, definition.field_key);
+  }
+
+  const customFieldKeys: string[] = Array.from(
+    new Set(typedDefinitions.map((definition) => definition.field_key)),
+  ).sort();
+
+  const customValuesByLeadId = new Map<string, Record<string, string>>();
+  const leadChunkSize = 300;
+  for (let i = 0; i < leadIds.length; i += leadChunkSize) {
+    const chunk = leadIds.slice(i, i + leadChunkSize);
+    if (!chunk.length) continue;
+
+    const { data: values, error: valuesError } = await supabaseAdmin
+      .from('custom_field_values')
+      .select('entity_id, field_definition_id, value')
+      .eq('entity_type', 'lead')
+      .in('entity_id', chunk);
+
+    if (valuesError) throw valuesError;
+
+    const typedValues = (values ?? []) as CustomFieldValueRow[];
+    for (const value of typedValues) {
+      const fieldKey = fieldKeyByDefinitionId.get(value.field_definition_id);
+      if (!fieldKey) continue;
+      const entry = customValuesByLeadId.get(value.entity_id) ?? {};
+      entry[fieldKey] = value.value ?? '';
+      customValuesByLeadId.set(value.entity_id, entry);
+    }
+  }
+
+  const rows: Array<Record<string, string>> = leads.map((lead) => {
+    const base: Record<string, string> = {
+      lead_id: lead.id,
+      email: lead.email ?? '',
+      first_name: lead.first_name ?? '',
+      last_name: lead.last_name ?? '',
+      phone: lead.phone ?? '',
+      source: lead.source ?? '',
+      created_at: lead.created_at ?? '',
+      updated_at: lead.updated_at ?? '',
+    };
+
+    const customValues = customValuesByLeadId.get(lead.id) ?? {};
+    for (const key of customFieldKeys) {
+      base[key] = customValues[key] ?? '';
+    }
+
+    return base;
+  });
+
+  return {
+    rows,
+    headers: [...SANTI_EXPORT_BASE_HEADERS, ...customFieldKeys] as string[],
+  };
+}
+
 router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (req, res, next) => {
   try {
     const source = req.body.source;
@@ -412,6 +568,125 @@ router.post(
     }
   },
 );
+
+router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
+  try {
+    const orgKey = Array.isArray(req.params.orgKey) ? req.params.orgKey[0] : req.params.orgKey;
+    const buKey = Array.isArray(req.params.buKey) ? req.params.buKey[0] : req.params.buKey;
+
+    if (!orgKey || !buKey) {
+      res.status(400).json({ error: 'Invalid org or business unit key' });
+      return;
+    }
+
+    if (!isSantiInversorResearchScope(orgKey, buKey)) {
+      res.status(400).json({
+        error: 'Unsupported business unit for stats endpoint',
+        message: 'This endpoint is currently enabled only for santi-inversor/research.',
+      });
+      return;
+    }
+
+    const binding = getBusinessUnitBinding(orgKey, buKey);
+    if (!binding) {
+      res.status(404).json({
+        error: 'Business unit not found',
+        message: `Unknown ingestion target: ${orgKey}/${buKey}`,
+      });
+      return;
+    }
+
+    const leads = await fetchAllSantiLeads(binding.organizationId);
+    const uniqueEmails = new Set(
+      leads
+        .map((lead) => String(lead.email ?? '').trim().toLowerCase())
+        .filter(Boolean),
+    );
+
+    res.status(200).json({
+      ok: true,
+      source: SANTI_INVERSOR_RESEARCH_SOURCE,
+      total_submissions: leads.length,
+      unique_emails: uniqueEmails.size,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
+  try {
+    const orgKey = Array.isArray(req.params.orgKey) ? req.params.orgKey[0] : req.params.orgKey;
+    const buKey = Array.isArray(req.params.buKey) ? req.params.buKey[0] : req.params.buKey;
+
+    if (!orgKey || !buKey) {
+      res.status(400).json({ error: 'Invalid org or business unit key' });
+      return;
+    }
+
+    if (!isSantiInversorResearchScope(orgKey, buKey)) {
+      res.status(400).json({
+        error: 'Unsupported business unit for export endpoint',
+        message: 'This endpoint is currently enabled only for santi-inversor/research.',
+      });
+      return;
+    }
+
+    if (SANTI_INVERSOR_EXPORT_TOKEN) {
+      const tokenFromQuery = getQueryValue(req.query.token);
+      const tokenFromHeader = req.get('x-export-token') ?? '';
+      const isAuthorized =
+        tokenFromQuery === SANTI_INVERSOR_EXPORT_TOKEN ||
+        tokenFromHeader === SANTI_INVERSOR_EXPORT_TOKEN;
+
+      if (!isAuthorized) {
+        res.status(401).json({ ok: false, error: 'Unauthorized export access' });
+        return;
+      }
+    }
+
+    const binding = getBusinessUnitBinding(orgKey, buKey);
+    if (!binding) {
+      res.status(404).json({
+        error: 'Business unit not found',
+        message: `Unknown ingestion target: ${orgKey}/${buKey}`,
+      });
+      return;
+    }
+
+    const { rows, headers } = await buildSantiExportRows(binding.organizationId);
+    const format = getQueryValue(req.query.format).trim().toLowerCase();
+    const selectedFormat = format === 'csv' ? 'csv' : 'json';
+
+    if (selectedFormat === 'csv') {
+      const csvLines = [
+        headers.join(','),
+        ...rows.map((row) => headers.map((header) => escapeCsv(row[header] ?? '')).join(',')),
+      ];
+      const csv = `${csvLines.join('\n')}\n`;
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="santi-inversor-research-export-${new Date()
+          .toISOString()
+          .slice(0, 10)}.csv"`,
+      );
+      res.status(200).send(csv);
+      return;
+    }
+
+    res.status(200).json({
+      ok: true,
+      source: SANTI_INVERSOR_RESEARCH_SOURCE,
+      total: rows.length,
+      headers,
+      data: rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.post('/ingest', (_req, res) => {
   res.status(400).json({

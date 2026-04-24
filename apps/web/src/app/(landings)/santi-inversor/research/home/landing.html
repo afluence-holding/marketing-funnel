@@ -1692,9 +1692,8 @@
 
 <script>
 /* ═══════════ CONFIG ═══════════ */
-/* API_URL and INGEST_PATH are injected by page.tsx at server render time. */
-const API_URL = "__API_URL__";
-const INGEST_PATH = "/api/orgs/santi-inversor/bus/research/ingest";
+/* Keep submission on the same origin and proxy server-side to API. */
+const INGEST_PATH = "/api/santi-inversor/research";
 const FORM_SOURCE = "landing-santi-inversor-research-home";
 const THANKS_URL = "/santi-inversor/calculadora";
 const TICKER_API_PATH = "/api/market-ticker";
@@ -1996,7 +1995,7 @@ form.addEventListener('submit', async (e) => {
   let submitted = false;
   let errorMessage = '';
   try {
-    const res = await fetch(API_URL + INGEST_PATH, {
+    const res = await fetch(INGEST_PATH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
