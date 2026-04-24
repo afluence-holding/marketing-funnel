@@ -220,6 +220,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       const input = document.getElementById('email');
       const msg = document.getElementById('msg');
       const btn = document.getElementById('submit-btn');
+      const defaultButtonText = btn.textContent;
       const thanksScreen = document.getElementById('thanks-screen');
       const EMAIL_REGEX = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
 
@@ -240,10 +241,6 @@ const LANDING_HTML = `<!DOCTYPE html>
         return res.ok;
       }
 
-      input.addEventListener('blur', () => {
-        saveEmail('input-blur').catch(() => {});
-      });
-
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         msg.textContent = '';
@@ -262,7 +259,7 @@ const LANDING_HTML = `<!DOCTYPE html>
           msg.textContent = 'No se pudo guardar. Intenta de nuevo.';
         } finally {
           btn.disabled = false;
-          btn.textContent = 'Unirme';
+          btn.textContent = defaultButtonText;
         }
       });
     })();

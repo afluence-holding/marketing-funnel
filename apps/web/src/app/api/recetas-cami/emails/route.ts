@@ -24,6 +24,20 @@ type StoredRecord = {
   userAgent: string;
 };
 
+function dedupeRecordsByEmail(records: StoredRecord[]): StoredRecord[] {
+  const seen = new Set<string>();
+  const deduped: StoredRecord[] = [];
+
+  for (const record of records) {
+    const key = String(record.email ?? '').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(record);
+  }
+
+  return deduped;
+}
+
 function escapeCsv(value: string): string {
   const normalized = String(value ?? '');
   if (normalized.includes('"') || normalized.includes(',') || normalized.includes('\n')) {
@@ -71,7 +85,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
   }
 
-  const records = await readAllRecords();
+  const records = dedupeRecordsByEmail(await readAllRecords());
   const url = new URL(request.url);
   const format = (url.searchParams.get('format') ?? 'json').toLowerCase();
 
@@ -103,7 +117,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid email' }, { status: 400 });
     }
 
-    const record = {
+    const existingRecords = await readAllRecords();
+    const alreadyExists = existingRecords.some((item) => item.email === email);
+    if (alreadyExists) {
+      return NextResponse.json({
+        ok: true,
+        deduped: true,
+        syncedToGoogleSheets: false,
+        hasGoogleSheetsWebhook: Boolean(GOOGLE_SHEETS_WEBHOOK_URL),
+      });
+    }
+
+    const record: StoredRecord = {
       email,
       source: String(payload.source ?? ''),
       path: String(payload.path ?? ''),
