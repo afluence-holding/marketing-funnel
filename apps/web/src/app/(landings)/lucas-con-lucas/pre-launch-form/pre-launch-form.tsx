@@ -14,29 +14,7 @@ const WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/FrS6wqhSWM2HdepEdajz92?mod
 // Launch date — 16 May 2026 at 00:00 local time (month index 4 = May).
 const DEADLINE = new Date(2026, 4, 16, 0, 0, 0);
 
-// Waitlist counter baseline — 17 Apr 2026 00:00 local time (month index 3 = April).
-// Same Date-ctor + getTime() format as DEADLINE so both sit on the same ms epoch.
-const WAITLIST_EPOCH = new Date(2026, 3, 17, 0, 0, 0).getTime();
-const WAITLIST_BASE_COUNT = 840;
-const MS_PER_HOUR = 3_600_000;
-
-/** Deterministic 10..20 inclusive for a given hour index. */
-function hourlyRate(hourIndex: number): number {
-  const hash = Math.sin(hourIndex * 12.9898) * 43758.5453;
-  const frac = hash - Math.floor(hash);
-  return 10 + Math.floor(frac * 11);
-}
-
-/** Expected waitlist count at an absolute ms timestamp. Monotonic and stable. */
-function computeWaitlistCount(nowMs: number): number {
-  const elapsed = nowMs - WAITLIST_EPOCH;
-  if (elapsed <= 0) return WAITLIST_BASE_COUNT;
-  const completedHours = Math.floor(elapsed / MS_PER_HOUR);
-  let total = WAITLIST_BASE_COUNT;
-  for (let h = 0; h < completedHours; h++) total += hourlyRate(h);
-  const fraction = (elapsed - completedHours * MS_PER_HOUR) / MS_PER_HOUR;
-  return total + Math.floor(hourlyRate(completedHours) * fraction);
-}
+const WAITLIST_BASE_COUNT = 367;
 
 const ROTATING_PHRASES = [
   'No es un curso',
@@ -64,7 +42,7 @@ function PreLaunchFormInner() {
 
   const [cd, setCd] = useState({ d: '--', h: '--', m: '--', s: '--' });
   const [urgency, setUrgency] = useState('');
-  const [counter, setCounter] = useState('0');
+  const [emailInput, setEmailInput] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -242,46 +220,11 @@ function PreLaunchFormInner() {
     return () => clearInterval(id);
   }, []);
 
-  // Social counter: animate 0 -> computeWaitlistCount(now) over 2s, then
-  // re-sync every 30s against the deterministic hourly function (10..20 per hour).
-  useEffect(() => {
-    let rafId = 0;
-    let interval: ReturnType<typeof setInterval> | null = null;
-    let shown = 0;
-
-    const startTimeout = setTimeout(() => {
-      const target = computeWaitlistCount(Date.now());
-      let start = 0;
-      const duration = 2000;
-      function step(ts: number) {
-        if (!start) start = ts;
-        const p = Math.min((ts - start) / duration, 1);
-        const ease = 1 - Math.pow(1 - p, 3);
-        shown = Math.floor(ease * target);
-        setCounter(shown.toLocaleString('es-CL'));
-        if (p < 1) {
-          rafId = requestAnimationFrame(step);
-        } else {
-          shown = target;
-          setCounter(shown.toLocaleString('es-CL'));
-          interval = setInterval(() => {
-            const live = computeWaitlistCount(Date.now());
-            if (live !== shown) {
-              shown = live;
-              setCounter(shown.toLocaleString('es-CL'));
-            }
-          }, 30_000);
-        }
-      }
-      rafId = requestAnimationFrame(step);
-    }, 800);
-
-    return () => {
-      clearTimeout(startTimeout);
-      cancelAnimationFrame(rafId);
-      if (interval) clearInterval(interval);
-    };
-  }, []);
+  const normalizedEmail = emailInput.trim();
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+  const waitlistCounter = (
+    WAITLIST_BASE_COUNT + (isValidEmail ? normalizedEmail.length : 0)
+  ).toLocaleString('es-CL');
 
   // Toast notifications — first after 4s, then every 18s
   useEffect(() => {
@@ -311,7 +254,7 @@ function PreLaunchFormInner() {
     e.preventDefault();
     const input = emailRef.current;
     if (!input) return;
-    const email = input.value.trim();
+    const email = normalizedEmail;
     if (!email || !email.includes('@')) {
       input.classList.remove('shake');
       input.classList.add('error');
@@ -433,6 +376,8 @@ function PreLaunchFormInner() {
                 placeholder="tu@correo.com"
                 disabled={loading}
                 autoComplete="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
               />
               <button type="submit" disabled={loading}>
                 {loading ? 'Enviando…' : 'Quiero registrarme →'}
@@ -441,7 +386,7 @@ function PreLaunchFormInner() {
               {errorMsg && <div className="form-error">{errorMsg}</div>}
             </form>
             <div className="social">
-              <div className="social-num">{counter}</div>
+              <div className="social-num">{waitlistCounter}</div>
               <div className="social-lbl">🚧 En lista de espera</div>
             </div>
           </div>
