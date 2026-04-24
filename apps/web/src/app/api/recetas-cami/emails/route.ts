@@ -104,7 +104,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
   }
 
-  const records = dedupeRecordsByEmail(await readAllRecords());
+  const originalRecords = await readAllRecords();
+  const records = dedupeRecordsByEmail(originalRecords);
+  const totalOriginal = originalRecords.length;
+  const totalUnicos = records.length;
+  const duplicadosDetectados = totalOriginal - totalUnicos;
   const url = new URL(request.url);
   const format = (url.searchParams.get('format') ?? 'json').toLowerCase();
 
@@ -122,7 +126,10 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    total: records.length,
+    total: totalUnicos,
+    total_original: totalOriginal,
+    total_unicos: totalUnicos,
+    duplicados_detectados: duplicadosDetectados,
     records,
   });
 }
