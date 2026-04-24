@@ -72,6 +72,25 @@ async function readAllRecords(): Promise<StoredRecord[]> {
   }
 }
 
+async function compactStorageByEmail(): Promise<{
+  before: number;
+  after: number;
+  removed: number;
+}> {
+  const records = await readAllRecords();
+  const deduped = dedupeRecordsByEmail(records);
+  const lines = deduped.map((record) => JSON.stringify(record));
+
+  await fs.mkdir(path.dirname(STORAGE_FILE_PATH), { recursive: true });
+  await fs.writeFile(STORAGE_FILE_PATH, lines.length ? `${lines.join('\n')}\n` : '', 'utf-8');
+
+  return {
+    before: records.length,
+    after: deduped.length,
+    removed: records.length - deduped.length,
+  };
+}
+
 function isAuthorized(request: Request): boolean {
   if (!EXPORT_TOKEN) return true;
   const url = new URL(request.url);
@@ -166,5 +185,22 @@ export async function POST(request: Request) {
     });
   } catch {
     return NextResponse.json({ ok: false, error: 'Failed to store email' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
+  }
+
+  try {
+    const result = await compactStorageByEmail();
+    return NextResponse.json({
+      ok: true,
+      compacted: true,
+      ...result,
+    });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Failed to compact records' }, { status: 500 });
   }
 }
