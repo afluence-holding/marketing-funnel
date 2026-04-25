@@ -1,7 +1,7 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
-
-const CALCULATOR_URL = 'https://frabjous-treacle-316d4f.netlify.app/';
 
 export const metadata: Metadata = {
   title: 'Santi Inversor / Calculadora',
@@ -14,12 +14,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SantinversorCalculadoraLanding() {
+async function loadHtml(): Promise<string> {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(landings)/santi-inversor/calculadora/landing.html',
+  );
+  return fs.readFile(filePath, 'utf-8');
+}
+
+export default async function SantinversorCalculadoraLanding() {
+  const html = await loadHtml();
+
   return (
     <>
       <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_SANTI_INVERSOR} />
       <iframe
-        src={CALCULATOR_URL}
+        srcDoc={html}
         title="Santi Inversor / Calculadora"
         style={{
           width: '100%',
