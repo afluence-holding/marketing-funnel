@@ -169,6 +169,32 @@ async function fetchAllLucasConLucasLeads(organizationId: string): Promise<LeadE
   return fetchAllLeadsBySource(organizationId, LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE);
 }
 
+async function fetchAllLucasConLucasMainLeads(organizationId: string): Promise<LeadExportRow[]> {
+  const pageSize = 1000;
+  let page = 0;
+  const allRows: LeadExportRow[] = [];
+
+  while (true) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error } = await supabaseAdmin
+      .from('leads')
+      .select('id, email, first_name, last_name, phone, source, created_at, updated_at')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const rows = (data ?? []) as LeadExportRow[];
+    allRows.push(...rows);
+    if (rows.length < pageSize) break;
+    page += 1;
+  }
+
+  return allRows;
+}
+
 async function buildExportRowsForSource(organizationId: string, source: string) {
   const leads = await fetchAllLeadsBySource(organizationId, source);
   const leadIds = leads.map((lead) => lead.id);
@@ -248,6 +274,25 @@ async function buildSantiExportRows(organizationId: string) {
 
 async function buildLucasConLucasExportRows(organizationId: string) {
   return buildExportRowsForSource(organizationId, LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE);
+}
+
+async function buildLucasConLucasMainExportRows(organizationId: string) {
+  const leads = await fetchAllLucasConLucasMainLeads(organizationId);
+  const rows: Array<Record<string, string>> = leads.map((lead) => ({
+    lead_id: lead.id,
+    email: lead.email ?? '',
+    first_name: lead.first_name ?? '',
+    last_name: lead.last_name ?? '',
+    phone: lead.phone ?? '',
+    source: lead.source ?? '',
+    created_at: lead.created_at ?? '',
+    updated_at: lead.updated_at ?? '',
+  }));
+
+  return {
+    rows,
+    headers: LEAD_EXPORT_BASE_HEADERS,
+  };
 }
 
 router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (req, res, next) => {
@@ -603,6 +648,7 @@ router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
 
     const isSantiScope = isSantiInversorResearchScope(orgKey, buKey);
     const isLucasScope = isLucasConLucasMainScope(orgKey, buKey);
+    const includeAllLucasMain = getQueryValue(req.query.all).trim().toLowerCase() === 'true';
 
     if (!isSantiScope && !isLucasScope) {
       res.status(400).json({
@@ -622,10 +668,17 @@ router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
       return;
     }
 
-    const source = isSantiScope ? SANTI_INVERSOR_RESEARCH_SOURCE : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE;
+    const source =
+      isSantiScope || !includeAllLucasMain
+        ? isSantiScope
+          ? SANTI_INVERSOR_RESEARCH_SOURCE
+          : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE
+        : 'all-lucas-con-lucas-main-sources';
     const leads = isSantiScope
       ? await fetchAllSantiLeads(binding.organizationId)
-      : await fetchAllLucasConLucasLeads(binding.organizationId);
+      : includeAllLucasMain
+        ? await fetchAllLucasConLucasMainLeads(binding.organizationId)
+        : await fetchAllLucasConLucasLeads(binding.organizationId);
     const uniqueEmails = new Set(
       leads
         .map((lead) => String(lead.email ?? '').trim().toLowerCase())
@@ -655,6 +708,7 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
 
     const isSantiScope = isSantiInversorResearchScope(orgKey, buKey);
     const isLucasScope = isLucasConLucasMainScope(orgKey, buKey);
+    const includeAllLucasMain = getQueryValue(req.query.all).trim().toLowerCase() === 'true';
 
     if (!isSantiScope && !isLucasScope) {
       res.status(400).json({
@@ -688,10 +742,17 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
       return;
     }
 
-    const source = isSantiScope ? SANTI_INVERSOR_RESEARCH_SOURCE : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE;
+    const source =
+      isSantiScope || !includeAllLucasMain
+        ? isSantiScope
+          ? SANTI_INVERSOR_RESEARCH_SOURCE
+          : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE
+        : 'all-lucas-con-lucas-main-sources';
     const { rows, headers } = isSantiScope
       ? await buildSantiExportRows(binding.organizationId)
-      : await buildLucasConLucasExportRows(binding.organizationId);
+      : includeAllLucasMain
+        ? await buildLucasConLucasMainExportRows(binding.organizationId)
+        : await buildLucasConLucasExportRows(binding.organizationId);
     const format = getQueryValue(req.query.format).trim().toLowerCase();
     const selectedFormat = format === 'csv' ? 'csv' : 'json';
 

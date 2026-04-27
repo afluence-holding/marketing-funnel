@@ -12,10 +12,12 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const format = (url.searchParams.get('format') ?? '').toLowerCase();
     const token = url.searchParams.get('token') ?? '';
+    const all = (url.searchParams.get('all') ?? '').toLowerCase();
     const backendUrl = new URL(`${BACKEND_BASE_URL}${TARGET_EXPORT_PATH}`);
 
     if (format) backendUrl.searchParams.set('format', format);
     if (token) backendUrl.searchParams.set('token', token);
+    if (all) backendUrl.searchParams.set('all', all);
 
     const response = await fetch(backendUrl.toString(), {
       method: 'GET',

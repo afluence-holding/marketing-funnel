@@ -7,9 +7,14 @@ const BACKEND_BASE_URL =
 
 const TARGET_STATS_PATH = '/api/orgs/lucas-con-lucas/bus/main/stats';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const response = await fetch(`${BACKEND_BASE_URL}${TARGET_STATS_PATH}`, {
+    const requestUrl = new URL(request.url);
+    const all = (requestUrl.searchParams.get('all') ?? '').toLowerCase();
+    const backendUrl = new URL(`${BACKEND_BASE_URL}${TARGET_STATS_PATH}`);
+    if (all) backendUrl.searchParams.set('all', all);
+
+    const response = await fetch(backendUrl.toString(), {
       method: 'GET',
       cache: 'no-store',
     });
