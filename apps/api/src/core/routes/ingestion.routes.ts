@@ -87,6 +87,36 @@ const LEAD_EXPORT_BASE_HEADERS = [
   'updated_at',
 ];
 
+const SANTI_SINGLE_SELECT_LABELS = {
+  punto_financiero: {
+    A: 'Llego a fin de mes pero no me sobra nada para ahorrar ni invertir.',
+    B: 'Ahorro algo, pero esta parado en una cuenta. No lo tengo invertido.',
+    C: 'Tengo algo invertido pero sin una estrategia clara.',
+    D: 'Invierto con regularidad y quiero profundizar o diversificar mejor.',
+    E: 'Ya tengo un portafolio armado y lo manejo con criterio.',
+  },
+  inversion_mes: {
+    A: 'Nada por ahora.',
+    B: 'Menos de 100 USD',
+    C: 'Entre 100 y 500 USD',
+    D: 'Entre 500 y 1.000 USD',
+    E: 'Entre 1.000 y 3.000 USD',
+    F: 'Mas de 3.000 USD',
+  },
+} as const;
+
+const SANTI_MULTI_SELECT_LABELS = {
+  tema_ayuda: {
+    A: 'Como organizar mis gastos y saber cuanto puedo invertir.',
+    B: 'Como armar mi portafolio de inversiones desde cero.',
+    C: 'Como mejorar y optimizar el portafolio que ya tengo.',
+    D: 'Como empezar a invertir en ETFs o fondos desde cero.',
+    E: 'Como elegir acciones e invertir en bolsa sin arruinarme.',
+    F: 'Como invertir en propiedades aunque no tenga mucho capital.',
+    G: 'Como invertir en cripto de forma inteligente y sin especular.',
+  },
+} as const;
+
 function getQueryValue(value: unknown): string {
   if (Array.isArray(value)) return String(value[0] ?? '');
   return String(value ?? '');
@@ -102,6 +132,29 @@ function escapeCsv(value: string): string {
     return `"${normalized.replace(/"/g, '""')}"`;
   }
   return normalized;
+}
+
+function decodeSantiSingleSelect(
+  value: string,
+  map: Record<string, string>,
+): string {
+  const code = String(value ?? '').trim();
+  if (!code) return '';
+  return map[code] ?? code;
+}
+
+function decodeSantiMultiSelect(
+  value: string,
+  map: Record<string, string>,
+): string {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  return raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => map[item] ?? item)
+    .join(' | ');
 }
 
 function isSantiInversorResearchScope(orgKey: string, buKey: string) {
@@ -269,7 +322,31 @@ async function buildExportRowsForSource(organizationId: string, source: string) 
 }
 
 async function buildSantiExportRows(organizationId: string) {
-  return buildExportRowsForSource(organizationId, SANTI_INVERSOR_RESEARCH_SOURCE);
+  const { rows, headers } = await buildExportRowsForSource(
+    organizationId,
+    SANTI_INVERSOR_RESEARCH_SOURCE,
+  );
+
+  const decodedRows: Array<Record<string, string>> = rows.map((row) => ({
+    ...row,
+    punto_financiero_label: decodeSantiSingleSelect(
+      row.punto_financiero ?? '',
+      SANTI_SINGLE_SELECT_LABELS.punto_financiero,
+    ),
+    inversion_mes_label: decodeSantiSingleSelect(
+      row.inversion_mes ?? '',
+      SANTI_SINGLE_SELECT_LABELS.inversion_mes,
+    ),
+    tema_ayuda_label: decodeSantiMultiSelect(
+      row.tema_ayuda ?? '',
+      SANTI_MULTI_SELECT_LABELS.tema_ayuda,
+    ),
+  }));
+
+  return {
+    rows: decodedRows,
+    headers: [...headers, 'punto_financiero_label', 'inversion_mes_label', 'tema_ayuda_label'],
+  };
 }
 
 async function buildLucasConLucasExportRows(organizationId: string) {
