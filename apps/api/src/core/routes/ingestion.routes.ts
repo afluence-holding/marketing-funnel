@@ -74,7 +74,9 @@ const videoEventSchema = z.object({
 
 const SANTI_INVERSOR_RESEARCH_SOURCE = 'landing-santi-inversor-research-home';
 const SANTI_INVERSOR_EXPORT_TOKEN = process.env.SANTI_INVERSOR_EXPORT_TOKEN ?? '';
-const SANTI_EXPORT_BASE_HEADERS = [
+const LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE = 'landing-lucas-con-lucas-pre-launch';
+const LUCAS_CON_LUCAS_EXPORT_TOKEN = process.env.LUCAS_CON_LUCAS_EXPORT_TOKEN ?? '';
+const LEAD_EXPORT_BASE_HEADERS = [
   'lead_id',
   'email',
   'first_name',
@@ -106,6 +108,10 @@ function isSantiInversorResearchScope(orgKey: string, buKey: string) {
   return orgKey === 'santi-inversor' && buKey === 'research';
 }
 
+function isLucasConLucasMainScope(orgKey: string, buKey: string) {
+  return orgKey === 'lucas-con-lucas' && buKey === 'main';
+}
+
 type LeadExportRow = {
   id: string;
   email: string | null;
@@ -128,7 +134,7 @@ type CustomFieldValueRow = {
   value: string | null;
 };
 
-async function fetchAllSantiLeads(organizationId: string): Promise<LeadExportRow[]> {
+async function fetchAllLeadsBySource(organizationId: string, source: string): Promise<LeadExportRow[]> {
   const pageSize = 1000;
   let page = 0;
   const allRows: LeadExportRow[] = [];
@@ -140,7 +146,7 @@ async function fetchAllSantiLeads(organizationId: string): Promise<LeadExportRow
       .from('leads')
       .select('id, email, first_name, last_name, phone, source, created_at, updated_at')
       .eq('organization_id', organizationId)
-      .eq('source', SANTI_INVERSOR_RESEARCH_SOURCE)
+      .eq('source', source)
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -155,8 +161,16 @@ async function fetchAllSantiLeads(organizationId: string): Promise<LeadExportRow
   return allRows;
 }
 
-async function buildSantiExportRows(organizationId: string) {
-  const leads = await fetchAllSantiLeads(organizationId);
+async function fetchAllSantiLeads(organizationId: string): Promise<LeadExportRow[]> {
+  return fetchAllLeadsBySource(organizationId, SANTI_INVERSOR_RESEARCH_SOURCE);
+}
+
+async function fetchAllLucasConLucasLeads(organizationId: string): Promise<LeadExportRow[]> {
+  return fetchAllLeadsBySource(organizationId, LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE);
+}
+
+async function buildExportRowsForSource(organizationId: string, source: string) {
+  const leads = await fetchAllLeadsBySource(organizationId, source);
   const leadIds = leads.map((lead) => lead.id);
 
   const { data: definitions, error: defsError } = await supabaseAdmin
@@ -224,8 +238,16 @@ async function buildSantiExportRows(organizationId: string) {
 
   return {
     rows,
-    headers: [...SANTI_EXPORT_BASE_HEADERS, ...customFieldKeys] as string[],
+    headers: [...LEAD_EXPORT_BASE_HEADERS, ...customFieldKeys] as string[],
   };
+}
+
+async function buildSantiExportRows(organizationId: string) {
+  return buildExportRowsForSource(organizationId, SANTI_INVERSOR_RESEARCH_SOURCE);
+}
+
+async function buildLucasConLucasExportRows(organizationId: string) {
+  return buildExportRowsForSource(organizationId, LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE);
 }
 
 router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (req, res, next) => {
@@ -579,10 +601,14 @@ router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
       return;
     }
 
-    if (!isSantiInversorResearchScope(orgKey, buKey)) {
+    const isSantiScope = isSantiInversorResearchScope(orgKey, buKey);
+    const isLucasScope = isLucasConLucasMainScope(orgKey, buKey);
+
+    if (!isSantiScope && !isLucasScope) {
       res.status(400).json({
         error: 'Unsupported business unit for stats endpoint',
-        message: 'This endpoint is currently enabled only for santi-inversor/research.',
+        message:
+          'This endpoint is currently enabled only for santi-inversor/research and lucas-con-lucas/main.',
       });
       return;
     }
@@ -596,7 +622,10 @@ router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
       return;
     }
 
-    const leads = await fetchAllSantiLeads(binding.organizationId);
+    const source = isSantiScope ? SANTI_INVERSOR_RESEARCH_SOURCE : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE;
+    const leads = isSantiScope
+      ? await fetchAllSantiLeads(binding.organizationId)
+      : await fetchAllLucasConLucasLeads(binding.organizationId);
     const uniqueEmails = new Set(
       leads
         .map((lead) => String(lead.email ?? '').trim().toLowerCase())
@@ -605,7 +634,7 @@ router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
 
     res.status(200).json({
       ok: true,
-      source: SANTI_INVERSOR_RESEARCH_SOURCE,
+      source,
       total_submissions: leads.length,
       unique_emails: uniqueEmails.size,
     });
@@ -624,20 +653,25 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
       return;
     }
 
-    if (!isSantiInversorResearchScope(orgKey, buKey)) {
+    const isSantiScope = isSantiInversorResearchScope(orgKey, buKey);
+    const isLucasScope = isLucasConLucasMainScope(orgKey, buKey);
+
+    if (!isSantiScope && !isLucasScope) {
       res.status(400).json({
         error: 'Unsupported business unit for export endpoint',
-        message: 'This endpoint is currently enabled only for santi-inversor/research.',
+        message:
+          'This endpoint is currently enabled only for santi-inversor/research and lucas-con-lucas/main.',
       });
       return;
     }
 
-    if (SANTI_INVERSOR_EXPORT_TOKEN) {
+    const exportToken = isSantiScope ? SANTI_INVERSOR_EXPORT_TOKEN : LUCAS_CON_LUCAS_EXPORT_TOKEN;
+    if (exportToken) {
       const tokenFromQuery = getQueryValue(req.query.token);
       const tokenFromHeader = req.get('x-export-token') ?? '';
       const isAuthorized =
-        tokenFromQuery === SANTI_INVERSOR_EXPORT_TOKEN ||
-        tokenFromHeader === SANTI_INVERSOR_EXPORT_TOKEN;
+        tokenFromQuery === exportToken ||
+        tokenFromHeader === exportToken;
 
       if (!isAuthorized) {
         res.status(401).json({ ok: false, error: 'Unauthorized export access' });
@@ -654,7 +688,10 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
       return;
     }
 
-    const { rows, headers } = await buildSantiExportRows(binding.organizationId);
+    const source = isSantiScope ? SANTI_INVERSOR_RESEARCH_SOURCE : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE;
+    const { rows, headers } = isSantiScope
+      ? await buildSantiExportRows(binding.organizationId)
+      : await buildLucasConLucasExportRows(binding.organizationId);
     const format = getQueryValue(req.query.format).trim().toLowerCase();
     const selectedFormat = format === 'csv' ? 'csv' : 'json';
 
@@ -668,7 +705,7 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="santi-inversor-research-export-${new Date()
+        `attachment; filename="${orgKey}-${buKey}-export-${new Date()
           .toISOString()
           .slice(0, 10)}.csv"`,
       );
@@ -678,7 +715,7 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
 
     res.status(200).json({
       ok: true,
-      source: SANTI_INVERSOR_RESEARCH_SOURCE,
+      source,
       total: rows.length,
       headers,
       data: rows,
