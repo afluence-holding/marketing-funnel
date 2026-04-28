@@ -146,20 +146,38 @@ export async function metaGraphFetch<T>(
 }
 
 /**
- * Fetch a paginated Graph API endpoint, following `paging.next` until empty.
- * Returns the concatenated `data` array.
+ * Result returned by `metaGraphFetchPaginated`. Adds two diagnostic fields
+ * on top of the standard `MetaFetchResult` so callers can tell *why* the
+ * pagination loop stopped:
+ *
+ *   - `pagesFetched`  — how many pages were actually pulled
+ *   - `truncatedByMaxPages` — true iff we stopped because we hit the
+ *     `maxPages` ceiling AND Meta still had a `paging.next` cursor. Callers
+ *     using this to surface "we may have lost data" warnings should rely on
+ *     this boolean instead of guessing from `data.length`.
+ */
+export interface MetaPaginatedResult<T> extends MetaFetchResult<T[]> {
+  pagesFetched: number;
+  truncatedByMaxPages: boolean;
+}
+
+/**
+ * Fetch a paginated Graph API endpoint, following `paging.next` until empty
+ * or until `maxPages` is reached. Returns the concatenated `data` array
+ * along with diagnostic fields. See `MetaPaginatedResult`.
  */
 export async function metaGraphFetchPaginated<T>(
   path: string,
   params: Record<string, string | number | undefined>,
   accessToken: string,
   opts: { adAccountId?: string; maxPages?: number } = {},
-): Promise<MetaFetchResult<T[]>> {
+): Promise<MetaPaginatedResult<T>> {
   const out: T[] = [];
   let lastBuc: MetaBucUsage | undefined;
   let nextUrl: string | null = null;
   let pagesFetched = 0;
   const maxPages = opts.maxPages ?? 100;
+  let truncatedByMaxPages = false;
 
   while (pagesFetched < maxPages) {
     const result: MetaFetchResult<{ data: T[]; paging?: { next?: string } }> = nextUrl
@@ -171,5 +189,12 @@ export async function metaGraphFetchPaginated<T>(
     pagesFetched++;
     if (!nextUrl) break;
   }
-  return { data: out, buc: lastBuc };
+  // We left the loop with a non-null nextUrl iff we hit maxPages while Meta
+  // still had more — that's exactly the truncation condition operators care
+  // about. The earlier "data.length >= maxPages * pageSize" heuristic could
+  // produce both false positives (50 full pages exactly + no next) and
+  // false negatives (last page with <pageSize but next still set).
+  if (nextUrl) truncatedByMaxPages = true;
+
+  return { data: out, buc: lastBuc, pagesFetched, truncatedByMaxPages };
 }

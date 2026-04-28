@@ -65,7 +65,8 @@ export function WatchSignalsTable({ items }: { items: WatchSignalItem[] }) {
   }, [items, search, statusFilter]);
 
   const sorted = useSortedRows(filtered, sort, compareRow);
-  const hasFilters = search.length > 0 || statusFilter.size > 0;
+  // trim() to match filter site at line 59.
+  const hasFilters = search.trim().length > 0 || statusFilter.size > 0;
   const clearFilters = () => {
     setSearch('');
     setStatusFilter(new Set());
