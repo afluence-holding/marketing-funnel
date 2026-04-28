@@ -26,6 +26,7 @@ import { DateRangeFilter } from '@/components/date-range-filter';
 import { ZoomableChart } from '@/components/zoomable-chart';
 import { AdPerformanceTable } from '@/components/ad-performance-table';
 import { AdSetTable } from '@/components/ad-set-table';
+import { BudgetBumpsTable } from '@/components/budget-bumps-table';
 import { RecentPurchasesTable } from '@/components/recent-purchases-table';
 import { MatchupsTable } from '@/components/matchups-table';
 import { WatchSignalsTable } from '@/components/watch-signals-table';
@@ -152,6 +153,7 @@ export default async function DashboardPage({
       <RecentDailyRevenueSection tiles={data.recent_daily_tiles} />
       <KpisSection kpis={data.kpis} />
       <AdSetTable rows={data.ad_sets} />
+      <BudgetBumpsTable rows={data.budget_bumps} />
       <LearningPhaseSection cards={data.learning_cards} />
       <RecentPurchasesTable rows={data.recent_purchases} />
       <TargetingSection blocks={data.targeting_blocks} />

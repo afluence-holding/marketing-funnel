@@ -135,8 +135,10 @@ export function AdPerformanceTable({
 
   const sortedRows = useSortedRows(filteredRows, sort, compareRow);
 
+  // Use trim() so whitespace-only search input doesn't flash the
+  // "limpiar filtros" pill — must match the trim() at the filter site.
   const hasFilters =
-    search.length > 0 ||
+    search.trim().length > 0 ||
     statusFilter.size > 0 ||
     roleFilter.size > 0 ||
     formatFilter.size > 0;

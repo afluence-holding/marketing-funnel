@@ -148,6 +148,25 @@ export interface RecentPurchase {
   cpa_kill: number;
 }
 
+/**
+ * One row in the "Recent Budget Bumps" table — a single change to an ACTIVE
+ * ad set's daily_budget, projected with the human-readable ad-set name and
+ * role for display. `direction` lets the UI render an arrow + colour without
+ * recomputing the sign on the client.
+ */
+export interface BudgetBumpRow {
+  ad_set_id: string;
+  ad_set_name: string;
+  role: string;
+  prev_budget: number | null;
+  new_budget: number;
+  delta_amount: number;            // new - (prev ?? 0)
+  delta_pct: number | null;        // null for INITIAL or prev=0
+  direction: 'UP' | 'DOWN' | 'INITIAL';
+  changed_at: string;              // ISO timestamp
+  detected_via: 'pull' | 'manual_refresh' | 'backfill';
+}
+
 export interface TargetingBlock {
   id: string;
   role: string;
@@ -322,6 +341,13 @@ export interface DashboardData {
   ad_sets: AdSetRow[];
   learning_cards: LearningPhaseCard[];
   recent_purchases: RecentPurchase[];
+  /**
+   * Last 30 days of daily_budget changes on ACTIVE ad sets, newest first.
+   * Sourced from `meta_ops.ad_set_budget_history` (populated by the pull job
+   * diff and a one-shot Activity Log backfill). Operators use this to spot
+   * recent pacing decisions when explaining day-over-day swings.
+   */
+  budget_bumps: BudgetBumpRow[];
   targeting_blocks: TargetingBlock[];
   cus_saturation: CusSaturationBlock;
   trend: TrendPoint[];
@@ -1116,20 +1142,85 @@ export async function loadDashboard(params: {
     advantage_plus_status: 'EXPANDING',
   };
 
-  // ---------- 9. Ad performance + matchups + frequency + alerts ----------
-  // map ad_set_id → role / name / daily_budget. Role is shown in the table;
-  // name populates the new "Ad Set" column; daily budget feeds the
-  // auto-classification thresholds below (e.g. an ad with spend ≥ 1× ad_set
-  // daily_budget and zero purchases enters "watch").
+  // ---------- 8. Ad set lookup maps (used by 8.5 and section 9) ----------
+  // map ad_set_id → role / name / daily_budget / status. Role is shown in
+  // the table; name populates the new "Ad Set" column; daily budget feeds
+  // the auto-classification thresholds in section 9 (e.g. an ad with spend
+  // ≥ 1× ad_set daily_budget and zero purchases enters "watch"); status
+  // scopes the budget-bumps table to ACTIVE in section 8.5.
   const adsetRoleById   = new Map<string, string>();
   const adsetNameById   = new Map<string, string>();
   const adsetBudgetById = new Map<string, number>();
+  // Track ACTIVE status by id so we can scope downstream views (e.g. the
+  // budget-bumps table) without re-querying the ad_sets table.
+  const adsetStatusById = new Map<string, string>();
   for (const s of (adsetRows ?? []) as AnyRow[]) {
     adsetRoleById.set(s.id as string, (s.role as string) ?? '—');
     adsetNameById.set(s.id as string, (s.name as string) ?? '—');
     adsetBudgetById.set(s.id as string, Number(s.daily_budget) || 0);
+    adsetStatusById.set(s.id as string, (s.status as string) ?? 'UNKNOWN');
   }
 
+  // ---------- 8.5 Recent budget bumps (last 30d, ACTIVE only) ----------
+  // Sourced from `meta_ops.ad_set_budget_history` (forward-pull diff +
+  // optional Activity Log backfill). The history table's UNIQUE index
+  // dedupes the two writers WHEN they truncate `changed_at` to the minute
+  // (see service.ts/budget-history.ts). We add a second-line read-time
+  // dedup below to be defensive in case the contract is ever broken.
+  //
+  // ACTIVE filter goes in SQL via a list of ad set ids — the previous
+  // client-side filter combined with `LIMIT 200` could return zero rows
+  // for a BU with many paused historical bumps even though there were
+  // recent ACTIVE ones in the table.
+  const activeAdSetIds: string[] = [];
+  for (const [id, status] of adsetStatusById) {
+    if (status === 'ACTIVE') activeAdSetIds.push(id);
+  }
+
+  let budget_bumps: BudgetBumpRow[] = [];
+  if (activeAdSetIds.length > 0) {
+    const bumpsCutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { data: bumpRows } = await meta
+      .from('ad_set_budget_history')
+      .select(
+        'ad_set_id, prev_budget, new_budget, delta_amount, delta_pct, direction, changed_at, detected_via',
+      )
+      .eq('business_unit_id', buId)
+      .in('ad_set_id', activeAdSetIds)
+      .gte('changed_at', bumpsCutoff)
+      .order('changed_at', { ascending: false })
+      .limit(200);
+
+    // Defensive read-time dedup keyed on the same tuple as the unique index,
+    // in case any historical rows pre-date the minute-truncation contract.
+    const seen = new Set<string>();
+    for (const b of (bumpRows ?? []) as AnyRow[]) {
+      const id = b.ad_set_id as string;
+      const name = adsetNameById.get(id);
+      if (!name) continue; // ad set since deleted from meta_ops.ad_sets
+      const ts = b.changed_at as string;
+      // Truncate to minute for the dedup key — mirrors the writer contract.
+      const minute = ts ? ts.slice(0, 16) : '';
+      const key = `${id}|${minute}|${Number(b.new_budget ?? 0)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      budget_bumps.push({
+        ad_set_id: id,
+        ad_set_name: name,
+        role: adsetRoleById.get(id) ?? '—',
+        prev_budget: b.prev_budget != null ? Number(b.prev_budget) : null,
+        new_budget: Number(b.new_budget ?? 0),
+        delta_amount: Number(b.delta_amount ?? 0),
+        delta_pct: b.delta_pct != null ? Number(b.delta_pct) : null,
+        direction: (b.direction as 'UP' | 'DOWN' | 'INITIAL') ?? 'UP',
+        changed_at: ts,
+        detected_via:
+          (b.detected_via as 'pull' | 'manual_refresh' | 'backfill') ?? 'pull',
+      });
+    }
+  }
+
+  // ---------- 9. Ad performance + matchups + frequency + alerts ----------
   // Ad-level performance must respect the user range as well. The
   // `v_ad_performance` view aggregates lifetime so we reconstruct the rows
   // directly from `ads` + `meta_entities` + `meta_insights` filtered by
@@ -1891,6 +1982,7 @@ export async function loadDashboard(params: {
     ad_sets,
     learning_cards,
     recent_purchases,
+    budget_bumps,
     targeting_blocks,
     cus_saturation,
     trend,

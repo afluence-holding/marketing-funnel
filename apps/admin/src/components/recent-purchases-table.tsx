@@ -88,7 +88,9 @@ export function RecentPurchasesTable({ rows }: { rows: RecentPurchase[] }) {
   }, [rows, search, roleFilter, tempFilter]);
 
   const sorted = useSortedRows(filtered, sort, compareRow);
-  const hasFilters = search.length > 0 || roleFilter.size > 0 || tempFilter.size > 0;
+  // trim() to match the filter site at line 81 — avoids "limpiar filtros"
+  // flash when user types whitespace-only.
+  const hasFilters = search.trim().length > 0 || roleFilter.size > 0 || tempFilter.size > 0;
   const clearFilters = () => {
     setSearch('');
     setRoleFilter(new Set());

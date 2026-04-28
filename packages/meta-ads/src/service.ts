@@ -643,9 +643,17 @@ export async function upsertFrequencyBreakdown(
 // =============================================================================
 
 function toOptNumber(v: string | number | undefined | null): number | null {
-  if (v === undefined || v === null || v === '') return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  if (v === undefined || v === null) return null;
+  // Trim strings before number-coercion: `Number('  ')` is `0`, which would
+  // turn a missing-value sentinel into a real zero amount and silently
+  // emit fake INITIAL/DOWN events in budget history.
+  if (typeof v === 'string') {
+    const trimmed = v.trim();
+    if (trimmed === '') return null;
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : null;
+  }
+  return Number.isFinite(v) ? v : null;
 }
 
 function toOptTimestamp(v: string | undefined | null): string | null {
@@ -654,11 +662,20 @@ function toOptTimestamp(v: string | undefined | null): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** Meta returns daily_budget / lifetime_budget / spend_cap as currency minor units (cents).
- *  Numbers in our DB columns are stored in major currency units (dollars). */
-function minorToMajor(v: string | number | undefined | null): number | null {
+/**
+ * Meta returns daily_budget / lifetime_budget / spend_cap as currency minor
+ * units (cents) and our DB columns are major units (dollars). We `Math.round`
+ * before dividing so both writers (`service.ts` for the live pull and
+ * `budget-history.ts` for the backfill) produce IDENTICAL major-unit values
+ * for the same minor-unit input. The unique index on
+ * (ad_set_id, changed_at, new_budget) only dedupes when the two writers
+ * agree to the cent — the earlier draft did `n/100` here vs
+ * `Math.round(n)/100` in the backfill, which produced two distinct rows
+ * for the same logical event whenever Meta sent a non-integer cents value.
+ */
+export function minorToMajor(v: string | number | undefined | null): number | null {
   const n = toOptNumber(v);
-  return n === null ? null : n / 100;
+  return n === null ? null : Math.round(n) / 100;
 }
 
 /** Fetch the ad account's rich record and upsert into meta_ops.ad_accounts. */
@@ -748,6 +765,13 @@ export async function upsertAdSetsRich(
   organizer: OrganizerRow,
   campaignIds: string[],
   now: Date = new Date(),
+  /**
+   * Tags any ad_set_budget_history rows produced by this call. Defaults to
+   * 'pull' (the scheduled cron). The /api/refresh route can override to
+   * 'manual_refresh' so we can later distinguish operator-driven changes from
+   * background pulls in the audit log.
+   */
+  detectedVia: 'pull' | 'manual_refresh' = 'pull',
 ): Promise<number> {
   if (campaignIds.length === 0) return 0;
   const fields =
@@ -783,9 +807,153 @@ export async function upsertAdSetsRich(
     updated_at: now.toISOString(),
   }));
   if (payload.length === 0) return 0;
+
+  // -------------------------------------------------------------------------
+  // Capture daily_budget diffs into ad_set_budget_history *before* the upsert
+  // overwrites the prior value.
+  //
+  // Dedup contract with the backfill writer
+  // ----------------------------------------
+  // The backfill computes `changed_at` from Meta's Activity Log `event_time`,
+  // while we use `updated_time` (or `now` as fallback). Those two values
+  // never align at second resolution for the same logical bump, so the SQL
+  // UNIQUE on (ad_set_id, changed_at, new_budget) would NOT dedupe naturally.
+  //
+  // Both writers MUST therefore truncate `changed_at` to the minute. With
+  // that contract a forward-pull captured at 19:14:55 and a backfill
+  // captured at 19:14:32 collapse into the SAME row. The trade-off is that
+  // two distinct bumps on the same ad set to the same `new_budget` within
+  // the same 60s window will be merged into one history row — acceptable
+  // because no sane operator double-bumps to the same value within seconds.
+  //
+  // Failures here are logged but never block the upsert — the budget
+  // history is best-effort, the live `ad_sets` row is the source of truth.
+  // -------------------------------------------------------------------------
+  try {
+    const ids = payload.map((p) => p.id);
+    const { data: prevRows, error: prevErr } = await supabase
+      .from('ad_sets')
+      .select('id, daily_budget')
+      .in('id', ids);
+    // CRITICAL: bail out cleanly on read error. Without this, prevRows is
+    // null, every ad set looks "never seen", and we'd flood the history
+    // with bogus INITIAL rows on a transient Supabase blip.
+    if (prevErr) {
+      console.warn(
+        '[meta-ads] ad_set_budget_history diff skipped (prev fetch failed):',
+        prevErr.message,
+      );
+    } else {
+      const prevBudgetById = new Map<string, number | null>(
+        ((prevRows ?? []) as Array<{ id: string; daily_budget: number | null }>).map((r) => [
+          r.id,
+          r.daily_budget == null ? null : Number(r.daily_budget),
+        ]),
+      );
+
+      type HistoryInsert = {
+        ad_set_id: string;
+        business_unit_id: string;
+        prev_budget: number | null;
+        new_budget: number;
+        delta_pct: number | null;
+        direction: 'UP' | 'DOWN' | 'INITIAL';
+        changed_at: string;
+        detected_via: 'pull' | 'manual_refresh';
+      };
+      const historyRows: HistoryInsert[] = [];
+      for (const p of payload) {
+        if (p.daily_budget == null) continue; // CBO ad sets don't own a daily_budget
+        const prev = prevBudgetById.get(p.id);
+        const next = Number(p.daily_budget);
+        // Treat "no record" and "record with NULL daily_budget" identically:
+        // both are first-observation-of-a-budget. The latter happens when an
+        // ad set switches from CBO (campaign-level budget) to ABO (ad-set
+        // level budget); we want an INITIAL row in both cases, not silence.
+        const noPrior = prev === undefined || prev === null;
+        const ts = truncateToMinute(p.updated_time ?? now.toISOString());
+
+        if (noPrior) {
+          historyRows.push({
+            ad_set_id: p.id,
+            business_unit_id: bu.id,
+            prev_budget: null,
+            new_budget: next,
+            delta_pct: null,
+            direction: 'INITIAL',
+            changed_at: ts,
+            detected_via: detectedVia,
+          });
+          continue;
+        }
+        if (prev === next) continue; // no real change
+
+        const direction: 'UP' | 'DOWN' = next > prev ? 'UP' : 'DOWN';
+        // 2 decimals matches the NUMERIC(8,2) column and keeps the JSON small.
+        const deltaPct = prev === 0 ? null : Math.round(((next - prev) / prev) * 10000) / 100;
+        historyRows.push({
+          ad_set_id: p.id,
+          business_unit_id: bu.id,
+          prev_budget: prev,
+          new_budget: next,
+          delta_pct: deltaPct,
+          direction,
+          changed_at: ts,
+          detected_via: detectedVia,
+        });
+      }
+
+      // Chunk the upsert to stay under PostgREST/Supabase payload caps when a
+      // big bulk operation lands many ad sets at once. 500 mirrors the
+      // backfill chunk size so the two writers behave consistently.
+      //
+      // We `continue` past chunk failures rather than `break`. A transient
+      // failure on chunk 1 (e.g. Postgres connection blip) shouldn't lose
+      // chunks 2..N — `ignoreDuplicates: true` makes a later retry safe and
+      // the next pull cycle will simply observe the still-pending diffs.
+      const CHUNK = 500;
+      for (let i = 0; i < historyRows.length; i += CHUNK) {
+        const slice = historyRows.slice(i, i + CHUNK);
+        const { error: histErr } = await supabase
+          .from('ad_set_budget_history')
+          .upsert(slice, {
+            onConflict: 'ad_set_id,changed_at,new_budget',
+            ignoreDuplicates: true,
+          });
+        if (histErr) {
+          console.warn(
+            `[meta-ads] ad_set_budget_history chunk ${i / CHUNK} insert failed (non-fatal):`,
+            histErr.message,
+          );
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(
+      '[meta-ads] ad_set_budget_history diff capture skipped:',
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   const { error } = await supabase.from('ad_sets').upsert(payload, { onConflict: 'id' });
   if (error) throw new Error(`upsert ad_sets failed: ${error.message}`);
   return payload.length;
+}
+
+/**
+ * Truncate an ISO-8601 timestamp to minute resolution and re-encode as ISO.
+ * Both the pull diff and the Activity Log backfill MUST use this so the
+ * UNIQUE on `(ad_set_id, changed_at, new_budget)` actually deduplicates the
+ * same logical bump observed by both writers within a 60s window.
+ *
+ * Exported so the backfill module can import the same function and the
+ * contract lives in exactly one place.
+ */
+export function truncateToMinute(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  d.setUTCSeconds(0, 0);
+  return d.toISOString();
 }
 
 function mapCreativeStub(
@@ -963,6 +1131,13 @@ export async function pullBuInsights(
     includeRich?: boolean;
     /** Local timezone for tier classification. Defaults to America/Lima. */
     timeZone?: string;
+    /**
+     * Tag for any ad_set_budget_history rows produced by this run. The
+     * scheduled cron leaves it as the default 'pull'; the manual
+     * /api/refresh route should pass 'manual_refresh' so operators can
+     * trace which bumps were captured by user action vs background sync.
+     */
+    detectedVia?: 'pull' | 'manual_refresh';
   },
 ): Promise<{
   rowsWritten: number;
@@ -1030,7 +1205,15 @@ export async function pullBuInsights(
     // 3. Rich campaigns + ad sets + ads/creatives + audiences.
     try {
       richCounts.campaigns = await upsertCampaignsRich(supabase, accessToken, bu, organizer, campaignIds);
-      richCounts.ad_sets = await upsertAdSetsRich(supabase, accessToken, bu, organizer, campaignIds);
+      richCounts.ad_sets = await upsertAdSetsRich(
+        supabase,
+        accessToken,
+        bu,
+        organizer,
+        campaignIds,
+        new Date(),
+        params.detectedVia ?? 'pull',
+      );
 
       // Ads live under ad_sets — resolve the ad set ids we just wrote.
       const { data: adSets } = await supabase
