@@ -22,6 +22,11 @@ const GERMAN_ROZ_SOURCES = new Set([
   'landing-german-roz-html',
   'landing-german-roz-vsl-desinflamate',
   'landing-german-roz-desinflamate-vsl',
+  // Waitlist para la próxima edición de Reto Desinflámate (DI21).
+  // La landing vive en apps/web/src/app/(landings)/german-roz/lista-espera/.
+  // Routea a la BU `german-roz/main`; los leads se distinguen del resto
+  // por `customFields.list = 'waitlist'` + `customFields.edition = 'next'`.
+  'landing-german-roz-waitlist-di21',
 ]);
 const LUCAS_CON_LUCAS_SOURCES = new Set([
   'landing-lucas-con-lucas-pre-launch',
@@ -83,6 +88,6 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
   }
 
   throw new Error(
-    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-lucas-con-lucas-pre-launch", "landing-santi-inversor-research-home", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
+    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-german-roz-waitlist-di21", "landing-lucas-con-lucas-pre-launch", "landing-santi-inversor-research-home", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
   );
 }
