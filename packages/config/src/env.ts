@@ -27,6 +27,13 @@ const envSchema = z.object({
   ELEVENLABS_PHONE_NUMBER_ID: z.string().optional(),
   ELEVENLABS_WEBHOOK_SECRET: z.string().optional(),
 
+  // Admin dashboard cron triggers (optional — only used by the scheduled jobs
+  // in apps/api that hit the admin app to refresh Meta Ads data hourly).
+  // If either is missing the pull jobs log a warning and no-op, so local dev
+  // and non-admin deploys keep working.
+  ADMIN_URL: z.string().url().optional(),
+  CRON_SECRET: z.string().min(1).optional(),
+
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });

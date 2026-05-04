@@ -83,6 +83,10 @@ export async function POST(req: NextRequest) {
       supabase: admin,
       masterKey,
       businessUnitFilter: { organizerSlug: organizer_slug, buSlug: bu_slug },
+      // Tag any budget bumps captured during this run as user-initiated so
+      // the dashboard can later show "this bump was surfaced because someone
+      // hit refresh" vs "found by background sync".
+      detectedVia: 'manual_refresh',
     });
     return NextResponse.json(result);
   } catch (err) {

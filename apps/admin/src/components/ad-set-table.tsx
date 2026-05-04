@@ -103,7 +103,8 @@ export function AdSetTable({ rows }: { rows: AdSetRow[] }) {
 
   const sorted = useSortedRows(filtered, sort, compareRow);
 
-  const hasFilters = search.length > 0 || statusFilter.size > 0 || roleFilter.size > 0;
+  // trim() to match filter site at line 95.
+  const hasFilters = search.trim().length > 0 || statusFilter.size > 0 || roleFilter.size > 0;
   const clearFilters = () => {
     setSearch('');
     setStatusFilter(new Set());

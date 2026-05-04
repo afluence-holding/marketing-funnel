@@ -78,29 +78,61 @@ export function SortableTh<K extends string>({
   children: ReactNode;
 }) {
   const arrow = active ? (dir === 'asc' ? ' ↑' : ' ↓') : '';
+  // aria-sort lives on the cell, not the button, per ARIA 1.1 grid pattern.
+  // Allowed values: 'ascending' | 'descending' | 'none'.
+  const ariaSort: 'ascending' | 'descending' | 'none' =
+    active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none';
+  // Wrap the cell content in a real <button> so keyboard users can Tab to
+  // each column header and press Space/Enter to cycle the sort. Earlier
+  // implementation used `<th onClick>` only, which was mouse-exclusive and
+  // failed WCAG 2.1.1 (Keyboard).
   return (
     <th
-      onClick={() => onClick(sortKey)}
-      title="Click para ordenar"
+      scope="col"
+      aria-sort={ariaSort}
       style={{
         textAlign: align,
-        cursor: 'pointer',
-        userSelect: 'none',
         whiteSpace: 'nowrap',
         color: active ? 'var(--color-text-primary)' : undefined,
+        padding: 0,
       }}
     >
-      {children}
-      <span
+      <button
+        type="button"
+        onClick={() => onClick(sortKey)}
+        title="Click para ordenar"
         style={{
-          color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-          opacity: active ? 1 : 0.35,
-          marginLeft: 3,
-          fontSize: '0.65rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'transparent',
+          border: 'none',
+          color: 'inherit',
+          font: 'inherit',
+          cursor: 'pointer',
+          userSelect: 'none',
+          // Match the global `th, td { padding: 8px 10px }` rule from
+          // globals.css so column-header text aligns horizontally with
+          // body cells. Earlier draft used 6px and produced a visible
+          // 4px header/body misalignment on right-aligned numeric columns.
+          padding: '8px 10px',
+          width: '100%',
+          textAlign: align,
+          justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start',
         }}
       >
-        {arrow || '↕'}
-      </span>
+        {children}
+        <span
+          aria-hidden="true"
+          style={{
+            color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+            opacity: active ? 1 : 0.35,
+            fontSize: '0.65rem',
+          }}
+        >
+          {arrow || '↕'}
+        </span>
+      </button>
     </th>
   );
 }

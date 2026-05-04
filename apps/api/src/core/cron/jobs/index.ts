@@ -1,4 +1,7 @@
 import { registerJob } from '../scheduler';
+// Side-effect import: registers the hourly/daily admin-dashboard pull jobs.
+// Jobs self-disable when ADMIN_URL / CRON_SECRET are missing.
+import './admin-pulls';
 
 /**
  * Schedule reference (cron expression):

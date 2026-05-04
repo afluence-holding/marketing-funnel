@@ -94,6 +94,13 @@ interface RunJobParams {
   supabase: AnySupabaseClient;
   masterKey: string;
   businessUnitFilter?: { organizerSlug: string; buSlug: string };
+  /**
+   * Tag for any ad_set_budget_history rows produced during the run. Defaults
+   * to 'pull' (scheduled cron). The /api/refresh route should pass
+   * 'manual_refresh' so operators can later distinguish bumps captured by
+   * background sync vs ones surfaced because somebody hit the button.
+   */
+  detectedVia?: 'pull' | 'manual_refresh';
 }
 
 async function listTargetBus(
@@ -161,6 +168,7 @@ async function runInsightsJob(
           since,
           until,
           includeRich,
+          detectedVia: params.detectedVia ?? 'pull',
         });
         totalRows += rowsWritten;
         totalFreqRows += freqRows;
