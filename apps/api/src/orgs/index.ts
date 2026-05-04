@@ -29,6 +29,12 @@ import { IDS as aiFactoryCreatorsIds, clickupConfig as aiFactoryCreatorsClickupC
 import { routingEngine as aiFactoryCreatorsRouting } from './afluence/ai-factory-creators/routing';
 import { routingEngine as company1Routing } from './afluence/business-unit-1/routing';
 
+// -- Carla Zaplana / Low Carb -------------------------------------------------
+import { sequences as carlaZaplanaLowCarbSequences } from './carla-zaplana/low-carb/sequences';
+import { workflows as carlaZaplanaLowCarbWorkflows } from './carla-zaplana/low-carb/workflows';
+import { IDS as carlaZaplanaLowCarbIDS } from './carla-zaplana/low-carb/config';
+import { routingEngine as carlaZaplanaLowCarbRouting } from './carla-zaplana/low-carb/routing';
+
 // -- German Roz / Main --------------------------------------------------------
 import { sequences as germanRozSequences } from './german-roz/main/sequences';
 import { workflows as germanRozWorkflows } from './german-roz/main/workflows';
@@ -70,6 +76,12 @@ const businessUnits: BusinessUnitBinding[] = [
     routingEngine: aiFactoryCreatorsRouting,
   },
   {
+    orgKey: 'carla-zaplana',
+    buKey: 'low-carb',
+    organizationId: carlaZaplanaLowCarbIDS.organizationId,
+    routingEngine: carlaZaplanaLowCarbRouting,
+  },
+  {
     orgKey: 'german-roz',
     buKey: 'main',
     organizationId: germanRozIDS.organizationId,
@@ -107,6 +119,7 @@ export function getBusinessUnitBinding(orgKey: string, buKey: string) {
 export const sequenceRegistry: Record<string, SequenceDef> = {
   ...company1Sequences,
   ...aiFactoryCreatorsSequences,
+  ...carlaZaplanaLowCarbSequences,
   ...germanRozSequences,
   ...lucasConLucasSequences,
   ...santiInversorResearchSequences,
@@ -116,6 +129,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...afluenceOrgWorkflows,
   ...company1Workflows,
   ...aiFactoryCreatorsWorkflows,
+  ...carlaZaplanaLowCarbWorkflows,
   ...germanRozWorkflows,
   ...lucasConLucasWorkflows,
   ...santiInversorResearchWorkflows,
