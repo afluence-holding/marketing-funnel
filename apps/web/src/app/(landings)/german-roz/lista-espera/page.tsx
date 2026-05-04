@@ -54,30 +54,6 @@ export const metadata: Metadata = {
   },
 };
 
-// REPLACE — Testimonials reales del Reto. Mantener el mismo shape para no
-// romper el render. `name` y `role` aparecen debajo de la cita; las iniciales
-// se muestran en el avatar circular si no hay foto.
-const testimonials = [
-  {
-    quote:
-      'En 21 días bajé 4 kg y dejé de sentir hinchazón después de cada comida. Es la primera vez que un plan me funciona sin pasar hambre.',
-    name: 'María G.',
-    role: 'Edición marzo 2026',
-  },
-  {
-    quote:
-      'No solo es comida. Te explican el porqué, te acompañan en WhatsApp y te dan recetas que puedes hacer en 15 minutos. Lo recomiendo cerrado.',
-    name: 'Andrea P.',
-    role: 'Edición enero 2026',
-  },
-  {
-    quote:
-      'Me costaba arrancar sola. Con el grupo y los menús semanales me organicé y por fin volví a verme bien. Vale cada minuto.',
-    name: 'Camila R.',
-    role: 'Edición noviembre 2025',
-  },
-];
-
 export default function GermanRozListaEspera() {
   return (
     <>
@@ -175,49 +151,21 @@ export default function GermanRozListaEspera() {
             </div>
           </section>
 
-          {/* ── Social proof ────────────────────────────────────────────── */}
-          <section id="proof" className="di-proof" aria-labelledby="proof-title">
+          {/* ── Social proof — solo stats, sin testimonials reales todavía ── */}
+          <section id="proof" className="di-proof" aria-label="Resultados del reto">
             <div className="di-proof-stats">
               <div className="di-stat">
                 <span className="di-stat-num">+600</span>
                 <span className="di-stat-label">personas han hecho el reto</span>
               </div>
               <div className="di-stat">
-                {/* REPLACE — número real de ediciones completadas */}
-                <span className="di-stat-num">12</span>
-                <span className="di-stat-label">ediciones completadas</span>
+                <span className="di-stat-num">1</span>
+                <span className="di-stat-label">edición completada</span>
               </div>
               <div className="di-stat">
                 <span className="di-stat-num">21</span>
                 <span className="di-stat-label">días de transformación</span>
               </div>
-            </div>
-
-            <h2 id="proof-title" className="di-section-title">
-              Lo que dicen quienes ya lo hicieron
-            </h2>
-
-            <div className="di-testimonials">
-              {testimonials.map((t) => {
-                const initials = t.name
-                  .split(' ')
-                  .map((p) => p[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase();
-                return (
-                  <article key={t.name} className="di-testimonial">
-                    <p className="di-testimonial-quote">{t.quote}</p>
-                    <footer className="di-testimonial-author">
-                      <span className="di-avatar" aria-hidden="true">{initials}</span>
-                      <span>
-                        <strong>{t.name}</strong>
-                        <span className="di-testimonial-role">{t.role}</span>
-                      </span>
-                    </footer>
-                  </article>
-                );
-              })}
             </div>
           </section>
 
@@ -718,9 +666,6 @@ const styles = `
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-    padding-bottom: 2rem;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid var(--di-border);
     text-align: center;
   }
   @media (max-width: 640px) {
@@ -749,62 +694,6 @@ const styles = `
     letter-spacing: -0.015em;
     margin-bottom: 1.5rem;
     text-align: center;
-  }
-
-  .di-testimonials {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1rem;
-  }
-
-  .di-testimonial {
-    background: #fff;
-    border: 1px solid var(--di-border);
-    border-radius: var(--di-radius);
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    box-shadow: var(--di-shadow-sm);
-  }
-
-  .di-testimonial-quote {
-    color: var(--di-navy);
-    font-size: 0.98rem;
-    line-height: 1.55;
-    font-weight: 400;
-  }
-  .di-testimonial-quote::before { content: '“'; color: var(--di-orange); font-weight: 700; }
-  .di-testimonial-quote::after  { content: '”'; color: var(--di-orange); font-weight: 700; }
-
-  .di-testimonial-author {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 0.88rem;
-    color: var(--di-navy);
-  }
-  .di-testimonial-author strong { display: block; font-weight: 700; }
-
-  .di-avatar {
-    width: 40px; height: 40px;
-    border-radius: 999px;
-    background: var(--di-orange-soft);
-    color: var(--di-orange-dark);
-    border: 1px solid var(--di-orange-line);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.82rem;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .di-testimonial-role {
-    display: block;
-    font-size: 0.78rem;
-    color: var(--di-muted);
-    margin-top: 0.1rem;
   }
 
   /* ── About Germán ──────────────────────────────────────────────────── */
