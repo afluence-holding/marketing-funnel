@@ -8,6 +8,8 @@
     "seed": "ts-node src/orgs/afluence/company-1/seed.ts",
     "seed:german-roz": "ts-node src/orgs/german-roz/main/seed.ts",
     "seed:lucas-con-lucas": "ts-node src/orgs/lucas-con-lucas/main/seed.ts",
+    "seed:recetas-cami": "ts-node src/orgs/recetas-cami/main/seed.ts",
+    "import:recetas-cami": "ts-node src/orgs/recetas-cami/main/scripts/import-from-sheet.ts",
     "gen-types": "bash scripts/gen-types.sh",
     "build:deps": "npm run build -w @marketing-funnel/clickup-client && npm run build -w @marketing-funnel/config && npm run build -w @marketing-funnel/db && npm run build -w @marketing-funnel/elevenlabs && npm run build -w @marketing-funnel/email && npm run build -w @marketing-funnel/whatsapp-client",
     "build": "npm run build:deps && tsc",
