@@ -7,6 +7,8 @@ import { IDS as germanRozIds } from '../../orgs/german-roz/main/config';
 import { routingEngine as germanRozRoutingEngine } from '../../orgs/german-roz/main/routing';
 import { IDS as lucasConLucasIds } from '../../orgs/lucas-con-lucas/main/config';
 import { routingEngine as lucasConLucasRoutingEngine } from '../../orgs/lucas-con-lucas/main/routing';
+import { IDS as recetasCamiMainIds } from '../../orgs/recetas-cami/main/config';
+import { routingEngine as recetasCamiMainRoutingEngine } from '../../orgs/recetas-cami/main/routing';
 import { IDS as santiInversorResearchIds } from '../../orgs/santi-inversor/research/config';
 import { routingEngine as santiInversorResearchRoutingEngine } from '../../orgs/santi-inversor/research/routing';
 
@@ -30,6 +32,12 @@ const GERMAN_ROZ_SOURCES = new Set([
 ]);
 const LUCAS_CON_LUCAS_SOURCES = new Set([
   'landing-lucas-con-lucas-pre-launch',
+]);
+const RECETAS_CAMI_SOURCES = new Set([
+  // Waitlist landing en apps/web/src/app/(landings)/recetas-cami/.
+  // Cualquier campaña/landing futura de Recetas Cami debería usar
+  // un source que arranque con `landing-recetas-cami-` y se sume aquí.
+  'landing-recetas-cami-waitlist',
 ]);
 const SANTI_INVERSOR_SOURCES = new Set([
   'landing-santi-inversor-research-home',
@@ -71,6 +79,14 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
     };
   }
 
+  if (source && RECETAS_CAMI_SOURCES.has(source)) {
+    return {
+      organizationId: recetasCamiMainIds.organizationId,
+      routingEngine: recetasCamiMainRoutingEngine,
+      businessUnit: 'main',
+    };
+  }
+
   if (source && SANTI_INVERSOR_SOURCES.has(source)) {
     return {
       organizationId: santiInversorResearchIds.organizationId,
@@ -88,6 +104,6 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
   }
 
   throw new Error(
-    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-german-roz-waitlist-di21", "landing-lucas-con-lucas-pre-launch", "landing-santi-inversor-research-home", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
+    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-german-roz-waitlist-di21", "landing-lucas-con-lucas-pre-launch", "landing-recetas-cami-waitlist", "landing-santi-inversor-research-home", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
   );
 }

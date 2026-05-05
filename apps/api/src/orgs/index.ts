@@ -47,6 +47,12 @@ import { workflows as lucasConLucasWorkflows } from './lucas-con-lucas/main/work
 import { IDS as lucasConLucasIDS } from './lucas-con-lucas/main/config';
 import { routingEngine as lucasConLucasRouting } from './lucas-con-lucas/main/routing';
 
+// -- Recetas Cami / Main ------------------------------------------------------
+import { sequences as recetasCamiMainSequences } from './recetas-cami/main/sequences';
+import { workflows as recetasCamiMainWorkflows } from './recetas-cami/main/workflows';
+import { IDS as recetasCamiMainIDS } from './recetas-cami/main/config';
+import { routingEngine as recetasCamiMainRouting } from './recetas-cami/main/routing';
+
 // -- Santi Inversor / Research ------------------------------------------------
 import { sequences as santiInversorResearchSequences } from './santi-inversor/research/sequences';
 import { workflows as santiInversorResearchWorkflows } from './santi-inversor/research/workflows';
@@ -94,6 +100,12 @@ const businessUnits: BusinessUnitBinding[] = [
     routingEngine: lucasConLucasRouting,
   },
   {
+    orgKey: 'recetas-cami',
+    buKey: 'main',
+    organizationId: recetasCamiMainIDS.organizationId,
+    routingEngine: recetasCamiMainRouting,
+  },
+  {
     orgKey: 'santi-inversor',
     buKey: 'research',
     organizationId: santiInversorResearchIDS.organizationId,
@@ -122,6 +134,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
   ...carlaZaplanaLowCarbSequences,
   ...germanRozSequences,
   ...lucasConLucasSequences,
+  ...recetasCamiMainSequences,
   ...santiInversorResearchSequences,
 };
 
@@ -132,6 +145,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...carlaZaplanaLowCarbWorkflows,
   ...germanRozWorkflows,
   ...lucasConLucasWorkflows,
+  ...recetasCamiMainWorkflows,
   ...santiInversorResearchWorkflows,
 };
 
