@@ -537,24 +537,45 @@ footer.foot {
 
 /* ====== RESPONSIVE ====== */
 @media (max-width: 720px) {
-  .container { padding: 0 20px; }
-  nav.top { padding: 18px 20px; }
+  .container { padding: 0 16px; }
+  nav.top { padding: 18px 16px; }
   .nav-trust { display: none; }
   .hero { padding: 24px 0 20px; }
   .hero h1 { font-size: clamp(28px, 7.4vw, 36px); }
   .hero .sub { font-size: 14px; }
-  .card { padding: 22px 20px 20px; border-radius: 18px; }
+  .card { padding: 22px 16px 18px; border-radius: 18px; overflow: hidden; }
   .card-title { font-size: 22px; }
   .order { padding: 14px 16px; }
   .includes { grid-template-columns: 1fr; gap: 8px; padding: 12px 4px 14px; }
   .country-row { padding: 10px 12px; gap: 10px; border-radius: 12px; }
   .country-label { font-size: 10px; }
   .country-select { font-size: 13.5px; padding: 10px 32px 10px 12px; }
-  .checkout-frame-wrap { border-radius: 12px; min-height: 640px; }
-  .checkout-frame { height: 640px; }
-  .secure-row { font-size: 10px; }
+  /* Break the dLocal iframe out of the card's side padding so the embedded
+     checkout has the full card width to render its layout. dLocal's mobile
+     layout stacks payment methods vertically and was clipping inside the
+     padded box. */
+  .checkout-frame-wrap {
+    margin-left: -16px;
+    margin-right: -16px;
+    width: auto;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    min-height: 760px;
+  }
+  .checkout-frame { height: 760px; }
+  .secure-row { font-size: 10px; margin-top: 22px; }
   .methods { font-size: 9.5px; gap: 8px; }
   .foot-inner { justify-content: center; text-align: center; }
+}
+
+@media (max-width: 380px) {
+  .container { padding: 0 12px; }
+  .card { padding: 20px 12px 16px; }
+  .checkout-frame-wrap {
+    margin-left: -12px;
+    margin-right: -12px;
+  }
 }
 </style>
 </head>

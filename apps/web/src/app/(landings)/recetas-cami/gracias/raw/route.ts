@@ -192,164 +192,47 @@ nav.top {
   letter-spacing: -0.01em;
 }
 
-/* WhatsApp PDF mockup — hero side */
-.pdf-block { position: relative; }
-.pdf-wrap {
-  background: #ECE5DD;
-  background-image:
-    radial-gradient(rgba(42,31,21,0.04) 1px, transparent 1px),
-    radial-gradient(rgba(42,31,21,0.03) 1px, transparent 1px);
-  background-size: 20px 20px, 12px 12px;
-  background-position: 0 0, 6px 6px;
-  border-radius: 24px;
-  padding: 28px 22px 32px;
-  border: 1px solid var(--line);
-  box-shadow: 0 40px 80px -32px rgba(42,31,21,0.3);
+/* ====== HERO VIDEO ====== */
+.hero-video {
   position: relative;
-  transform: rotate(1.5deg);
-  transition: transform .35s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
 }
-.pdf-wrap:hover { transform: rotate(0) translateY(-4px); }
-.pdf-wrap::before {
-  content: 'Vista previa · WhatsApp';
-  position: absolute; top: -14px; left: 24px;
-  background: var(--ink); color: var(--bone);
+.eyebrow-chip {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9.5px; letter-spacing: 0.15em; text-transform: uppercase;
-  padding: 5px 12px; border-radius: 999px;
-  z-index: 2;
-}
-.wa-bubble {
-  background: white;
-  border-radius: 12px;
-  border-top-left-radius: 2px;
-  padding: 11px 14px 9px;
-  font-size: 14.5px;
-  line-height: 1.4;
-  color: #303030;
-  margin-bottom: 8px;
-  max-width: 88%;
-  position: relative;
-}
-.wa-bubble .wa-time {
-  font-size: 10px;
-  color: #999;
-  float: right;
-  margin-left: 8px;
-  margin-top: 2px;
-}
-.wa-pdf-card {
-  background: white;
-  border-radius: 12px;
-  border-top-left-radius: 2px;
-  padding: 14px;
-  display: flex;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--terracotta-deep);
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
-  max-width: 92%;
+  gap: 10px;
+  padding: 8px 18px 8px 14px;
+  background: rgba(184, 98, 63, 0.08);
+  border: 1px solid rgba(184, 98, 63, 0.22);
+  border-radius: 999px;
 }
-.wa-pdf-icon {
-  width: 44px; height: 50px;
-  background: var(--terracotta);
-  border-radius: 5px;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  flex-shrink: 0;
-}
-.wa-pdf-info {
-  font-size: 14px;
-  color: #303030;
-  font-weight: 500;
-  line-height: 1.25;
-}
-.wa-pdf-info small {
-  display: block;
-  color: #999;
-  font-size: 11.5px;
-  margin-top: 4px;
-  font-weight: 400;
-}
-
-.hero .float-card {
-  position: absolute;
-  background: white;
-  border-radius: 14px;
-  padding: 14px 16px;
-  font-size: 13px;
-  font-family: 'Fraunces', serif;
-  font-style: italic;
-  color: var(--ink);
-  box-shadow: 0 18px 36px -12px rgba(42,31,21,0.22);
-  border: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  bottom: -28px;
-  left: -36px;
-  transform: rotate(-3deg);
-  max-width: 240px;
-  line-height: 1.35;
-}
-.hero .float-card .dot {
-  width: 9px; height: 9px;
+.eyebrow-chip::before {
+  content: '';
+  width: 7px; height: 7px;
   border-radius: 50%;
-  background: var(--terracotta-soft);
-  flex-shrink: 0;
-  box-shadow: 0 0 0 0 rgba(216,142,110,0.7);
+  background: var(--terracotta);
+  box-shadow: 0 0 0 0 rgba(184, 98, 63, 0.55);
   animation: rec 1.8s infinite;
 }
 @keyframes rec {
-  0% { box-shadow: 0 0 0 0 rgba(216,142,110,0.7); }
-  70% { box-shadow: 0 0 0 8px rgba(216,142,110,0); }
-  100% { box-shadow: 0 0 0 0 rgba(216,142,110,0); }
-}
-.hero .float-card strong {
-  font-style: normal;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--terracotta);
-  text-transform: uppercase;
-  display: block;
-  margin-top: 4px;
-}
-
-/* ====== BENTO: VIDEO + NOTA PERSONAL ====== */
-.video-bento {
-  padding: 0 0 96px;
-}
-.video-bento .card {
-  background: var(--cream);
-  border: 1px solid var(--line);
-  border-radius: 28px;
-  padding: 56px;
-  display: grid;
-  grid-template-columns: minmax(280px, 360px) 1fr;
-  gap: 64px;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-}
-.video-bento .card::before {
-  content: '';
-  position: absolute;
-  top: -120px; right: -100px;
-  width: 280px; height: 280px;
-  background: var(--ochre);
-  border-radius: 50%;
-  opacity: 0.08;
-  filter: blur(40px);
-  pointer-events: none;
+  0% { box-shadow: 0 0 0 0 rgba(184,98,63,0.55); }
+  70% { box-shadow: 0 0 0 10px rgba(184,98,63,0); }
+  100% { box-shadow: 0 0 0 0 rgba(184,98,63,0); }
 }
 .video-frame {
   position: relative;
   width: 100%;
+  max-width: 300px;
   aspect-ratio: 9 / 16;
   border-radius: 22px;
   overflow: hidden;
@@ -358,7 +241,6 @@ nav.top {
     0 28px 56px -22px rgba(42,31,21,0.4),
     0 0 0 1px var(--line);
   isolation: isolate;
-  z-index: 1;
 }
 .video-frame video {
   width: 100%;
@@ -367,64 +249,77 @@ nav.top {
   object-fit: cover;
   background: var(--ink);
 }
-.bento-text { position: relative; z-index: 1; }
-.bento-text .eyebrow-mini {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--terracotta);
-  margin-bottom: 18px;
-  display: inline-flex;
+.video-frame .play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(42,31,21,0) 40%, rgba(42,31,21,0.45) 100%);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  z-index: 2;
+  transition: opacity .25s ease;
 }
-.bento-text .eyebrow-mini::before {
-  content: '';
-  width: 24px;
-  height: 1px;
-  background: var(--terracotta);
+.video-frame .play-overlay[hidden] { display: none; }
+.video-frame .play-btn {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(251, 247, 240, 0.94);
+  color: var(--terracotta-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 16px 40px -10px rgba(42,31,21,0.45),
+    0 0 0 0 rgba(251,247,240,0.6);
+  animation: playPulse 2.2s ease-out infinite;
+  transition: transform .2s ease, background .2s ease;
 }
-.bento-text h2 {
-  font-family: 'Fraunces', serif;
-  font-weight: 400;
-  font-size: clamp(26px, 2.8vw, 36px);
-  line-height: 1.08;
-  letter-spacing: -0.025em;
-  color: var(--ink);
-  margin-bottom: 24px;
+.video-frame .play-overlay:hover .play-btn {
+  transform: scale(1.06);
+  background: #fff;
 }
-.bento-text h2 .it { font-style: italic; color: var(--terracotta); font-weight: 300; }
-.bento-text p.quote {
+.video-frame .play-btn svg { display: block; margin-left: 4px; }
+@keyframes playPulse {
+  0% { box-shadow: 0 16px 40px -10px rgba(42,31,21,0.45), 0 0 0 0 rgba(251,247,240,0.55); }
+  70% { box-shadow: 0 16px 40px -10px rgba(42,31,21,0.45), 0 0 0 18px rgba(251,247,240,0); }
+  100% { box-shadow: 0 16px 40px -10px rgba(42,31,21,0.45), 0 0 0 0 rgba(251,247,240,0); }
+}
+.hero-video .note {
+  max-width: 340px;
+}
+.hero-video .quote {
   font-family: 'Fraunces', serif;
   font-style: italic;
   font-weight: 400;
-  font-size: clamp(17px, 1.5vw, 19px);
+  font-size: 15px;
   line-height: 1.55;
   color: var(--ink-soft);
   letter-spacing: -0.005em;
-  margin-bottom: 24px;
-  max-width: 480px;
+  margin-bottom: 12px;
 }
-.bento-text .quote-open,
-.bento-text .quote-close {
+.hero-video .quote-open,
+.hero-video .quote-close {
   color: var(--terracotta);
   font-size: 1.15em;
   line-height: 0;
   vertical-align: -0.05em;
 }
-.bento-text .signature {
+.hero-video .signature {
   font-family: 'Fraunces', serif;
   font-style: italic;
-  font-size: 22px;
+  font-size: 18px;
   color: var(--terracotta);
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
-.bento-text .signature::before {
+.hero-video .signature::before {
   content: '';
-  width: 36px;
+  width: 28px;
   height: 1px;
   background: var(--terracotta);
 }
@@ -661,25 +556,13 @@ footer.foot {
 @media (max-width: 960px) {
   .hero .grid {
     grid-template-columns: 1fr;
-    gap: 64px;
+    gap: 48px;
   }
   .hero { padding: 32px 0 64px; }
   .hero .copy { text-align: center; }
   .hero .meta-row { justify-content: center; }
   .hero .lede { margin-left: auto; margin-right: auto; }
-  .pdf-wrap { max-width: 420px; margin: 0 auto; }
-  .hero .float-card { left: 0; right: 0; margin: 0 auto; max-width: 260px; bottom: -34px; }
-
-  .video-bento .card {
-    grid-template-columns: 1fr;
-    gap: 40px;
-    padding: 40px 28px;
-  }
-  .video-frame { max-width: 320px; margin: 0 auto; }
-  .bento-text { text-align: center; }
-  .bento-text .eyebrow-mini { justify-content: center; }
-  .bento-text p.quote { margin-left: auto; margin-right: auto; }
-  .bento-text .signature { justify-content: center; }
+  .video-frame { max-width: 280px; }
 
   .cta-card {
     grid-template-columns: 1fr;
@@ -696,12 +579,10 @@ footer.foot {
   .container { padding: 0 24px; }
   nav.top { padding: 18px 24px; }
   .steps { grid-template-columns: 1fr; max-width: 420px; }
-  .video-bento { padding: 0 0 64px; }
   .steps-section { padding: 0 0 64px; }
   .cta-section { padding: 0 0 64px; }
   .hero h1.headline { font-size: clamp(36px, 9vw, 48px); }
-  .pdf-wrap { padding: 22px 16px; transform: rotate(0); }
-  .hero .float-card { display: none; }
+  .video-frame { max-width: 260px; }
   .foot-inner { justify-content: center; text-align: center; }
 }
 </style>
@@ -743,58 +624,35 @@ footer.foot {
           <span><strong>1</strong>IA cocinera</span>
         </div>
       </div>
-      <div class="pdf-block">
-        <div class="pdf-wrap" aria-hidden="true">
-          <div class="wa-bubble">
-            &iexcl;Hola! Ac&aacute; te dejo tu gu&iacute;a del mes <span aria-hidden="true">&#129383;</span>
-            <span class="wa-time">ahora</span>
-          </div>
-          <div class="wa-pdf-card">
-            <div class="wa-pdf-icon">PDF</div>
-            <div class="wa-pdf-info">
-              Guia-Cami-20-recetas.pdf
-              <small>2.4 MB &middot; 48 p&aacute;ginas</small>
-            </div>
-          </div>
+      <div class="hero-video">
+        <div class="eyebrow-chip">Una nota de Cami</div>
+        <div class="video-frame">
+          <video
+            id="cami-video"
+            controls
+            playsinline
+            preload="metadata"
+            disablePictureInPicture
+            controlsList="nodownload noremoteplayback noplaybackrate"
+            x-webkit-airplay="deny"
+            poster="/recetas-cami/guia/04-cami.jpg"
+          >
+            <source src="https://zfjeshglpjoxblkneitk.supabase.co/storage/v1/object/public/recetas-cami_assets/welcome-cami.mp4" type="video/mp4">
+            Tu navegador no soporta video. Puedes abrir el mensaje
+            <a href="https://zfjeshglpjoxblkneitk.supabase.co/storage/v1/object/public/recetas-cami_assets/welcome-cami.mp4" style="color: var(--bone); text-decoration: underline;">aqu&iacute;</a>.
+          </video>
+          <button type="button" class="play-overlay" id="cami-play" aria-label="Reproducir video de Cami">
+            <span class="play-btn" aria-hidden="true">
+              <svg width="28" height="32" viewBox="0 0 28 32" fill="currentColor"><path d="M2 2 L26 16 L2 30 Z"/></svg>
+            </span>
+          </button>
         </div>
-        <div class="float-card" aria-hidden="true">
-          <span class="dot"></span>
-          <span>
-            &ldquo;Lo grab&eacute; pensando en ti.&rdquo;
-            <strong>&mdash; Mira el video</strong>
-          </span>
+        <div class="note">
+          <p class="quote">
+            <span class="quote-open">&ldquo;</span>Gracias por confiar en m&iacute;. Si te traba algo, escr&iacute;bele a Cuchi como si fuera yo.<span class="quote-close">&rdquo;</span>
+          </p>
+          <div class="signature">Cami</div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Bento: video + nota personal -->
-<section class="video-bento">
-  <div class="container">
-    <div class="card">
-      <div class="video-frame">
-        <video
-          controls
-          playsinline
-          preload="metadata"
-          disablePictureInPicture
-          controlsList="nodownload noremoteplayback noplaybackrate"
-          x-webkit-airplay="deny"
-          poster="/recetas-cami/guia/04-cami.jpg"
-        >
-          <source src="https://zfjeshglpjoxblkneitk.supabase.co/storage/v1/object/public/recetas-cami_assets/welcome-cami.mp4" type="video/mp4">
-          Tu navegador no soporta video. Puedes abrir el mensaje
-          <a href="https://zfjeshglpjoxblkneitk.supabase.co/storage/v1/object/public/recetas-cami_assets/welcome-cami.mp4" style="color: var(--bone); text-decoration: underline;">aqu&iacute;</a>.
-        </video>
-      </div>
-      <div class="bento-text">
-        <div class="eyebrow-mini">Una nota de Cami</div>
-        <h2>Mira lo que <span class="it">te quiero contar</span>.</h2>
-        <p class="quote">
-          <span class="quote-open">&ldquo;</span>Gracias por confiar en m&iacute;. Esta gu&iacute;a es lo que arm&eacute; para mi propia semana, y ahora es tuya. Si te traba algo o te falta un ingrediente, escr&iacute;bele a Cuchi como si fuera yo.<span class="quote-close">&rdquo;</span>
-        </p>
-        <div class="signature">Cami</div>
       </div>
     </div>
   </div>
@@ -873,6 +731,20 @@ footer.foot {
   </div>
 </footer>
 
+<script>
+(function(){
+  var v = document.getElementById('cami-video');
+  var b = document.getElementById('cami-play');
+  if (!v || !b) return;
+  var hide = function(){ b.hidden = true; };
+  b.addEventListener('click', function(){
+    var p = v.play();
+    if (p && typeof p.then === 'function') p.then(hide).catch(hide);
+    else hide();
+  });
+  v.addEventListener('play', hide);
+})();
+</script>
 </body>
 </html>`;
 
