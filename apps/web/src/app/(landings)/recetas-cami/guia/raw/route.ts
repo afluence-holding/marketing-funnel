@@ -507,6 +507,8 @@ h2.section-h .it { font-style: italic; color: var(--terracotta); font-weight: 30
   position: relative;
   border: 1px solid var(--line);
   transition: transform .3s, box-shadow .3s;
+  display: flex;
+  flex-direction: column;
 }
 .quote-card:hover {
   transform: translateY(-4px);
@@ -534,9 +536,11 @@ h2.section-h .it { font-style: italic; color: var(--terracotta); font-weight: 30
 .quote-card .who {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   border-top: 1px solid var(--line);
   padding-top: 18px;
+  margin-top: auto;
 }
 .who-av {
   width: 44px; height: 44px; border-radius: 50%;
@@ -568,6 +572,7 @@ h2.section-h .it { font-style: italic; color: var(--terracotta); font-weight: 30
   letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-bottom: 18px;
+  align-self: flex-start;
 }
 .beta-badge::before {
   content: '';
@@ -1605,9 +1610,9 @@ footer.foot {
       </div>
       <div class="trust">
         <div class="avatars">
-          <div class="av a1">M</div>
-          <div class="av a2">L</div>
-          <div class="av a3">V</div>
+          <div class="av a1">C</div>
+          <div class="av a2">J</div>
+          <div class="av a3">D</div>
           <div class="av a4">+</div>
         </div>
         <div class="trust-text">
@@ -1620,7 +1625,7 @@ footer.foot {
       <div class="card-frame card-back">
         <div class="card-back-content">
           "Volví a cocinar sin culpa, sin estrés y sin gastar de más."
-          <small>— Vale, usuaria beta</small>
+          <small>— Delia, usuaria beta</small>
         </div>
       </div>
       <div class="card-frame card-main">
@@ -1671,24 +1676,24 @@ footer.foot {
         <span class="beta-badge">Usuaria beta</span>
         <p>Llegaba del trabajo y no tenía cabeza para pensar qué hacer. Terminaba pidiendo delivery tres veces por semana.</p>
         <div class="who">
-          <div class="who-av" style="background-image:url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces');"></div>
-          <div class="who-meta"><strong>Martina, 34</strong>Mamá de 2, freelancer</div>
+          <div class="who-av" style="background-image:url('/recetas-cami/guia/testimonio-catalina.jpg');"></div>
+          <div class="who-meta"><strong>Catalina, 32</strong></div>
         </div>
       </div>
       <div class="quote-card">
         <span class="beta-badge">Usuaria beta</span>
-        <p>Tenía la nevera llena y sentía que no había nada para comer. Tiraba dinero todas las semanas.</p>
+        <p>Tenía la refri llena y sentía que no había nada para comer. Tiraba dinero todas las semanas.</p>
         <div class="who">
-          <div class="who-av" style="background-image:url('https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=faces');"></div>
-          <div class="who-meta"><strong>Lucía, 29</strong>Vive sola, oficina full-time</div>
+          <div class="who-av" style="background-image:url('/recetas-cami/guia/testimonio-josefina.jpg');"></div>
+          <div class="who-meta"><strong>Josefina, 28</strong></div>
         </div>
       </div>
       <div class="quote-card">
         <span class="beta-badge">Usuaria beta</span>
         <p>Miraba recetas en Instagram, guardaba cien y nunca cocinaba ninguna. Era ruido, no soluciones.</p>
         <div class="who">
-          <div class="who-av" style="background-image:url('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=faces');"></div>
-          <div class="who-meta"><strong>Valentina, 41</strong>Mamá, emprendedora</div>
+          <div class="who-av" style="background-image:url('/recetas-cami/guia/testimonio-delia.jpg');"></div>
+          <div class="who-meta"><strong>Delia, 58</strong></div>
         </div>
       </div>
     </div>
@@ -1935,7 +1940,7 @@ footer.foot {
       </div>
       <div class="faq-item">
         <div class="faq-q">¿Qué es Cuchi exactamente? <span class="faq-toggle">+</span></div>
-        <div class="faq-a">Cuchi es una IA de cocina entrenada con las recetas y el estilo de Cami. Le escribes por WhatsApp cualquier duda mientras cocinas — reemplazos, porciones, técnicas, qué hacer con lo que te queda en la nevera — y te responde al instante, 24/7.</div>
+        <div class="faq-a">Cuchi es una IA de cocina entrenada con las recetas y el estilo de Cami. Le escribes por WhatsApp cualquier duda mientras cocinas — reemplazos, porciones, técnicas, qué hacer con lo que te queda en la refri — y te responde al instante, 24/7.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">¿Sirve si vivo sola o cocino para muchos? <span class="faq-toggle">+</span></div>
@@ -2010,7 +2015,7 @@ footer.foot {
 <div class="popup" id="popup">
   <div class="popup-av" id="popupAv">M</div>
   <div>
-    <div class="popup-text" id="popupText"><strong>Martina</strong> de Santiago compró la guía</div>
+    <div class="popup-text" id="popupText"><strong>Catalina</strong> de Santiago compró la guía</div>
     <div class="popup-time"><span class="popup-dot"></span>hace 2 minutos</div>
   </div>
 </div>
@@ -2110,9 +2115,9 @@ document.querySelectorAll('.faq-item').forEach(item => {
 
 // Social popup rotation
 const popups = [
-  { name: 'Martina', city: 'Santiago', initial: 'M', time: 'hace 2 minutos', action: 'compró la guía' },
-  { name: 'Lucía', city: 'Viña del Mar', initial: 'L', time: 'hace 5 minutos', action: 'compró la guía' },
-  { name: 'Valentina', city: 'Concepción', initial: 'V', time: 'hace 8 minutos', action: 'compró la guía' },
+  { name: 'Catalina', city: 'Santiago', initial: 'C', time: 'hace 2 minutos', action: 'compró la guía' },
+  { name: 'Josefina', city: 'Viña del Mar', initial: 'J', time: 'hace 5 minutos', action: 'compró la guía' },
+  { name: 'Delia', city: 'Concepción', initial: 'D', time: 'hace 8 minutos', action: 'compró la guía' },
   { name: 'Sofía', city: 'Valparaíso', initial: 'S', time: 'hace 12 minutos', action: 'compró la guía' },
   { name: 'Camila', city: 'La Serena', initial: 'C', time: 'hace 15 minutos', action: 'compró la guía' },
 ];
