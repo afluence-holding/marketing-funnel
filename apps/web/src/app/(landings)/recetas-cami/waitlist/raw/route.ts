@@ -965,7 +965,7 @@ footer.foot {
       <div class="benefit-card alt">
         <div class="benefit-num">02</div>
         <h3>Cuchi en beta privada</h3>
-        <p>Tu IA de cocina por WhatsApp, en versión beta cerrada. Le preguntás qué hacer con lo que tenés en la nevera y te responde en segundos.</p>
+        <p>Tu IA de cocina por WhatsApp, en versión beta cerrada. Le preguntas qué hacer con lo que tienes en la nevera y te responde en segundos.</p>
         <span class="tag">Solo lista de espera</span>
       </div>
 
@@ -994,7 +994,7 @@ footer.foot {
     <div>
       <div class="section-label">Detrás de la guía</div>
       <h2 class="section-h">No es otra app. Es<br>una <span class="it">amiga que cocina.</span></h2>
-      <p>Hace ocho años empecé a compartir lo que cocinaba en casa. No porque sea chef — soy freelancer, creadora de contenido y, como vos, alguien que llega cansada y tiene que cocinar igual.</p>
+      <p>Hace ocho años empecé a compartir lo que cocinaba en casa. No porque sea chef — soy freelancer, creadora de contenido y, como tú, alguien que llega cansada y tiene que cocinar igual.</p>
       <p>Esta guía es lo que armé para mí: 20 recetas simples, ricas y baratas, que funcionan los lunes a las 7. Y Cuchi, la IA que entrené con mis recetas, te acompaña cuando no estoy.</p>
       <div class="signature">— Cami</div>
     </div>
@@ -1029,7 +1029,7 @@ footer.foot {
       <li><span class="ck">✓</span><div><strong>Cuchi en beta privada</strong>solo para la lista de espera.</div></li>
       <li><span class="ck">✓</span><div><strong>-40% de descuento</strong>reservado para las primeras 100.</div></li>
     </ul>
-    <div class="thanks-foot">Pronto en tu inbox · revisá también spam</div>
+    <div class="thanks-foot">Pronto en tu inbox · revisa también spam</div>
   </div>
 </section>
 

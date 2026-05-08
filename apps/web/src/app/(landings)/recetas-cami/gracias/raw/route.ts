@@ -656,18 +656,18 @@ footer.foot {
     <div class="steps">
       <div class="step">
         <span class="step-num">01</span>
-        <h3>Revis&aacute; tu WhatsApp</h3>
+        <h3>Revisa tu WhatsApp</h3>
         <p>En unos minutos te llega un mensaje de Cuchi con la gu&iacute;a en PDF y el plan semanal listo para descargar.</p>
       </div>
       <div class="step">
         <span class="step-num">02</span>
-        <h3>Salud&aacute; a Cuchi</h3>
-        <p>Tu IA de cocina queda en el chat. Pregunt&aacute;le por reemplazos, porciones o qu&eacute; hacer con lo que ten&eacute;s en la nevera.</p>
+        <h3>Saluda a Cuchi</h3>
+        <p>Tu IA de cocina queda en el chat. Preg&uacute;ntale por reemplazos, porciones o qu&eacute; hacer con lo que tienes en la nevera.</p>
       </div>
       <div class="step">
         <span class="step-num">03</span>
-        <h3>Cocin&aacute; sin pensar</h3>
-        <p>Abr&iacute; la gu&iacute;a, eleg&iacute; el d&iacute;a y arranc&aacute;. 20 recetas en menos de 30 minutos esperando por vos.</p>
+        <h3>Cocina sin pensar</h3>
+        <p>Abre la gu&iacute;a, elige el d&iacute;a y arranca. 20 recetas en menos de 30 minutos esperando por ti.</p>
       </div>
     </div>
   </div>
@@ -684,7 +684,7 @@ footer.foot {
       <div class="personal-text">
         <div class="eyebrow-mini">Una nota de Cami</div>
         <p>
-          <span class="quote-open">&ldquo;</span>Gracias por confiar en m&iacute;. Esta gu&iacute;a es lo que arm&eacute; para mi propia semana, y ahora es tuya. Si te traba algo o te falta un ingrediente, escrib&iacute;le a Cuchi como si fuera yo.<span class="quote-close">&rdquo;</span>
+          <span class="quote-open">&ldquo;</span>Gracias por confiar en m&iacute;. Esta gu&iacute;a es lo que arm&eacute; para mi propia semana, y ahora es tuya. Si te traba algo o te falta un ingrediente, escr&iacute;bele a Cuchi como si fuera yo.<span class="quote-close">&rdquo;</span>
         </p>
         <div class="signature">Cami</div>
       </div>
@@ -699,7 +699,7 @@ footer.foot {
       <div class="inner">
         <div class="cta-eyebrow">Bonus exclusivo</div>
         <h3>Sum&aacute;te a Cuchi en <span class="it">WhatsApp ahora</span>.</h3>
-        <p class="cta-blurb">Abr&iacute; el chat con Cuchi para recibir tu gu&iacute;a y empezar a cocinar hoy mismo.</p>
+        <p class="cta-blurb">Abre el chat con Cuchi para recibir tu gu&iacute;a y empezar a cocinar hoy mismo.</p>
         <a href="#" class="btn-primary" id="primary-cta">
           Abrir WhatsApp <span class="arrow">&rarr;</span>
         </a>
@@ -710,7 +710,7 @@ footer.foot {
 
 <!-- Help -->
 <p class="help">
-  &iquest;No te lleg&oacute; nada en los pr&oacute;ximos 10 minutos? Escrib&iacute;nos a
+  &iquest;No te lleg&oacute; nada en los pr&oacute;ximos 10 minutos? Escr&iacute;benos a
   <a href="mailto:hola@cami.com">hola@cami.com</a> y lo resolvemos al toque.
 </p>
 
