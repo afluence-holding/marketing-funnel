@@ -818,7 +818,7 @@ footer.foot {
           <span class="step-num">02</span>
           <h3>Saluda a Cuchi</h3>
         </div>
-        <p>Tu IA de cocina queda en el chat. Preg&uacute;ntale por reemplazos, porciones o qu&eacute; hacer con lo que tienes en la nevera.</p>
+        <p>Tu IA de cocina queda en el chat. Preg&uacute;ntale por reemplazos, porciones o qu&eacute; hacer con lo que tienes en la refri.</p>
       </div>
       <div class="step">
         <div class="step-head">
