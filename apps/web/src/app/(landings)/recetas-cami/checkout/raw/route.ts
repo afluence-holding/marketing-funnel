@@ -605,10 +605,6 @@ footer.foot {
           <span class="value">USD 27</span>
         </div>
         <div class="order-row">
-          <span class="label">Impuestos</span>
-          <span class="value muted">Incluidos</span>
-        </div>
-        <div class="order-row">
           <span class="label"><strong>Total</strong></span>
           <span class="value order-total">USD 27</span>
         </div>
