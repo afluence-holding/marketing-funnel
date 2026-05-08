@@ -1992,7 +1992,7 @@ footer.foot {
       </div>
     </div>
     <div class="foot-bottom">
-      <span>© 2026 Cami Recetas. Hecho con 🥄 en Buenos Aires.</span>
+      <span>© 2026 Cami Recetas 🥄</span>
       <span><a href="#" style="color:rgba(251,247,240,0.6);text-decoration:none;">Términos</a> · <a href="#" style="color:rgba(251,247,240,0.6);text-decoration:none;">Privacidad</a></span>
     </div>
   </div>

@@ -341,6 +341,11 @@ nav.top {
 }
 
 /* ====== IFRAME WRAPPER ====== */
+/* Heights are sized to fit dLocal Go's content WITHOUT triggering an inner
+   scrollbar. dLocal doesn't broadcast height via postMessage and the iframe
+   is cross-origin, so we can't auto-size. Initial height fits the collapsed
+   payment-method picker (~818px); JS grows the iframe on first interaction
+   to fit the expanded card form (~1361px) plus safety margin. */
 .checkout-frame-wrap {
   position: relative;
   width: 100%;
@@ -348,15 +353,17 @@ nav.top {
   overflow: hidden;
   background: #fff;
   border: 1px solid var(--line-strong);
-  min-height: 720px;
+  min-height: 900px;
   box-shadow: inset 0 0 0 1px rgba(42,31,21,0.02);
+  transition: min-height 0.35s ease;
 }
 .checkout-frame {
   width: 100%;
-  height: 720px;
+  height: 900px;
   border: 0;
   display: block;
   background: #fff;
+  transition: height 0.35s ease;
 }
 
 /* ====== LOADER ====== */
@@ -561,9 +568,9 @@ footer.foot {
     border-left: 0;
     border-right: 0;
     border-radius: 0;
-    min-height: 760px;
+    min-height: 900px;
   }
-  .checkout-frame { height: 760px; }
+  .checkout-frame { height: 900px; }
   .secure-row { font-size: 10px; margin-top: 22px; }
   .methods { font-size: 9.5px; gap: 8px; }
   .foot-inner { justify-content: center; text-align: center; }
@@ -753,6 +760,7 @@ footer.foot {
     ]);
 
     const frame = document.getElementById('checkout-frame');
+    const wrap = document.getElementById('checkout-wrap');
     const loader = document.getElementById('loader');
     const loaderText = loader.querySelector('span:last-child');
     const fallback = document.getElementById('fallback');
@@ -765,6 +773,29 @@ footer.foot {
     let frameLoaded = false;
     let activeRequestId = 0; // guards against stale responses when user changes country fast
     let successHandled = false; // prevent duplicate redirects
+
+    // dLocal's iframe is cross-origin and never broadcasts its content
+    // height via postMessage, so we can't auto-size. The CSS starts at 900px
+    // (fits the collapsed payment picker). On the first interaction signal
+    // we grow to 1500px so the expanded card form (~1361px) renders without
+    // an internal scrollbar.
+    const EXPANDED_H = 1500;
+    let iframeExpanded = false;
+    function expandIframe() {
+      if (iframeExpanded) return;
+      iframeExpanded = true;
+      frame.style.height = EXPANDED_H + 'px';
+      if (wrap) wrap.style.minHeight = EXPANDED_H + 'px';
+    }
+    // Mouse: hovering the iframe is the strongest "about to interact" signal
+    frame.addEventListener('mouseenter', expandIframe);
+    // Touch: equivalent on mobile (touchstart fires before any tap is processed)
+    frame.addEventListener('touchstart', expandIframe, { passive: true });
+    // Click-into-iframe handoff: parent window blurs and activeElement points
+    // at the iframe element. Catches keyboard nav too.
+    window.addEventListener('blur', function () {
+      if (document.activeElement === frame) expandIframe();
+    });
 
     // Country code → flag emoji
     function flagOf(code) {

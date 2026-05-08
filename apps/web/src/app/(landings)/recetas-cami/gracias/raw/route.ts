@@ -711,7 +711,7 @@ footer.foot {
 <!-- Help -->
 <p class="help">
   &iquest;No te lleg&oacute; nada en los pr&oacute;ximos 10 minutos? Escr&iacute;benos a
-  <a href="mailto:contact@byafluence.com">contact@byafluence.com</a> y lo resolvemos al toque.
+  <a href="mailto:contact@byafluence.com">contact@byafluence.com</a> y lo resolvemos.
 </p>
 
 <!-- Footer -->
