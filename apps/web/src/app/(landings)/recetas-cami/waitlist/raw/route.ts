@@ -965,7 +965,7 @@ footer.foot {
       <div class="benefit-card alt">
         <div class="benefit-num">02</div>
         <h3>Cuchi en beta privada</h3>
-        <p>Tu IA de cocina por WhatsApp, en versión beta cerrada. Le preguntas qué hacer con lo que tienes en la nevera y te responde en segundos.</p>
+        <p>Tu IA de cocina por WhatsApp, en versión beta cerrada. Le preguntas qué hacer con lo que tienes en la refri y te responde en segundos.</p>
         <span class="tag">Solo lista de espera</span>
       </div>
 
