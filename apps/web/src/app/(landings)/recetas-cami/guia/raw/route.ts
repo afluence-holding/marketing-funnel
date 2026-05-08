@@ -1926,7 +1926,7 @@ footer.foot {
     <div>
       <div class="section-label">Preguntas frecuentes</div>
       <h2 class="section-h">Lo que <span class="it">probablemente</span> te estás preguntando.</h2>
-      <p style="color:var(--ink-soft);font-size:15.5px;line-height:1.6;margin-top:16px;max-width:320px;">¿Falta algo? Escríbenos a hola@cami.com — respondemos en menos de 24h.</p>
+      <p style="color:var(--ink-soft);font-size:15.5px;line-height:1.6;margin-top:16px;max-width:320px;">¿Falta algo? Escríbenos a contact@byafluence.com — respondemos en menos de 24h.</p>
     </div>
     <div class="faq-list">
       <div class="faq-item open">
@@ -1979,7 +1979,7 @@ footer.foot {
       <div class="foot-col">
         <h5>Contacto</h5>
         <ul>
-          <li><a href="mailto:hola@cami.com">hola@cami.com</a></li>
+          <li><a href="mailto:contact@byafluence.com">contact@byafluence.com</a></li>
           <li><a href="#">Instagram</a></li>
           <li><a href="#">TikTok</a></li>
           <li><a href="#">WhatsApp</a></li>

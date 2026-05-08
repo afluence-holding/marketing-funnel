@@ -4,9 +4,6 @@ import { NextResponse } from 'next/server';
 
 const STORAGE_FILE_PATH = path.join(process.cwd(), 'data', 'recetas-cami-emails.ndjson');
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const GOOGLE_SHEETS_CSV_URL =
-  process.env.GOOGLE_SHEETS_CSV_URL_RECETAS_CAMI ??
-  'https://docs.google.com/spreadsheets/d/1lGsDCRZbnGKX0ey_bU1UvhipxochN4J5_qezW2TzeCY/export?format=csv&gid=0';
 const EXPORT_TOKEN = process.env.RECETAS_CAMI_EXPORT_TOKEN ?? '';
 
 type StoredRecord = {
@@ -36,22 +33,12 @@ function isAuthorized(request: Request): boolean {
 
 function getUniqueEmails(records: StoredRecord[]): string[] {
   return Array.from(
-    new Set(records.map((record) => String(record.email ?? '').trim().toLowerCase()).filter(Boolean)),
+    new Set(
+      records
+        .map((record) => String(record.email ?? '').trim().toLowerCase())
+        .filter((email) => EMAIL_REGEX.test(email)),
+    ),
   );
-}
-
-async function readEmailsFromGoogleSheet(): Promise<string[]> {
-  try {
-    const response = await fetch(GOOGLE_SHEETS_CSV_URL, { cache: 'no-store' });
-    if (!response.ok) return [];
-    const csv = await response.text();
-    return csv
-      .split(/\r?\n/)
-      .map((line) => (line.split(',')[0] ?? '').trim().replace(/^"|"$/g, '').toLowerCase())
-      .filter((email) => EMAIL_REGEX.test(email));
-  } catch {
-    return [];
-  }
 }
 
 export async function GET(request: Request) {
@@ -61,9 +48,8 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const format = (url.searchParams.get('format') ?? 'json').toLowerCase();
-  const [records, sheetEmails] = await Promise.all([readAllRecords(), readEmailsFromGoogleSheet()]);
-  const localEmails = getUniqueEmails(records);
-  const emails = sheetEmails.length ? Array.from(new Set(sheetEmails)) : localEmails;
+  const records = await readAllRecords();
+  const emails = getUniqueEmails(records);
 
   if (format === 'csv') {
     const csv = ['email', ...emails].join('\n') + '\n';
@@ -81,5 +67,8 @@ export async function GET(request: Request) {
     ok: true,
     total_unicos: emails.length,
     emails,
+    note:
+      'Lectura de respaldo histórico (ndjson local). El alta de leads ahora se realiza ' +
+      'a través del API multi-tenant: POST /api/orgs/recetas-cami/bus/main/ingest.',
   });
 }
