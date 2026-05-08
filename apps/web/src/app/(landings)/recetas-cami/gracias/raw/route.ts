@@ -367,26 +367,6 @@ nav.top {
   object-fit: cover;
   background: var(--ink);
 }
-.video-corner-tag {
-  position: absolute;
-  bottom: 14px;
-  left: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(42, 31, 21, 0.7);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  color: var(--bone);
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  pointer-events: none;
-  z-index: 2;
-}
 .bento-text { position: relative; z-index: 1; }
 .bento-text .eyebrow-mini {
   font-family: 'JetBrains Mono', monospace;
@@ -807,7 +787,6 @@ footer.foot {
           Tu navegador no soporta video. Puedes abrir el mensaje
           <a href="https://zfjeshglpjoxblkneitk.supabase.co/storage/v1/object/public/recetas-cami_assets/welcome-cami.mp4" style="color: var(--bone); text-decoration: underline;">aqu&iacute;</a>.
         </video>
-        <span class="video-corner-tag">Cami &middot; 0:53</span>
       </div>
       <div class="bento-text">
         <div class="eyebrow-mini">Una nota de Cami</div>
