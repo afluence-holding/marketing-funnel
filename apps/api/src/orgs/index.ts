@@ -53,6 +53,12 @@ import { workflows as santiInversorResearchWorkflows } from './santi-inversor/re
 import { IDS as santiInversorResearchIDS } from './santi-inversor/research/config';
 import { routingEngine as santiInversorResearchRouting } from './santi-inversor/research/routing';
 
+// -- Recetas Cami / Main ------------------------------------------------------
+import { sequences as recetasCamiSequences } from './recetas-cami/main/sequences';
+import { workflows as recetasCamiWorkflows } from './recetas-cami/main/workflows';
+import { IDS as recetasCamiIDS } from './recetas-cami/main/config';
+import { routingEngine as recetasCamiRouting } from './recetas-cami/main/routing';
+
 // -- Add new BUs here ---------------------------------------------------------
 
 export interface BusinessUnitBinding {
@@ -99,6 +105,12 @@ const businessUnits: BusinessUnitBinding[] = [
     organizationId: santiInversorResearchIDS.organizationId,
     routingEngine: santiInversorResearchRouting,
   },
+  {
+    orgKey: 'recetas-cami',
+    buKey: 'main',
+    organizationId: recetasCamiIDS.organizationId,
+    routingEngine: recetasCamiRouting,
+  },
 ];
 
 function makeBusinessUnitRegistryKey(orgKey: string, buKey: string) {
@@ -123,6 +135,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
   ...germanRozSequences,
   ...lucasConLucasSequences,
   ...santiInversorResearchSequences,
+  ...recetasCamiSequences,
 };
 
 export const workflowRegistry: Record<string, WorkflowDef> = {
@@ -133,6 +146,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...germanRozWorkflows,
   ...lucasConLucasWorkflows,
   ...santiInversorResearchWorkflows,
+  ...recetasCamiWorkflows,
 };
 
 export const clickupRegistryByPipelineId: Record<string, ClickUpPipelineConfig> = {

@@ -2,73 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STORAGE_FILE_PATH = path.join(process.cwd(), 'data', 'recetas-cami-emails.ndjson');
-const GOOGLE_SHEETS_WEBHOOK_URL =
-  process.env.GOOGLE_SHEETS_WEBHOOK_URL_RECETAS_CAMI ??
-  'https://script.google.com/macros/s/AKfycbwfFZMnnnn_mvrKE0mxWcR0dliARUzQQM_JWlO_adu8vZ5yDueFcOUrRtr3MwsqLU9I/exec';
-const GOOGLE_SHEETS_CSV_URL =
-  process.env.GOOGLE_SHEETS_CSV_URL_RECETAS_CAMI ??
-  'https://docs.google.com/spreadsheets/d/1lGsDCRZbnGKX0ey_bU1UvhipxochN4J5_qezW2TzeCY/export?format=csv&gid=0';
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EXPORT_TOKEN = process.env.RECETAS_CAMI_EXPORT_TOKEN ?? '';
-
-type EmailPayload = {
-  email?: string;
-  source?: string;
-  path?: string;
-  submittedAt?: string;
-};
-
-type BulkImportPayload = {
-  emails?: string[];
-  source?: string;
-  path?: string;
-};
 
 type StoredRecord = {
   email: string;
-  source: string;
-  path: string;
-  submittedAt: string;
-  storedAt: string;
-  ip: string;
-  userAgent: string;
 };
-
-function dedupeRecordsByEmail(records: StoredRecord[]): StoredRecord[] {
-  const seen = new Set<string>();
-  const deduped: StoredRecord[] = [];
-
-  for (const record of records) {
-    const key = String(record.email ?? '').trim().toLowerCase();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(record);
-  }
-
-  return deduped;
-}
-
-function escapeCsv(value: string): string {
-  const normalized = String(value ?? '');
-  if (normalized.includes('"') || normalized.includes(',') || normalized.includes('\n')) {
-    return `"${normalized.replace(/"/g, '""')}"`;
-  }
-  return normalized;
-}
-
-function toCsv(records: StoredRecord[]): string {
-  const headers = ['email', 'source', 'path', 'submittedAt', 'storedAt', 'ip', 'userAgent'];
-  const lines = [
-    headers.join(','),
-    ...records.map((record) =>
-      headers
-        .map((header) => escapeCsv(String(record[header as keyof StoredRecord] ?? '')))
-        .join(','),
-    ),
-  ];
-  return `${lines.join('\n')}\n`;
-}
 
 async function readAllRecords(): Promise<StoredRecord[]> {
   try {
@@ -81,42 +21,6 @@ async function readAllRecords(): Promise<StoredRecord[]> {
   } catch {
     return [];
   }
-}
-
-async function readEmailsFromGoogleSheet(): Promise<string[]> {
-  try {
-    const response = await fetch(GOOGLE_SHEETS_CSV_URL, { cache: 'no-store' });
-    if (!response.ok) return [];
-    const csv = await response.text();
-    return csv
-      .split(/\r?\n/)
-      .map((line) => (line.split(',')[0] ?? '').trim().replace(/^"|"$/g, '').toLowerCase())
-      .filter((email) => EMAIL_REGEX.test(email));
-  } catch {
-    return [];
-  }
-}
-
-async function getUniqueEmailsFromSources(): Promise<string[]> {
-  const [localRecords, sheetEmails] = await Promise.all([readAllRecords(), readEmailsFromGoogleSheet()]);
-  const localEmails = localRecords.map((record) => String(record.email ?? '').trim().toLowerCase());
-  return Array.from(
-    new Set([...localEmails, ...sheetEmails].filter((email) => EMAIL_REGEX.test(email))),
-  );
-}
-
-async function getPersistedUniqueEmails(): Promise<string[]> {
-  const sheetEmails = await readEmailsFromGoogleSheet();
-  if (sheetEmails.length) return Array.from(new Set(sheetEmails));
-
-  const localRecords = await readAllRecords();
-  return Array.from(
-    new Set(
-      localRecords
-        .map((record) => String(record.email ?? '').trim().toLowerCase())
-        .filter((email) => EMAIL_REGEX.test(email)),
-    ),
-  );
 }
 
 function isAuthorized(request: Request): boolean {
@@ -132,160 +36,50 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
   }
 
-  const uniqueEmails = await getPersistedUniqueEmails();
+  const records = await readAllRecords();
+  const uniqueEmails = new Set(
+    records
+      .map((record) => String(record.email ?? '').trim().toLowerCase())
+      .filter((email) => EMAIL_REGEX.test(email)),
+  );
 
   return NextResponse.json({
     ok: true,
-    total: uniqueEmails.length,
+    total: uniqueEmails.size,
+    note:
+      'Lectura de respaldo histórico (ndjson local). El alta de leads ahora se realiza ' +
+      'a través del API multi-tenant: POST /api/orgs/recetas-cami/bus/main/ingest.',
   });
 }
 
-export async function POST(request: Request) {
-  try {
-    const payload = (await request.json()) as EmailPayload & BulkImportPayload;
-
-    if (Array.isArray(payload.emails)) {
-      if (!isAuthorized(request)) {
-        return NextResponse.json({ ok: false, error: 'Unauthorized export access' }, { status: 401 });
-      }
-
-      const normalizedIncoming = payload.emails
-        .map((email) => String(email ?? '').trim().toLowerCase())
-        .filter((email) => EMAIL_REGEX.test(email));
-
-      if (!normalizedIncoming.length) {
-        return NextResponse.json({ ok: false, error: 'No valid emails to import' }, { status: 400 });
-      }
-
-      const existingEmails = new Set(await getUniqueEmailsFromSources());
-      const uniqueIncoming = Array.from(new Set(normalizedIncoming));
-      const newEmails = uniqueIncoming.filter((email) => !existingEmails.has(email));
-
-      if (!newEmails.length) {
-        return NextResponse.json({
-          ok: true,
-          imported: 0,
-          skipped_existing: uniqueIncoming.length,
-          total_after: existingEmails.size,
-        });
-      }
-
-      const nowIso = new Date().toISOString();
-      const source = String(payload.source ?? 'bulk-import');
-      const pathValue = String(payload.path ?? '/recetas-cami/import');
-      const recordsToAppend: StoredRecord[] = newEmails.map((email) => ({
-        email,
-        source,
-        path: pathValue,
-        submittedAt: nowIso,
-        storedAt: nowIso,
-        ip: 'bulk-import',
-        userAgent: 'bulk-import',
-      }));
-
-      let syncedToGoogleSheets = 0;
-      if (GOOGLE_SHEETS_WEBHOOK_URL) {
-        for (const record of recordsToAppend) {
-          try {
-            const webhookResponse = await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(record),
-              cache: 'no-store',
-            });
-            if (webhookResponse.ok) syncedToGoogleSheets += 1;
-          } catch {
-            // Best-effort sync: local storage still receives the record below.
-          }
-        }
-      }
-
-      await fs.mkdir(path.dirname(STORAGE_FILE_PATH), { recursive: true });
-      await fs.appendFile(
-        STORAGE_FILE_PATH,
-        `${recordsToAppend.map((record) => JSON.stringify(record)).join('\n')}\n`,
-        'utf-8',
-      );
-
-      return NextResponse.json({
-        ok: true,
-        imported: newEmails.length,
-        skipped_existing: uniqueIncoming.length - newEmails.length,
-        synced_to_google_sheets: syncedToGoogleSheets,
-        total_after: (await getUniqueEmailsFromSources()).length,
-      });
-    }
-
-    const email = String(payload.email ?? '').trim().toLowerCase();
-
-    if (!email || !EMAIL_REGEX.test(email)) {
-      return NextResponse.json({ ok: false, error: 'Invalid email' }, { status: 400 });
-    }
-
-    const existingRecords = await readAllRecords();
-    const alreadyExists = existingRecords.some((item) => item.email === email);
-    if (alreadyExists) {
-      return NextResponse.json({
-        ok: true,
-        deduped: true,
-        syncedToGoogleSheets: false,
-        hasGoogleSheetsWebhook: Boolean(GOOGLE_SHEETS_WEBHOOK_URL),
-      });
-    }
-
-    const record: StoredRecord = {
-      email,
-      source: String(payload.source ?? ''),
-      path: String(payload.path ?? ''),
-      submittedAt: String(payload.submittedAt ?? new Date().toISOString()),
-      storedAt: new Date().toISOString(),
-      ip:
-        request.headers.get('x-forwarded-for') ??
-        request.headers.get('x-real-ip') ??
-        'unknown',
-      userAgent: request.headers.get('user-agent') ?? '',
-    };
-
-    let syncedToGoogleSheets = false;
-    if (GOOGLE_SHEETS_WEBHOOK_URL) {
-      try {
-        const webhookResponse = await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(record),
-          cache: 'no-store',
-        });
-        syncedToGoogleSheets = webhookResponse.ok;
-      } catch {
-        syncedToGoogleSheets = false;
-      }
-    }
-
-    await fs.mkdir(path.dirname(STORAGE_FILE_PATH), { recursive: true });
-    await fs.appendFile(STORAGE_FILE_PATH, `${JSON.stringify(record)}\n`, 'utf-8');
-
-    return NextResponse.json({
-      ok: true,
-      syncedToGoogleSheets,
-      hasGoogleSheetsWebhook: Boolean(GOOGLE_SHEETS_WEBHOOK_URL),
-    });
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Failed to store email' }, { status: 500 });
-  }
+export async function POST() {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: 'Endpoint deprecado',
+      message:
+        'El alta de leads de Recetas Cami ahora se realiza a través del API multi-tenant. ' +
+        'Usá POST /api/orgs/recetas-cami/bus/main/ingest con la fuente "landing-recetas-cami-waitlist".',
+    },
+    { status: 410 },
+  );
 }
 
-export async function DELETE(request: Request) {
-  void request;
+export async function DELETE() {
   return NextResponse.json(
     { ok: false, error: 'Compaction disabled to prevent accidental data loss' },
     { status: 405 },
   );
 }
 
-export async function PUT(request: Request) {
-  void request;
+export async function PUT() {
   return NextResponse.json(
-    { ok: false, error: 'Use POST with emails[] for bulk import' },
-    { status: 405 },
+    {
+      ok: false,
+      error: 'Endpoint deprecado',
+      message:
+        'El bulk import vía este endpoint quedó retirado al eliminar la integración con Google Sheets.',
+    },
+    { status: 410 },
   );
 }
