@@ -699,7 +699,7 @@ footer.foot {
         <p class="cta-blurb">Abre el chat con Cuchi para recibir tu gu&iacute;a y empezar a cocinar hoy mismo.</p>
       </div>
       <div class="right">
-        <a href="#" class="btn-primary" id="primary-cta">
+        <a href="https://wa.me/56922397282?text=Hola%20Cuchi%2C%20acabo%20de%20comprar%20la%20gu%C3%ADa." class="btn-primary" id="primary-cta" target="_blank" rel="noopener noreferrer">
           Abrir WhatsApp <span class="arrow">&rarr;</span>
         </a>
         <span class="micro">Respuesta inmediata</span>
