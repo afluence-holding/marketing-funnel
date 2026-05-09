@@ -1071,17 +1071,26 @@ h2.section-h .it { font-style: italic; color: var(--terracotta); font-weight: 30
   backdrop-filter: blur(10px);
 }
 .price-line {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
+  display: block;
   margin-bottom: 6px;
 }
 .price-old {
   font-family: 'Fraunces', serif;
-  font-size: 24px;
+  font-size: 26px;
   text-decoration: line-through;
-  color: rgba(251,247,240,0.4);
+  text-decoration-thickness: 2px;
+  color: rgba(251,247,240,0.55);
   font-weight: 300;
+  display: block;
+  margin-bottom: 4px;
+}
+.price-old-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(251,247,240,0.5);
+  margin-right: 8px;
 }
 .price-now {
   font-family: 'Fraunces', serif;
@@ -1090,11 +1099,26 @@ h2.section-h .it { font-style: italic; color: var(--terracotta); font-weight: 30
   font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1;
+  display: block;
 }
 .price-now em { font-style: italic; font-weight: 300; }
+.price-iva {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 5px 11px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ochre);
+  background: rgba(212,160,82,0.12);
+  border: 1px solid rgba(212,160,82,0.35);
+  border-radius: 999px;
+}
 .price-sub {
   font-size: 13.5px;
   color: rgba(251,247,240,0.65);
+  margin-top: 14px;
   margin-bottom: 28px;
 }
 .scarcity {
@@ -1881,7 +1905,7 @@ footer.foot {
   <div class="inline-cta">
     <div class="inline-cta-text">
       <div class="inline-cta-eyebrow">Precio de lanzamiento · termina pronto</div>
-      <h3>Súmate hoy y ahorra <em>USD $20</em>.</h3>
+      <h3>Súmate hoy y ahorra <em>$20.000 CLP</em>.</h3>
     </div>
     <a href="#cta" class="inline-cta-btn">Comprar con -40% <span>→</span></a>
   </div>
@@ -1906,10 +1930,11 @@ footer.foot {
         </div>
         <div class="price-block">
           <div class="price-line">
-            <span class="price-old">USD $47</span>
-            <span class="price-now">USD $<em>27</em></span>
+            <span class="price-old"><span class="price-old-label">Antes</span>$47.000 CLP</span>
+            <span class="price-now">$<em>27.000</em> CLP</span>
+            <span class="price-iva">+ IVA · no incluido</span>
           </div>
-          <div class="price-sub">pago único · acceso inmediato</div>
+          <div class="price-sub">Pago único · acceso inmediato · IVA no incluido en el precio</div>
           <div class="scarcity">
             <div class="scarcity-row">
               <span>Cupos de lanzamiento</span>
@@ -1917,7 +1942,7 @@ footer.foot {
             </div>
             <div class="scarcity-bar"><div class="scarcity-fill"></div></div>
           </div>
-          <a href="https://pay.hotmart.com/C105756242Y?bid=1778298834812" target="_top" class="value-form-cta" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px 24px;font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);background:var(--ochre);border:none;border-radius:12px;cursor:pointer;transition:background .2s, transform .1s;text-decoration:none;box-shadow:0 10px 30px -10px rgba(212,160,82,0.5);">Comprar ahora · USD $27 <span>→</span></a>
+          <a href="https://pay.hotmart.com/C105756242Y?bid=1778298834812" target="_top" class="value-form-cta" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px 24px;font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);background:var(--ochre);border:none;border-radius:12px;cursor:pointer;transition:background .2s, transform .1s;text-decoration:none;box-shadow:0 10px 30px -10px rgba(212,160,82,0.5);">Comprar ahora · $27.000 CLP <span>→</span></a>
           <p class="fineprint">Pago seguro · acceso inmediato a la guía + Cuchi.</p>
         </div>
       </div>
