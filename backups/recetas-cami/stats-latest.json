@@ -1,1 +1,1 @@
-{"ok":true,"total":3929}
+{"ok":true,"total":0,"note":"Lectura de respaldo histórico (ndjson local). El alta de leads ahora se realiza a través del API multi-tenant: POST /api/orgs/recetas-cami/bus/main/ingest."}
