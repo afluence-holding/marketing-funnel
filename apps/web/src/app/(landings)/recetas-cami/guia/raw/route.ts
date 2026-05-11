@@ -1942,7 +1942,7 @@ footer.foot {
             </div>
             <div class="scarcity-bar"><div class="scarcity-fill"></div></div>
           </div>
-          <a href="https://pay.hotmart.com/C105756242Y?bid=1778298834812" target="_top" class="value-form-cta" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px 24px;font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);background:var(--ochre);border:none;border-radius:12px;cursor:pointer;transition:background .2s, transform .1s;text-decoration:none;box-shadow:0 10px 30px -10px rgba(212,160,82,0.5);">Comprar ahora · $27.000 CLP <span>→</span></a>
+          <a href="https://pay.hotmart.com/T105788359I" target="_top" class="value-form-cta" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px 24px;font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);background:var(--ochre);border:none;border-radius:12px;cursor:pointer;transition:background .2s, transform .1s;text-decoration:none;box-shadow:0 10px 30px -10px rgba(212,160,82,0.5);">Comprar ahora · $27.000 CLP <span>→</span></a>
           <p class="fineprint">Pago seguro · acceso inmediato a la guía + Cuchi.</p>
         </div>
       </div>
