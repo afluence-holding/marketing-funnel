@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import LandingFrame from './landing-frame';
 
 export const metadata: Metadata = {
   title: 'Liberate del "que cocino hoy?" - Guia mensual',
@@ -13,15 +14,9 @@ export const metadata: Metadata = {
 
 export default function RecetasCamiGuiaLandingPage() {
   return (
-    <iframe
+    <LandingFrame
       src="/recetas-cami/guia/raw"
       title='Liberate del "que cocino hoy?" - Guia mensual'
-      style={{
-        width: '100%',
-        height: '100vh',
-        border: 'none',
-        display: 'block',
-      }}
     />
   );
 }

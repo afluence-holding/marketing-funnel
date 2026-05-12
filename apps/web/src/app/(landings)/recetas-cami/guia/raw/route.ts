@@ -2048,12 +2048,102 @@ footer.foot {
 
 
 <script>
+// In-iframe bridge: auto-resize + anchor scroll relay.
+// Why: in iOS WKWebView (Instagram / Facebook in-app browsers), an iframe
+// with internal scroll has known bugs — touch scroll is flaky and native
+// anchor-jump (href="#cta") often does nothing. Letting the parent
+// document own the scroll fixes both.
+(function() {
+  function inIframe() {
+    try { return window.parent && window.parent !== window; }
+    catch (_) { return true; }
+  }
+
+  function postHeight() {
+    if (!inIframe()) return;
+    try {
+      var h = Math.max(
+        document.documentElement.scrollHeight,
+        document.body ? document.body.scrollHeight : 0
+      );
+      window.parent.postMessage({ type: 'iframe-height', height: h }, '*');
+    } catch (_) {}
+  }
+
+  // Push height as soon as DOM and assets settle
+  if (document.readyState === 'complete') postHeight();
+  else window.addEventListener('load', postHeight);
+  window.addEventListener('resize', postHeight);
+  if ('ResizeObserver' in window) {
+    try { new ResizeObserver(postHeight).observe(document.documentElement); } catch (_) {}
+  }
+  // A few extra ticks to catch web-font reflow / late images
+  setTimeout(postHeight, 100);
+  setTimeout(postHeight, 600);
+  setTimeout(postHeight, 1500);
+  setTimeout(postHeight, 3000);
+
+  // Anchor scroll handler — works standalone AND via parent
+  document.addEventListener('click', function(e) {
+    var link = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+    if (!link) return;
+    var href = link.getAttribute('href') || '';
+    if (href.length < 2 || href === '#') return;
+    var id = href.slice(1);
+    var target = document.getElementById(id);
+    if (!target) return;
+    e.preventDefault();
+
+    // If embedded in our parent wrapper, ask the parent to do the scroll
+    if (inIframe()) {
+      try {
+        var rect = target.getBoundingClientRect();
+        var top = rect.top + (window.pageYOffset || document.documentElement.scrollTop || 0);
+        window.parent.postMessage(
+          { type: 'iframe-scroll-to', top: top, hash: href },
+          '*'
+        );
+        return;
+      } catch (_) { /* fallthrough to standalone */ }
+    }
+
+    // Standalone fallback (direct visit to /raw, or no parent listener)
+    try {
+      target.scrollIntoView({ block: 'start', behavior: 'auto' });
+    } catch (_) {
+      var rect2 = target.getBoundingClientRect();
+      window.scrollTo(0, rect2.top + (window.pageYOffset || document.documentElement.scrollTop || 0));
+    }
+    if (window.history && history.replaceState) {
+      try { history.replaceState(null, '', href); } catch (_) {}
+    }
+  }, true);
+})();
+
+// Effective scroll position. When the page is hosted inside our auto-resizing
+// iframe, the iframe itself does not scroll — the parent does. The parent
+// posts its scroll position so anything that used to read window.scrollY can
+// keep working.
+var __parentScrollY = null;
+window.addEventListener('message', function(e) {
+  var d = e.data;
+  if (!d || typeof d !== 'object' || d.type !== 'parent-scroll') return;
+  if (typeof d.scrollY === 'number') {
+    __parentScrollY = d.scrollY;
+    window.dispatchEvent(new CustomEvent('virtual-scroll', { detail: { scrollY: d.scrollY, viewportH: d.viewportH } }));
+  }
+});
+function effectiveScrollY() {
+  return __parentScrollY != null ? __parentScrollY : (window.pageYOffset || document.documentElement.scrollTop || 0);
+}
+
 // WhatsApp chat loop
 (function() {
   const chat = document.querySelector('.wa-chat-area');
   if (!chat) return;
   const items = Array.from(chat.children);
   let idx = 0;
+  let started = false;
   function tick() {
     if (idx >= items.length) {
       // pause, then reset
@@ -2072,16 +2162,20 @@ footer.foot {
     idx++;
     setTimeout(tick, 950);
   }
-  // start when chat is visible
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        setTimeout(tick, 400);
-        io.disconnect();
-      }
-    });
-  }, { threshold: 0.4 });
-  io.observe(chat);
+  function start() {
+    if (started) return;
+    started = true;
+    setTimeout(tick, 400);
+  }
+  // The chat is in the hero (above the fold) — start as soon as the script runs.
+  // (Previously we used IntersectionObserver, but with auto-resized iframes the
+  // iframe's own viewport contains everything from the start, so IO would fire
+  // immediately anyway.)
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    start();
+  } else {
+    window.addEventListener('DOMContentLoaded', start);
+  }
 })();
 
 // Sticky discount banner: show after scroll, countdown, close
@@ -2091,14 +2185,16 @@ footer.foot {
   const timerEl = document.getElementById('stickyTimer');
   if (!banner || !timerEl) return;
 
-  // Show after user scrolls past hero
+  // Show after user scrolls past hero — uses effectiveScrollY so it works
+  // both standalone and when embedded in the auto-resizing parent frame.
   let dismissed = sessionStorage.getItem('stickyCtaClosed') === '1';
   function onScroll() {
     if (dismissed) return;
-    if (window.scrollY > 600) banner.classList.add('show');
+    if (effectiveScrollY() > 600) banner.classList.add('show');
     else banner.classList.remove('show');
   }
   window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('virtual-scroll', onScroll);
   onScroll();
 
   closeBtn.addEventListener('click', () => {
