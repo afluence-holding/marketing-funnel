@@ -11,9 +11,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 // WhatsApp group invite link. Empty string hides the CTA; paste the real URL when ready.
 const WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/FrS6wqhSWM2HdepEdajz92?mode=gi_t';
 
-// Launch date — 16 May 2026 at 00:00 local time (month index 4 = May).
-const DEADLINE = new Date(2026, 4, 16, 0, 0, 0);
-
 const WAITLIST_BASE_COUNT = 367;
 
 const ROTATING_PHRASES = [
@@ -40,8 +37,6 @@ function PreLaunchFormInner() {
   const toastRef = useRef<HTMLDivElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
-  const [cd, setCd] = useState({ d: '--', h: '--', m: '--', s: '--' });
-  const [urgency, setUrgency] = useState('');
   const [emailInput, setEmailInput] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -182,32 +177,6 @@ function PreLaunchFormInner() {
     };
   }, []);
 
-  // Countdown tick
-  useEffect(() => {
-    function tick() {
-      const diff = DEADLINE.getTime() - Date.now();
-      if (diff <= 0) {
-        setCd({ d: '00', h: '00', m: '00', s: '00' });
-        setUrgency('🔴 Lista cerrada. Abre en minutos.');
-        return;
-      }
-      const daysLeft = Math.floor(diff / 86400000);
-      setCd({
-        d: String(daysLeft).padStart(2, '0'),
-        h: String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0'),
-        m: String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0'),
-        s: String(Math.floor((diff % 60000) / 1000)).padStart(2, '0'),
-      });
-      if (daysLeft <= 3) setUrgency('⚡ Últimos días — los cupos se llenan rápido.');
-      else if (daysLeft <= 7) setUrgency('Los primeros en inscribirse tienen prioridad de cupo.');
-      else if (daysLeft <= 14) setUrgency('Lista de espera activa — asegura tu lugar ahora.');
-      else setUrgency('');
-    }
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
   // Rotating phrases (every 2.5s)
   useEffect(() => {
     const el = rotatingRef.current;
@@ -342,31 +311,6 @@ function PreLaunchFormInner() {
           </div>
         </div>
 
-        <div className="countdown-wrap">
-          <div className="countdown">
-            <div className="cbox">
-              <div className="cnum">{cd.d}</div>
-              <div className="clbl">Días</div>
-            </div>
-            <div className="csep">:</div>
-            <div className="cbox">
-              <div className="cnum">{cd.h}</div>
-              <div className="clbl">Horas</div>
-            </div>
-            <div className="csep">:</div>
-            <div className="cbox">
-              <div className="cnum">{cd.m}</div>
-              <div className="clbl">Min</div>
-            </div>
-            <div className="csep">:</div>
-            <div className="cbox">
-              <div className="cnum">{cd.s}</div>
-              <div className="clbl">Seg</div>
-            </div>
-          </div>
-          <div className="countdown-urgency">{urgency}</div>
-        </div>
-
         {!submitted ? (
           <div id="form-wrap">
             <form className="form" onSubmit={handleSubmit} noValidate>
@@ -462,20 +406,14 @@ canvas#bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer
 
 .logo { margin-bottom: 20px; }
 
-h1 { font-size: clamp(28px, 6vw, 48px); font-weight: 600; line-height: 1.1; margin-bottom: 10px; letter-spacing: -1px; font-family: Arial, sans-serif; }
+h1 { font-size: clamp(28px, 6vw, 48px); font-weight: 600; line-height: 1.1; margin-bottom: 12px; letter-spacing: -1px; font-family: Arial, sans-serif; }
 h1 em { color: #E8622A; font-style: normal; }
 
-.rotating { height: 22px; margin-bottom: 20px; overflow: hidden; position: relative; }
+.rotating { height: 22px; margin-bottom: 28px; overflow: hidden; position: relative; }
 .rotating-inner { display: flex; flex-direction: column; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
 .rotating span { font-size: 14px; color: #888; height: 22px; line-height: 22px; white-space: nowrap; }
 
-.countdown-wrap { margin-bottom: 20px; }
-.countdown { display: flex; justify-content: center; gap: 10px; }
-.cbox { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.cnum { font-size: clamp(24px, 5vw, 40px); font-weight: 900; color: #F5C518; line-height: 1; min-width: 48px; text-align: center; text-shadow: 0 0 12px rgba(245, 197, 24, 0.25); }
-.clbl { font-size: 9px; color: #555; letter-spacing: 1px; text-transform: uppercase; }
-.csep { font-size: 30px; font-weight: 900; color: #333; align-self: flex-start; margin-top: 3px; }
-.countdown-urgency { margin-top: 10px; font-size: 11px; color: rgba(255, 255, 255, 0.2); letter-spacing: 0.3px; min-height: 14px; }
+#form-wrap { width: 100%; max-width: 360px; margin-left: auto; margin-right: auto; margin-top: 4px; }
 
 .form { display: flex; flex-direction: column; gap: 10px; max-width: 360px; width: 100%; margin: 0 auto; }
 .form input { background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 14px 20px; font-size: 15px; color: #fff; outline: none; text-align: center; transition: border 0.2s, background 0.2s; font-family: inherit; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
