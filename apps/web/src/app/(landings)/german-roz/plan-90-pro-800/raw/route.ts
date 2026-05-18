@@ -5,6 +5,7 @@ function overridePrice(html: string) {
     .replace(/\$650 USD/g, '$800 USD')
     .replace(/SÍ, QUIERO EMPEZAR HOY POR \$650/g, 'SÍ, QUIERO EMPEZAR HOY POR $800')
     .replace(/>\s*650(<span style="font-size:0\.35em; color:rgba\(255,255,255,0\.5\)">USD<\/span>)/g, '>800$1')
+    .replace(/AHORRA \$450 USD/g, 'AHORRA $300 USD')
     .replace(/Ahorras \$450 USD/g, 'Ahorras $300 USD')
     .replace(
       /https:\/\/whop\.com\/checkout\/1U9SFTVfwaUqxtbLa1-cIsC-aWVj-Ok3M-sHjDntR15Rcl\//g,
