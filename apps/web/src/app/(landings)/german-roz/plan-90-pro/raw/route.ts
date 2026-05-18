@@ -265,11 +265,6 @@ const LANDING_HTML = `<!DOCTYPE html>
                 font-size: clamp(34px, 5vw, 56px);
             }
 
-            .hero h1 .underline-orange {
-                background: linear-gradient(180deg, transparent 65%, rgba(255,87,34,0.4) 65%);
-                padding: 0 6px;
-            }
-
             .hero-sub {
                 text-align: center;
                 max-width: 620px;
@@ -1861,8 +1856,7 @@ const LANDING_HTML = `<!DOCTYPE html>
                 </div>
                 <h1>
                     Tu transformación <em class="accent">definitiva</em>
-                    de 90 días <span class="underline-orange">empieza hoy</span>
-                    .
+                    de 90 días empieza hoy.
                 </h1>
                 <p class="hero-sub">Diagnóstico 1:1 con Germán y un equipo de profesionales trabajando contigo todos los días.</p>
                 <div class="hero-cta-block">
