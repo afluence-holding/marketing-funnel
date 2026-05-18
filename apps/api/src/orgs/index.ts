@@ -41,6 +41,12 @@ import { workflows as germanRozWorkflows } from './german-roz/main/workflows';
 import { IDS as germanRozIDS } from './german-roz/main/config';
 import { routingEngine as germanRozRouting } from './german-roz/main/routing';
 
+// -- German Roz / Plan 90 Pro -------------------------------------------------
+import { sequences as germanRozPlan90ProSequences } from './german-roz/plan-90-pro/sequences';
+import { workflows as germanRozPlan90ProWorkflows } from './german-roz/plan-90-pro/workflows';
+import { IDS as germanRozPlan90ProIDS } from './german-roz/plan-90-pro/config';
+import { routingEngine as germanRozPlan90ProRouting } from './german-roz/plan-90-pro/routing';
+
 // -- Lucas con Lucas / Main ---------------------------------------------------
 import { sequences as lucasConLucasSequences } from './lucas-con-lucas/main/sequences';
 import { workflows as lucasConLucasWorkflows } from './lucas-con-lucas/main/workflows';
@@ -94,6 +100,12 @@ const businessUnits: BusinessUnitBinding[] = [
     routingEngine: germanRozRouting,
   },
   {
+    orgKey: 'german-roz',
+    buKey: 'plan-90-pro',
+    organizationId: germanRozPlan90ProIDS.organizationId,
+    routingEngine: germanRozPlan90ProRouting,
+  },
+  {
     orgKey: 'lucas-con-lucas',
     buKey: 'main',
     organizationId: lucasConLucasIDS.organizationId,
@@ -133,6 +145,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
   ...aiFactoryCreatorsSequences,
   ...carlaZaplanaLowCarbSequences,
   ...germanRozSequences,
+  ...germanRozPlan90ProSequences,
   ...lucasConLucasSequences,
   ...santiInversorResearchSequences,
   ...recetasCamiSequences,
@@ -144,6 +157,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...aiFactoryCreatorsWorkflows,
   ...carlaZaplanaLowCarbWorkflows,
   ...germanRozWorkflows,
+  ...germanRozPlan90ProWorkflows,
   ...lucasConLucasWorkflows,
   ...santiInversorResearchWorkflows,
   ...recetasCamiWorkflows,
