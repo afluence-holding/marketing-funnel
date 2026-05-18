@@ -3,6 +3,10 @@ import { GET as getOriginalLanding } from '../../plan-90-pro/raw/route';
 function overridePrice(html: string) {
   return html
     .replace(/\$650 USD/g, '$800 USD')
+    .replace(
+      /— Hoy, por participar en el reto, es <span class="accent">\$800 USD<\/span>/g,
+      '— Hoy lo puedes obtener por <span class="accent">$800 USD</span>',
+    )
     .replace(/SÍ, QUIERO EMPEZAR HOY POR \$650/g, 'SÍ, QUIERO EMPEZAR HOY POR $800')
     .replace(/>\s*650(<span style="font-size:0\.35em; color:rgba\(255,255,255,0\.5\)">USD<\/span>)/g, '>800$1')
     .replace(/AHORRA \$450 USD/g, 'AHORRA $300 USD')
