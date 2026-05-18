@@ -321,57 +321,74 @@ const LANDING_HTML = `<!DOCTYPE html>
             }
 
             .vsl-play {
-                position: relative;
+                position: absolute;
+                left: 12px;
+                bottom: 12px;
                 z-index: 30;
-                width: 92px;
-                height: 92px;
                 background: var(--orange);
-                border-radius: 50%;
-                border: none;
-                padding: 0;
                 color: white;
-                font-family: inherit;
-                display: flex;
+                border: none;
+                padding: 10px 16px 10px 12px;
+                border-radius: 999px;
+                display: inline-flex;
                 align-items: center;
-                justify-content: center;
+                gap: 8px;
                 cursor: pointer;
-                transition: transform 0.3s, opacity 0.35s ease;
-                box-shadow: 0 0 0 0 rgba(255,87,34,0.6);
+                font-family: inherit;
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                line-height: 1;
+                white-space: nowrap;
+                transition: transform 0.25s ease, opacity 0.35s ease, background 0.2s ease;
+                box-shadow: 0 0 0 0 rgba(255,87,34,0.55), 0 6px 18px -4px rgba(255,87,34,0.55), 0 2px 8px rgba(0,0,0,0.25);
                 animation: ringPulse 2.4s infinite;
             }
 
             .vsl-play:hover {
-                transform: scale(1.08);
+                transform: translateY(-1px) scale(1.03);
+                background: var(--orange-deep);
             }
 
             .vsl-play:focus-visible {
                 outline: 2px solid white;
-                outline-offset: 4px;
+                outline-offset: 3px;
             }
 
             .vsl-play.is-hidden {
                 opacity: 0;
                 pointer-events: none;
+                transform: translateY(8px) scale(0.95);
+            }
+
+            @media (max-width: 600px) {
+                .vsl-play {
+                    left: 10px;
+                    bottom: 10px;
+                    padding: 8px 13px 8px 10px;
+                    font-size: 12px;
+                    gap: 6px;
+                }
             }
 
             .vsl-play svg {
-                width: 32px;
-                height: 32px;
+                width: 18px;
+                height: 18px;
                 fill: white;
-                margin-left: 4px;
+                flex-shrink: 0;
             }
 
             @keyframes ringPulse {
                 0% {
-                    box-shadow: 0 0 0 0 rgba(255,87,34,0.6);
+                    box-shadow: 0 0 0 0 rgba(255,87,34,0.55), 0 6px 18px -4px rgba(255,87,34,0.5), 0 2px 8px rgba(0,0,0,0.25);
                 }
 
                 70% {
-                    box-shadow: 0 0 0 28px rgba(255,87,34,0);
+                    box-shadow: 0 0 0 12px rgba(255,87,34,0), 0 6px 18px -4px rgba(255,87,34,0.5), 0 2px 8px rgba(0,0,0,0.25);
                 }
 
                 100% {
-                    box-shadow: 0 0 0 0 rgba(255,87,34,0);
+                    box-shadow: 0 0 0 0 rgba(255,87,34,0), 0 6px 18px -4px rgba(255,87,34,0.5), 0 2px 8px rgba(0,0,0,0.25);
                 }
             }
 
@@ -1836,8 +1853,9 @@ const LANDING_HTML = `<!DOCTYPE html>
                     <div class="vsl-frame" id="vslFrame" aria-label="Video con Germán Roz · Plan 90 Pro">
                         <button type="button" class="vsl-play" id="vslUnmute" aria-label="Activar audio del video">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M8 5v14l11-7z"/>
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                             </svg>
+                            <span>Activar sonido</span>
                         </button>
                     </div>
                 </div>
