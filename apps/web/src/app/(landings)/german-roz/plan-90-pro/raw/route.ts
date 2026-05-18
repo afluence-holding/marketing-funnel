@@ -322,22 +322,36 @@ const LANDING_HTML = `<!DOCTYPE html>
 
             .vsl-play {
                 position: relative;
-                z-index: 2;
+                z-index: 30;
                 width: 92px;
                 height: 92px;
                 background: var(--orange);
                 border-radius: 50%;
+                border: none;
+                padding: 0;
+                color: white;
+                font-family: inherit;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
-                transition: transform 0.3s;
+                transition: transform 0.3s, opacity 0.35s ease;
                 box-shadow: 0 0 0 0 rgba(255,87,34,0.6);
                 animation: ringPulse 2.4s infinite;
             }
 
             .vsl-play:hover {
                 transform: scale(1.08);
+            }
+
+            .vsl-play:focus-visible {
+                outline: 2px solid white;
+                outline-offset: 4px;
+            }
+
+            .vsl-play.is-hidden {
+                opacity: 0;
+                pointer-events: none;
             }
 
             .vsl-play svg {
@@ -1819,12 +1833,12 @@ const LANDING_HTML = `<!DOCTYPE html>
                 </h2>
                 <!-- VSL -->
                 <div class="vsl-wrapper">
-                    <div class="vsl-frame">
-                        <div class="vsl-play" onclick="alert('Aquí va a ir embebido tu VSL')">
-                            <svg viewBox="0 0 24 24">
+                    <div class="vsl-frame" id="vslFrame" aria-label="Video con Germán Roz · Plan 90 Pro">
+                        <button type="button" class="vsl-play" id="vslUnmute" aria-label="Activar audio del video">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M8 5v14l11-7z"/>
                             </svg>
-                        </div>
+                        </button>
                     </div>
                 </div>
                 <h1>
@@ -2508,6 +2522,150 @@ const LANDING_HTML = `<!DOCTYPE html>
                 threshold: 0.12
             });
             document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+        </script>
+
+        <!-- ============================================================
+             VSL — YouTube embed
+             Mirrors apps/web/src/app/(landings)/german-roz/vsl-desinflamate
+             pattern: autoplay muted on load, "Activar audio" overlay
+             reloads the iframe unmuted on the user gesture, custom
+             fullscreen toggle, 1.25x playback rate, and milestone
+             tracking via postMessage to the parent.
+             ============================================================ -->
+        <script>
+            (function () {
+                var YT_ID = 'cLuB4LamEZ8';
+                var SPEED = 1.25;
+                var BASE_PARAMS = 'playsinline=1&rel=0&modestbranding=1&controls=0&fs=0&disablekb=1&iv_load_policy=3&enablejsapi=1';
+
+                function buildSrc(muted) {
+                    return 'https://www.youtube.com/embed/' + YT_ID +
+                        '?autoplay=1&mute=' + (muted ? '1' : '0') + '&' + BASE_PARAMS;
+                }
+
+                function boot() {
+                    var frame = document.getElementById('vslFrame');
+                    var btn = document.getElementById('vslUnmute');
+                    if (!frame || !btn) return setTimeout(boot, 200);
+
+                    var iframe = document.createElement('iframe');
+                    iframe.id = 'yt-vsl';
+                    iframe.title = 'Plan 90 Pro — Germán Roz';
+                    iframe.src = buildSrc(true);
+                    iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+                    iframe.allowFullscreen = true;
+                    iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;display:block;z-index:1;';
+                    frame.insertBefore(iframe, btn);
+
+                    function sendCommand(func, args) {
+                        try {
+                            iframe.contentWindow.postMessage(
+                                JSON.stringify({ event: 'command', func: func, args: args || [] }),
+                                '*'
+                            );
+                        } catch (_) {}
+                    }
+
+                    function subscribe() {
+                        try {
+                            iframe.contentWindow.postMessage(
+                                JSON.stringify({ event: 'listening' }),
+                                '*'
+                            );
+                        } catch (_) {}
+                    }
+                    iframe.addEventListener('load', subscribe);
+                    setTimeout(subscribe, 600);
+                    setTimeout(subscribe, 1500);
+
+                    btn.addEventListener('click', function () {
+                        iframe.src = buildSrc(false);
+                        btn.classList.add('is-hidden');
+                        setTimeout(function () { btn.remove(); }, 400);
+                        iframe.addEventListener('load', function () {
+                            setTimeout(function () { sendCommand('setPlaybackRate', [SPEED]); }, 1000);
+                            setTimeout(function () { sendCommand('setPlaybackRate', [SPEED]); }, 2500);
+                            subscribe();
+                        });
+                    });
+
+                    var fsBtn = document.createElement('button');
+                    fsBtn.type = 'button';
+                    fsBtn.innerHTML = '\u26F6 Pantalla completa';
+                    fsBtn.setAttribute('aria-label', 'Alternar pantalla completa');
+                    fsBtn.style.cssText = 'position:absolute;right:12px;bottom:12px;z-index:35;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:.55rem .85rem;font-size:12px;line-height:1;font-weight:700;letter-spacing:.02em;color:#fff;background:rgba(12,12,12,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s ease;font-family:inherit;';
+                    frame.appendChild(fsBtn);
+
+                    var fsBtnTimer = null;
+                    function setFsVisible(visible) {
+                        fsBtn.style.opacity = visible ? '1' : '0';
+                        fsBtn.style.pointerEvents = visible ? 'auto' : 'none';
+                    }
+                    function showFsBriefly() {
+                        setFsVisible(true);
+                        clearTimeout(fsBtnTimer);
+                        fsBtnTimer = setTimeout(function () { setFsVisible(false); }, 1800);
+                    }
+                    frame.addEventListener('mousemove', showFsBriefly);
+                    frame.addEventListener('touchstart', showFsBriefly, { passive: true });
+                    frame.addEventListener('click', showFsBriefly);
+                    fsBtn.addEventListener('mouseenter', showFsBriefly);
+                    fsBtn.addEventListener('focus', showFsBriefly);
+
+                    function setFsLabel() {
+                        var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                        fsBtn.innerHTML = isFs ? '\u2715 Salir pantalla completa' : '\u26F6 Pantalla completa';
+                    }
+
+                    fsBtn.addEventListener('click', function (ev) {
+                        ev.stopPropagation();
+                        var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                        if (isFs) {
+                            var exit = document.exitFullscreen || document.webkitExitFullscreen;
+                            if (exit) exit.call(document);
+                            return;
+                        }
+                        var req = frame.requestFullscreen || frame.webkitRequestFullscreen;
+                        if (req) {
+                            var p = req.call(frame);
+                            if (p && p.catch) p.catch(function () {});
+                        }
+                    });
+
+                    document.addEventListener('fullscreenchange', function () { setFsLabel(); showFsBriefly(); });
+                    document.addEventListener('webkitfullscreenchange', function () { setFsLabel(); showFsBriefly(); });
+
+                    var milestones = { 25: false, 50: false, 75: false, 100: false };
+                    window.addEventListener('message', function (e) {
+                        var data;
+                        try {
+                            data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+                        } catch (_) { return; }
+                        if (!data || data.event !== 'infoDelivery' || !data.info) return;
+                        var ct = data.info.currentTime;
+                        var dur = data.info.duration;
+                        if (!dur || ct == null) return;
+                        var pct = (ct / dur) * 100;
+                        [25, 50, 75, 100].forEach(function (m) {
+                            if (pct >= m && !milestones[m]) {
+                                milestones[m] = true;
+                                try {
+                                    window.parent.postMessage(
+                                        { type: 'vsl-milestone', milestone: m, videoId: YT_ID },
+                                        '*'
+                                    );
+                                } catch (_) {}
+                            }
+                        });
+                    });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 200); });
+                } else {
+                    setTimeout(boot, 200);
+                }
+            })();
         </script>
 
         <!-- ============================================================
