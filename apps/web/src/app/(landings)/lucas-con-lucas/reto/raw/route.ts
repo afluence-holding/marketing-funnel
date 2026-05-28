@@ -1382,14 +1382,6 @@ const LANDING_HTML = `<!DOCTYPE html>
   </div>
 </header>
 
-<!-- ============ MARQUEE ============ -->
-<div class="marquee" aria-hidden="true">
-  <div class="marquee-track">
-    <span>15 días</span><span>video diario</span><span>WhatsApp</span><span>UF +14% rentabilidad</span><span>+150 propiedades flipeadas</span><span>+60 clientes felices</span><span>chile</span>
-    <span>15 días</span><span>video diario</span><span>WhatsApp</span><span>UF +14% rentabilidad</span><span>+150 propiedades flipeadas</span><span>+60 clientes felices</span><span>chile</span>
-  </div>
-</div>
-
 <!-- ============ HERO ============ -->
 <section class="hero">
   <div class="deco-dollar d1">$</div>
@@ -1461,7 +1453,7 @@ const LANDING_HTML = `<!DOCTYPE html>
       <div class="label">Propiedades flipeadas</div>
     </div>
     <div class="track-item">
-      <div class="num"><em>+</em>15K</div>
+      <div class="num"><em>+</em>15.000</div>
       <div class="label">m² remodelados</div>
     </div>
     <div class="track-item">
@@ -1777,12 +1769,12 @@ const LANDING_HTML = `<!DOCTYPE html>
     <span class="eyebrow" style="margin: 0 auto 56px;">Únete ahora</span>
     <h2 class="titulo">Entra al reto<br><span class="accent">antes del cierre.</span></h2>
     <p class="lead" style="margin-left:auto; margin-right:auto;">
-      Este RETO tiene cupos limitados y empieza el <strong style="color:var(--blanco);" class="fecha-cohort">--</strong>.
+      Este RETO tiene <strong style="color:var(--blanco);">500 cupos Early bird</strong> y empieza el <strong style="color:var(--blanco);" class="fecha-cohort">--</strong>.
       Cuando cierra, cierra. Te metes ahora o esperas el próximo.
     </p>
 
     <div class="precio-card">
-      <div class="precio-badge">⚡ Promo lanzamiento</div>
+      <div class="precio-badge">⚡ Early bird · 500 cupos</div>
       <div class="precio-titulo">Reto Lucas con Luca$</div>
 
       <div class="precio-tiers">
@@ -1795,13 +1787,13 @@ const LANDING_HTML = `<!DOCTYPE html>
           <div class="tier-price-strike">$247.000</div>
         </div>
         <div class="tier highlight">
-          <div class="tier-label">⚡ Hoy, en lanzamiento</div>
-          <div class="tier-price-huge">$87.000</div>
+          <div class="tier-label">⚡ Early bird · 500 cupos</div>
+          <div class="tier-price-huge">$77.000</div>
         </div>
       </div>
       <div class="precio-clp">CLP · pago único · sin mensualidades</div>
 
-      <div class="ahorras">Te ahorras $488.000 vs valor total</div>
+      <div class="ahorras">Te ahorras $498.000 vs valor total</div>
 
       <!-- FECHA RETO -->
       <div style="background:var(--negro); border:1px solid var(--gris); border-radius:6px; padding:14px 18px; margin-bottom:20px;">
@@ -1826,12 +1818,11 @@ const LANDING_HTML = `<!DOCTYPE html>
         <li>Sin mensualidades · pago único</li>
       </ul>
 
-      <!-- WhatsApp CTA -->
-      <!-- Reemplazar el número 56XXXXXXXXX por el real -->
-      <a href="https://chat.whatsapp.com/FrS6wqhSWM2HdepEdajz92?mode=gi_t"
+      <!-- CTA pago -->
+      <a href="https://whop.com/checkout/plan_aKOjfecUWLzFo"
          class="btn btn-grande btn-amarillo" target="_blank" rel="noopener"
          style="width:100%; max-width:420px; margin-top:10px;">
-        Quiero entrar por WhatsApp →
+        Reservar mi cupo ahora →
       </a>
 
       <div style="margin-top:18px; font-size:13px; color:var(--gris-claro);">
@@ -1941,10 +1932,9 @@ const LANDING_HTML = `<!DOCTYPE html>
     Cada mes que pasa sin invertir, la inflación se come tus ahorros.
     En 15 días puedes tener un método. La decisión es ahora.
   </p>
-  <!-- Reemplazar el número 56XXXXXXXXX por el real -->
-  <a href="https://chat.whatsapp.com/FrS6wqhSWM2HdepEdajz92?mode=gi_t"
+  <a href="https://whop.com/checkout/plan_aKOjfecUWLzFo"
      class="btn btn-grande" target="_blank" rel="noopener">
-    Quiero entrar al reto →
+    Reservar mi cupo ahora →
   </a>
   <div style="margin-top:18px; font-size:13px; color:var(--gris-claro);">
     🛡️ 2 días de garantía · 50% de devolución · pago único · sin mensualidades
@@ -1964,8 +1954,8 @@ const LANDING_HTML = `<!DOCTYPE html>
 <script>
   // ========== FECHAS DEL COHORT ==========
   // ⚠️ CAMBIAR ESTAS 2 FECHAS POR LAS REALES (formato: 'YYYY-MM-DDTHH:mm:ss')
-  const COHORT_START = new Date('2026-06-08T09:00:00'); // Día 1 del reto (lunes 8 de junio 2026)
-  const DEADLINE     = new Date('2026-06-08T23:59:59'); // Cierre de inscripciones (mismo 8 de junio)
+  const COHORT_START = new Date('2026-06-29T09:00:00'); // Día 1 del reto (29 de junio 2026)
+  const DEADLINE     = new Date('2026-06-29T23:59:59'); // Cierre de inscripciones (29 de junio 2026)
 
   // Render fechas en todos los spans .fecha-cohort y .fecha-cierre
   const fmtFecha = (d) => {
