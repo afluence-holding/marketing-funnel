@@ -32,6 +32,7 @@ const GERMAN_ROZ_SOURCES = new Set([
 ]);
 const LUCAS_CON_LUCAS_SOURCES = new Set([
   'landing-lucas-con-lucas-pre-launch',
+  'landing-lucas-con-lucas-webinar-2026-06-04',
 ]);
 const SANTI_INVERSOR_SOURCES = new Set([
   'landing-santi-inversor-research-home',
@@ -101,6 +102,6 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
   }
 
   throw new Error(
-    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-german-roz-waitlist-di21", "landing-lucas-con-lucas-pre-launch", "landing-santi-inversor-research-home", "landing-recetas-cami-waitlist", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
+    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-german-roz-waitlist-di21", "landing-lucas-con-lucas-pre-launch", "landing-lucas-con-lucas-webinar-2026-06-04", "landing-santi-inversor-research-home", "landing-recetas-cami-waitlist", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
   );
 }
