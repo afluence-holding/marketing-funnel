@@ -14,9 +14,19 @@ export interface BukkuLeadRecord {
   updatedAt: string;
 }
 
-const DATA_DIR = process.env.BUKKU_DATA_DIR
-  ? path.resolve(process.env.BUKKU_DATA_DIR)
-  : path.join(process.cwd(), '.data/bukku');
+function resolveDataDir(): string {
+  if (process.env.BUKKU_DATA_DIR) {
+    return path.resolve(process.env.BUKKU_DATA_DIR);
+  }
+
+  if (process.env.RAILWAY_VOLUME_MOUNT_PATH) {
+    return path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'bukku');
+  }
+
+  return path.join(process.cwd(), '.data/bukku');
+}
+
+const DATA_DIR = resolveDataDir();
 const DATA_FILE = path.join(DATA_DIR, 'leads.json');
 
 const BASE_HEADERS = [

@@ -1,0 +1,20 @@
+# Railway config for @marketing-funnel/web (monorepo root build).
+# In Railway service settings, set "Config file path" to: /apps/web/railway.toml
+#
+# Also attach a Volume mounted at /data — leads persist at /data/bukku automatically.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "npm run build:web-deploy"
+watchPatterns = [
+  "apps/web/**",
+  "package.json",
+  "package-lock.json",
+]
+
+[deploy]
+startCommand = "npm run start:web"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
