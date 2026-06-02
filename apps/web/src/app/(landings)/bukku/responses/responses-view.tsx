@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 
 type LeadRow = Record<string, string>;
 
@@ -43,11 +43,17 @@ function formatCell(key: string, value: string) {
   return value;
 }
 
+function getDetailEntries(row: LeadRow) {
+  return Object.entries(row).filter(
+    ([key, value]) => value && !DISPLAY_COLUMNS.some((col) => col.key === key),
+  );
+}
+
 export default function BukkuResponsesView() {
   const [rows, setRows] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState<LeadRow | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState('');
 
   const loadLeads = useCallback(async (token?: string) => {
@@ -84,13 +90,6 @@ export default function BukkuResponsesView() {
   useEffect(() => {
     void loadLeads();
   }, [loadLeads]);
-
-  const detailEntries = useMemo(() => {
-    if (!selected) return [];
-    return Object.entries(selected).filter(
-      ([key, value]) => value && !DISPLAY_COLUMNS.some((col) => col.key === key),
-    );
-  }, [selected]);
 
   return (
     <main
@@ -251,108 +250,106 @@ export default function BukkuResponsesView() {
                   </td>
                 </tr>
               ) : null}
-              {rows.map((row) => (
-                <tr key={row.lead_id} style={{ borderBottom: '1px solid #F7F0E4' }}>
-                  {DISPLAY_COLUMNS.map((col) => (
-                    <td key={col.key} style={{ padding: '12px 14px', verticalAlign: 'top' }}>
-                      {formatCell(col.key, row[col.key] ?? '')}
-                    </td>
-                  ))}
-                  <td style={{ padding: '12px 14px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(row)}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid #316B9D',
-                        color: '#316B9D',
-                        borderRadius: 8,
-                        padding: '6px 10px',
-                        cursor: 'pointer',
-                        fontWeight: 700,
-                      }}
-                    >
-                      Ver más
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {rows.map((row) => {
+                const isExpanded = expandedId === row.lead_id;
+                const detailEntries = isExpanded ? getDetailEntries(row) : [];
+
+                return (
+                  <Fragment key={row.lead_id}>
+                    <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid #F7F0E4' }}>
+                      {DISPLAY_COLUMNS.map((col) => (
+                        <td key={col.key} style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                          {formatCell(col.key, row[col.key] ?? '')}
+                        </td>
+                      ))}
+                      <td style={{ padding: '12px 14px' }}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedId(isExpanded ? null : (row.lead_id ?? null))
+                          }
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #316B9D',
+                            color: '#316B9D',
+                            borderRadius: 8,
+                            padding: '6px 10px',
+                            cursor: 'pointer',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {isExpanded ? 'Ocultar' : 'Ver más'}
+                        </button>
+                      </td>
+                    </tr>
+                    {isExpanded ? (
+                      <tr style={{ borderBottom: '1px solid #F7F0E4' }}>
+                        <td
+                          colSpan={DISPLAY_COLUMNS.length + 1}
+                          style={{ padding: '0 14px 16px', background: '#FFFBF5' }}
+                        >
+                          <div
+                            style={{
+                              borderRadius: 12,
+                              padding: 16,
+                              border: '1px solid #F2E8D5',
+                              background: 'white',
+                            }}
+                          >
+                            <h3
+                              style={{
+                                fontFamily: 'Fraunces, Georgia, serif',
+                                fontSize: 18,
+                                marginBottom: 12,
+                              }}
+                            >
+                              Detalle — {row.first_name || row.email}
+                            </h3>
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                gap: 12,
+                              }}
+                            >
+                              {detailEntries.map(([key, value]) => (
+                                <div
+                                  key={key}
+                                  style={{
+                                    background: '#FFFBF5',
+                                    borderRadius: 10,
+                                    padding: 12,
+                                    border: '1px solid #F7F0E4',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: 0.5,
+                                      color: '#8B6F8B',
+                                      marginBottom: 6,
+                                    }}
+                                  >
+                                    {key.replace(/_/g, ' ')}
+                                  </div>
+                                  <div style={{ lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                                    {value}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
-
-        {selected ? (
-          <div
-            style={{
-              marginTop: 24,
-              background: 'white',
-              borderRadius: 16,
-              padding: 24,
-              border: '1px solid #F2E8D5',
-              boxShadow: '0 12px 40px rgba(45, 36, 56, 0.08)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 12,
-                alignItems: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <h2 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 24 }}>
-                Detalle — {selected.first_name || selected.email}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                style={{
-                  background: '#F2E8D5',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '8px 12px',
-                  cursor: 'pointer',
-                }}
-              >
-                Cerrar
-              </button>
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                gap: 12,
-              }}
-            >
-              {detailEntries.map(([key, value]) => (
-                <div
-                  key={key}
-                  style={{
-                    background: '#FFFBF5',
-                    borderRadius: 10,
-                    padding: 12,
-                    border: '1px solid #F7F0E4',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5,
-                      color: '#8B6F8B',
-                      marginBottom: 6,
-                    }}
-                  >
-                    {key.replace(/_/g, ' ')}
-                  </div>
-                  <div style={{ lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
     </main>
   );
