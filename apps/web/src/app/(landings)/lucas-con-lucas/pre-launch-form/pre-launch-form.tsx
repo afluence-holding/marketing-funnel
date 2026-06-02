@@ -4,7 +4,13 @@ import { type FormEvent, Suspense, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import logoLucas from './logo-lucas.png';
 import { useUtm, type UtmParams } from '@/lib/tracking/use-utm';
-import { trackEvent } from '@/lib/tracking/events';
+import { trackEventForPixel } from '@/lib/tracking/events';
+import { buildMetaTrackingPayload, createMetaEventId } from '@/lib/tracking/meta-capi';
+import { LUCAS } from '../lucas-config';
+import {
+  lucasPreLaunchLead,
+  lucasPreLaunchViewContent,
+} from '@/lib/tracking/lucas-meta';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -43,6 +49,12 @@ function PreLaunchFormInner() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const utm = useUtm();
+
+  useEffect(() => {
+    const pixelId = LUCAS.metaPixelId;
+    if (!pixelId) return;
+    trackEventForPixel(pixelId, 'ViewContent', lucasPreLaunchViewContent());
+  }, []);
 
   // Canvas animation (sunset gradient + particles + stars)
   useEffect(() => {
@@ -242,21 +254,14 @@ function PreLaunchFormInner() {
     setLoading(true);
     setErrorMsg('');
 
-    const eventId =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : String(Date.now());
-    const fbp = getCookie('_fbp');
-    const fbc = getCookie('_fbc');
-    const metaTracking: Record<string, string> = { eventId };
-    if (fbp) metaTracking.fbp = fbp;
-    if (fbc) metaTracking.fbc = fbc;
+    const eventId = createMetaEventId('lucas-prelaunch');
+    const metaTracking = buildMetaTrackingPayload(eventId);
 
     const utmData = buildUtmData(utm);
 
     const body: Record<string, unknown> = {
       email,
-      source: 'landing-lucas-con-lucas-pre-launch',
+      source: LUCAS.sources.preLaunch,
       channel: 'inbound',
       tracking: { meta: metaTracking },
     };
@@ -272,7 +277,15 @@ function PreLaunchFormInner() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message ?? `Request failed (${res.status})`);
       }
-      trackEvent('Lead', { content_name: 'lucas-con-lucas-pre-launch' }, { eventId });
+      const pixelId = LUCAS.metaPixelId;
+      if (pixelId) {
+        trackEventForPixel(
+          pixelId,
+          'Lead',
+          lucasPreLaunchLead(),
+          { eventId },
+        );
+      }
       setSubmitted(true);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Algo salió mal');
@@ -388,12 +401,6 @@ function buildUtmData(utm: UtmParams): Record<string, string> {
   if (utm.utm_content) data.utm_content = utm.utm_content;
   if (utm.utm_term) data.utm_term = utm.utm_term;
   return data;
-}
-
-function getCookie(name: string): string | undefined {
-  if (typeof document === 'undefined') return undefined;
-  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-  return match?.[1];
 }
 
 const styles = `

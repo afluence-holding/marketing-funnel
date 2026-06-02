@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
 import { WebinarRegistration } from './webinar-registration';
+import { LUCAS_WEBINAR } from './webinar-config';
 
 export const metadata: Metadata = {
   title: 'Webinar Lucas con Luca$ — Inversión inmobiliaria en Chile',
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 export default function LucasConLucasWebinarPage() {
   return (
     <>
-      <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_LUCAS_CON_LUCAS} />
+      <LandingConfig metaPixelId={LUCAS_WEBINAR.metaPixelId} />
       <WebinarRegistration />
     </>
   );

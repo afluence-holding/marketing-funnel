@@ -2103,6 +2103,20 @@ const LANDING_HTML = `<!DOCTYPE html>
   }, true);
 })();
 </script>
+<script>
+(function () {
+  function inIframe() { try { return window.parent && window.parent !== window; } catch (_) { return true; } }
+  if (!inIframe()) return;
+  document.addEventListener('click', function (e) {
+    var link = e.target && e.target.closest ? e.target.closest('a[href*="whop.com/checkout"]') : null;
+    if (!link) return;
+    e.preventDefault();
+    try {
+      window.parent.postMessage({ type: 'lucas-reto-checkout', href: link.href }, '*');
+    } catch (_) {}
+  }, true);
+})();
+</script>
 </body>
 </html>
 `;

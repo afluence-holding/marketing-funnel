@@ -8,8 +8,12 @@ import { getBusinessUnitBinding } from '../../orgs';
 import { normalizePhoneAndGetTimezone } from '../utils/phone';
 import { moveStage } from '../services/lead-pipeline.service';
 import { saveCustomFieldValues } from '../services/custom-field.service';
-import { sendMetaCapiEvent } from '../services/meta-capi.service';
+import { sendMetaCapiEvent, buildMetaCapiUserData } from '../services/meta-capi.service';
 import { IDS as aiFactoryCreatorsIds } from '../../orgs/afluence/ai-factory-creators/config';
+import {
+  LUCAS_CAPI,
+  resolveLucasIngestCapi,
+} from '../../orgs/lucas-con-lucas/main/tracking';
 
 const router = Router();
 
@@ -64,6 +68,27 @@ const videoEventSchema = z.object({
       meta: z
         .object({
           eventId: z.string().min(1),
+          fbp: z.string().min(1).optional(),
+          fbc: z.string().min(1).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+const lucasPurchaseSchema = z.object({
+  eventId: z.string().min(1),
+  orderId: z.string().min(1),
+  email: z.string().email().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  phone: z.string().optional(),
+  value: z.number().positive(),
+  currency: z.string().default('CLP'),
+  tracking: z
+    .object({
+      meta: z
+        .object({
           fbp: z.string().min(1).optional(),
           fbc: z.string().min(1).optional(),
         })
@@ -469,25 +494,43 @@ router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (re
     // Fire CAPI: ai-factory-creators requires formType=full; other orgs fire on any eventId
     const shouldFireCapi = eventId && (formType === 'full' || orgKey !== 'afluence');
     if (shouldFireCapi) {
-      for (const eventName of ['Lead', 'CompleteRegistration'] as const) {
+      const lucasCapi = orgKey === 'lucas-con-lucas' ? resolveLucasIngestCapi(source) : null;
+      const capiEvents = lucasCapi?.events ?? (['Lead', 'CompleteRegistration'] as const);
+      const customData = lucasCapi
+        ? {
+            content_ids: lucasCapi.contentIds,
+            content_name: lucasCapi.contentName,
+            ...(lucasCapi.contentCategory
+              ? { content_category: lucasCapi.contentCategory }
+              : {}),
+            value: lucasCapi.value,
+            currency: LUCAS_CAPI.currency,
+            channel: req.body.channel ?? 'inbound',
+          }
+        : {
+            content_name: source ?? 'unknown',
+            form_type: formType ?? 'unknown',
+            channel: req.body.channel ?? 'inbound',
+          };
+
+      for (const eventName of capiEvents) {
         try {
           await sendMetaCapiEvent({
             eventName,
             eventId,
             eventSourceUrl: req.get('referer') ?? req.get('origin'),
-            userData: {
+            userData: buildMetaCapiUserData({
               email: req.body.email,
               phone: req.body.phone,
+              firstName: req.body.firstName,
+              lastName: req.body.lastName,
+              country: lucasCapi ? LUCAS_CAPI.country : undefined,
               fbp: req.body.tracking?.meta?.fbp,
               fbc: req.body.tracking?.meta?.fbc,
               clientIpAddress,
               clientUserAgent: req.get('user-agent') ?? undefined,
-            },
-            customData: {
-              content_name: source ?? 'unknown',
-              form_type: formType ?? 'unknown',
-              channel: req.body.channel ?? 'inbound',
-            },
+            }),
+            customData,
             ...capiCreds,
           });
         } catch (error) {
@@ -869,6 +912,55 @@ router.post('/ingest', (_req, res) => {
     message: 'Use /api/orgs/:orgKey/bus/:buKey/ingest and keep source metadata in the request body.',
   });
 });
+
+router.post(
+  '/orgs/lucas-con-lucas/bus/main/purchase',
+  validate(lucasPurchaseSchema),
+  async (req, res, next) => {
+    try {
+      const xForwardedFor = req.headers['x-forwarded-for'];
+      const clientIpAddress = Array.isArray(xForwardedFor)
+        ? xForwardedFor[0]
+        : xForwardedFor?.split(',')[0]?.trim() ?? req.ip;
+      const capiCreds = getCapiCredentials('lucas-con-lucas');
+      const { eventId, orderId, email, firstName, lastName, phone, value, currency } = req.body;
+      const reto = LUCAS_CAPI.reto;
+
+      await sendMetaCapiEvent({
+        eventName: 'Purchase',
+        eventId,
+        eventSourceUrl:
+          req.get('referer') ??
+          'https://marketing.byafluence.com/lucas-con-lucas/reto/gracias',
+        userData: buildMetaCapiUserData({
+          email,
+          phone,
+          firstName,
+          lastName,
+          country: LUCAS_CAPI.country,
+          fbp: req.body.tracking?.meta?.fbp,
+          fbc: req.body.tracking?.meta?.fbc,
+          clientIpAddress,
+          clientUserAgent: req.get('user-agent') ?? undefined,
+        }),
+        customData: {
+          content_ids: reto.contentIds,
+          content_name: reto.contentName,
+          content_type: reto.contentType,
+          value,
+          currency,
+          order_id: orderId,
+          num_items: 1,
+        },
+        ...capiCreds,
+      });
+
+      res.status(200).json({ ok: true, eventId, orderId });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 /** Resolve per-org CAPI pixel ID + access token. Returns empty object to use global defaults. */
 function getCapiCredentials(orgKey: string): { pixelId?: string; accessToken?: string } {

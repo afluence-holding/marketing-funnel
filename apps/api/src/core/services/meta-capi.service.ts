@@ -5,6 +5,9 @@ type MetaCapiEventName = string;
 interface MetaCapiUserData {
   email?: string;
   phone?: string;
+  firstName?: string;
+  lastName?: string;
+  country?: string;
   fbp?: string;
   fbc?: string;
   clientIpAddress?: string;
@@ -17,10 +20,10 @@ interface SendMetaCapiEventInput {
   eventSourceUrl?: string;
   userData?: MetaCapiUserData;
   customData?: Record<string, unknown>;
-  /** Override the pixel ID (defaults to META_PIXEL_ID env var). */
-  pixelId?: string;
   /** Override the access token (defaults to META_CAPI_TOKEN env var). */
   accessToken?: string;
+  /** Override the pixel ID (defaults to META_PIXEL_ID env var). */
+  pixelId?: string;
 }
 
 function sha256(value: string): string {
@@ -39,6 +42,18 @@ function normalizePhone(phone?: string): string | undefined {
   return normalized || undefined;
 }
 
+function normalizeName(value?: string): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return normalized || undefined;
+}
+
+function normalizeCountry(value?: string): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length === 2 ? normalized : undefined;
+}
+
 export async function sendMetaCapiEvent(input: SendMetaCapiEventInput): Promise<void> {
   const token = (input.accessToken ?? process.env.META_CAPI_TOKEN)?.trim();
   const pixelId = (input.pixelId ?? process.env.META_PIXEL_ID)?.trim();
@@ -50,6 +65,9 @@ export async function sendMetaCapiEvent(input: SendMetaCapiEventInput): Promise<
 
   const normalizedEmail = normalizeEmail(input.userData?.email);
   const normalizedPhone = normalizePhone(input.userData?.phone);
+  const normalizedFirstName = normalizeName(input.userData?.firstName);
+  const normalizedLastName = normalizeName(input.userData?.lastName);
+  const normalizedCountry = normalizeCountry(input.userData?.country);
 
   const payload = {
     data: [
@@ -62,6 +80,9 @@ export async function sendMetaCapiEvent(input: SendMetaCapiEventInput): Promise<
         user_data: {
           ...(normalizedEmail ? { em: [sha256(normalizedEmail)] } : {}),
           ...(normalizedPhone ? { ph: [sha256(normalizedPhone)] } : {}),
+          ...(normalizedFirstName ? { fn: [sha256(normalizedFirstName)] } : {}),
+          ...(normalizedLastName ? { ln: [sha256(normalizedLastName)] } : {}),
+          ...(normalizedCountry ? { country: [sha256(normalizedCountry)] } : {}),
           ...(input.userData?.fbp ? { fbp: input.userData.fbp } : {}),
           ...(input.userData?.fbc ? { fbc: input.userData.fbc } : {}),
           ...(input.userData?.clientIpAddress
@@ -90,4 +111,18 @@ export async function sendMetaCapiEvent(input: SendMetaCapiEventInput): Promise<
     const responseBody = await response.text().catch(() => '');
     throw new Error(`Meta CAPI request failed (${response.status}): ${responseBody}`);
   }
+}
+
+export function buildMetaCapiUserData(input: {
+  email?: string;
+  phone?: string;
+  firstName?: string;
+  lastName?: string;
+  country?: string;
+  fbp?: string;
+  fbc?: string;
+  clientIpAddress?: string;
+  clientUserAgent?: string;
+}): MetaCapiUserData {
+  return input;
 }

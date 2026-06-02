@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
+import { LUCAS } from '../lucas-config';
 import { PreLaunchForm } from './pre-launch-form';
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export default function LucasConLucasPreLunchFormPage() {
   return (
     <>
-      <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_LUCAS_CON_LUCAS} />
+      <LandingConfig metaPixelId={LUCAS.metaPixelId} />
       <PreLaunchForm />
     </>
   );

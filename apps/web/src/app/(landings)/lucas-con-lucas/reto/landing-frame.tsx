@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LUCAS } from '../lucas-config';
+import { handleRetoCheckoutClick } from '@/lib/tracking/lucas-meta';
 
-const CHECKOUT_HREF = 'https://whop.com/checkout/plan_aKOjfecUWLzFo';
+const CHECKOUT_HREF = LUCAS.reto.checkoutUrl;
 
 export default function LandingFrame({
   src,
@@ -17,10 +19,15 @@ export default function LandingFrame({
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       const data = e.data as
-        | { type?: string; height?: number; top?: number; hash?: string }
+        | { type?: string; height?: number; top?: number; hash?: string; href?: string }
         | null
         | undefined;
       if (!data || typeof data !== 'object') return;
+
+      if (data.type === 'lucas-reto-checkout' && typeof data.href === 'string') {
+        handleRetoCheckoutClick(data.href);
+        return;
+      }
 
       if (
         data.type === 'iframe-height' &&
@@ -110,21 +117,25 @@ export default function LandingFrame({
           display: 'block',
         }}
       />
-      <FloatingWhatsApp />
+      <FloatingCheckout />
     </>
   );
 }
 
-function FloatingWhatsApp() {
+function FloatingCheckout() {
   return (
     <>
-      <style>{floatingWhatsAppCss}</style>
+      <style>{floatingCheckoutCss}</style>
       <a
         href={CHECKOUT_HREF}
         target="_blank"
         rel="noopener"
         className="wa-float"
         aria-label="Reservar mi cupo ahora"
+        onClick={(e) => {
+          e.preventDefault();
+          handleRetoCheckoutClick(CHECKOUT_HREF);
+        }}
       >
         <span className="wa-icon-wrap">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -137,7 +148,7 @@ function FloatingWhatsApp() {
   );
 }
 
-const floatingWhatsAppCss = `
+const floatingCheckoutCss = `
 .wa-float {
   position: fixed;
   bottom: 24px;
