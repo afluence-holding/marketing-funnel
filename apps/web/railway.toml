@@ -1,7 +1,7 @@
 # Railway config for @marketing-funnel/web (monorepo root build).
 # In Railway service settings, set "Config file path" to: /apps/web/railway.toml
 #
-# Also attach a Volume mounted at /data — leads persist at /data/bukku automatically.
+# Bukku leads persist in Supabase via marketing-funnel/api — set NEXT_PUBLIC_API_URL on this service.
 
 [build]
 builder = "RAILPACK"

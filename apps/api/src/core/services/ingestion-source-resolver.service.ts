@@ -11,6 +11,8 @@ import { IDS as santiInversorResearchIds } from '../../orgs/santi-inversor/resea
 import { routingEngine as santiInversorResearchRoutingEngine } from '../../orgs/santi-inversor/research/routing';
 import { IDS as recetasCamiIds } from '../../orgs/recetas-cami/main/config';
 import { routingEngine as recetasCamiRoutingEngine } from '../../orgs/recetas-cami/main/routing';
+import { IDS as bukkuIds } from '../../orgs/bukku/main/config';
+import { routingEngine as bukkuRoutingEngine } from '../../orgs/bukku/main/routing';
 
 interface IngestionTarget {
   organizationId: string;
@@ -39,6 +41,9 @@ const SANTI_INVERSOR_SOURCES = new Set([
 ]);
 const RECETAS_CAMI_SOURCES = new Set([
   'landing-recetas-cami-waitlist',
+]);
+const BUKKU_SOURCES = new Set([
+  'landing-bukku-test-ingles',
 ]);
 const BU1_SOURCE_PREFIX = 'landing-bu1-';
 const BU1_EXPLICIT_SOURCES = new Set([
@@ -93,6 +98,14 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
     };
   }
 
+  if (source && BUKKU_SOURCES.has(source)) {
+    return {
+      organizationId: bukkuIds.organizationId,
+      routingEngine: bukkuRoutingEngine,
+      businessUnit: 'main',
+    };
+  }
+
   if (isBusinessUnit1Source(source)) {
     return {
       organizationId: bu1Ids.organizationId,
@@ -102,6 +115,6 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
   }
 
   throw new Error(
-    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-german-roz-waitlist-di21", "landing-lucas-con-lucas-pre-launch", "landing-lucas-con-lucas-webinar-2026-06-04", "landing-santi-inversor-research-home", "landing-recetas-cami-waitlist", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
+    `Unknown source "${source}". Allowed sources: "${AI_FACTORY_CREATORS_SOURCE}", "landing-german-roz-form", "landing-german-roz-html", "landing-german-roz-vsl-desinflamate", "landing-german-roz-desinflamate-vsl", "landing-german-roz-waitlist-di21", "landing-lucas-con-lucas-pre-launch", "landing-lucas-con-lucas-webinar-2026-06-04", "landing-santi-inversor-research-home", "landing-recetas-cami-waitlist", "landing-bukku-test-ingles", "${BU1_SOURCE_PREFIX}*", or known BU1 landing sources`,
   );
 }

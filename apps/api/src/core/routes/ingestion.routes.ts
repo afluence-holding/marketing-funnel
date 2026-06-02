@@ -76,6 +76,8 @@ const SANTI_INVERSOR_RESEARCH_SOURCE = 'landing-santi-inversor-research-home';
 const SANTI_INVERSOR_EXPORT_TOKEN = process.env.SANTI_INVERSOR_EXPORT_TOKEN ?? '';
 const LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE = 'landing-lucas-con-lucas-pre-launch';
 const LUCAS_CON_LUCAS_EXPORT_TOKEN = process.env.LUCAS_CON_LUCAS_EXPORT_TOKEN ?? '';
+const BUKKU_TEST_SOURCE = 'landing-bukku-test-ingles';
+const BUKKU_EXPORT_TOKEN = process.env.BUKKU_VIEW_TOKEN ?? process.env.BUKKU_EXPORT_TOKEN ?? '';
 const LEAD_EXPORT_BASE_HEADERS = [
   'lead_id',
   'email',
@@ -163,6 +165,10 @@ function isSantiInversorResearchScope(orgKey: string, buKey: string) {
 
 function isLucasConLucasMainScope(orgKey: string, buKey: string) {
   return orgKey === 'lucas-con-lucas' && buKey === 'main';
+}
+
+function isBukkuMainScope(orgKey: string, buKey: string) {
+  return orgKey === 'bukku' && buKey === 'main';
 }
 
 type LeadExportRow = {
@@ -351,6 +357,10 @@ async function buildSantiExportRows(organizationId: string) {
 
 async function buildLucasConLucasExportRows(organizationId: string) {
   return buildExportRowsForSource(organizationId, LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE);
+}
+
+async function buildBukkuExportRows(organizationId: string) {
+  return buildExportRowsForSource(organizationId, BUKKU_TEST_SOURCE);
 }
 
 async function buildLucasConLucasMainExportRows(organizationId: string) {
@@ -725,13 +735,14 @@ router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
 
     const isSantiScope = isSantiInversorResearchScope(orgKey, buKey);
     const isLucasScope = isLucasConLucasMainScope(orgKey, buKey);
+    const isBukkuScope = isBukkuMainScope(orgKey, buKey);
     const includeAllLucasMain = getQueryValue(req.query.all).trim().toLowerCase() === 'true';
 
-    if (!isSantiScope && !isLucasScope) {
+    if (!isSantiScope && !isLucasScope && !isBukkuScope) {
       res.status(400).json({
         error: 'Unsupported business unit for stats endpoint',
         message:
-          'This endpoint is currently enabled only for santi-inversor/research and lucas-con-lucas/main.',
+          'This endpoint is currently enabled only for santi-inversor/research, lucas-con-lucas/main, and bukku/main.',
       });
       return;
     }
@@ -745,17 +756,20 @@ router.get('/orgs/:orgKey/bus/:buKey/stats', async (req, res, next) => {
       return;
     }
 
-    const source =
-      isSantiScope || !includeAllLucasMain
+    const source = isBukkuScope
+      ? BUKKU_TEST_SOURCE
+      : isSantiScope || !includeAllLucasMain
         ? isSantiScope
           ? SANTI_INVERSOR_RESEARCH_SOURCE
           : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE
         : 'all-lucas-con-lucas-main-sources';
-    const leads = isSantiScope
-      ? await fetchAllSantiLeads(binding.organizationId)
-      : includeAllLucasMain
-        ? await fetchAllLucasConLucasMainLeads(binding.organizationId)
-        : await fetchAllLucasConLucasLeads(binding.organizationId);
+    const leads = isBukkuScope
+      ? await fetchAllLeadsBySource(binding.organizationId, BUKKU_TEST_SOURCE)
+      : isSantiScope
+        ? await fetchAllSantiLeads(binding.organizationId)
+        : includeAllLucasMain
+          ? await fetchAllLucasConLucasMainLeads(binding.organizationId)
+          : await fetchAllLucasConLucasLeads(binding.organizationId);
     const uniqueEmails = new Set(
       leads
         .map((lead) => String(lead.email ?? '').trim().toLowerCase())
@@ -785,18 +799,23 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
 
     const isSantiScope = isSantiInversorResearchScope(orgKey, buKey);
     const isLucasScope = isLucasConLucasMainScope(orgKey, buKey);
+    const isBukkuScope = isBukkuMainScope(orgKey, buKey);
     const includeAllLucasMain = getQueryValue(req.query.all).trim().toLowerCase() === 'true';
 
-    if (!isSantiScope && !isLucasScope) {
+    if (!isSantiScope && !isLucasScope && !isBukkuScope) {
       res.status(400).json({
         error: 'Unsupported business unit for export endpoint',
         message:
-          'This endpoint is currently enabled only for santi-inversor/research and lucas-con-lucas/main.',
+          'This endpoint is currently enabled only for santi-inversor/research, lucas-con-lucas/main, and bukku/main.',
       });
       return;
     }
 
-    const exportToken = isSantiScope ? SANTI_INVERSOR_EXPORT_TOKEN : LUCAS_CON_LUCAS_EXPORT_TOKEN;
+    const exportToken = isSantiScope
+      ? SANTI_INVERSOR_EXPORT_TOKEN
+      : isBukkuScope
+        ? BUKKU_EXPORT_TOKEN
+        : LUCAS_CON_LUCAS_EXPORT_TOKEN;
     if (exportToken) {
       const tokenFromQuery = getQueryValue(req.query.token);
       const tokenFromHeader = req.get('x-export-token') ?? '';
@@ -819,17 +838,20 @@ router.get('/orgs/:orgKey/bus/:buKey/export', async (req, res, next) => {
       return;
     }
 
-    const source =
-      isSantiScope || !includeAllLucasMain
+    const source = isBukkuScope
+      ? BUKKU_TEST_SOURCE
+      : isSantiScope || !includeAllLucasMain
         ? isSantiScope
           ? SANTI_INVERSOR_RESEARCH_SOURCE
           : LUCAS_CON_LUCAS_PRE_LAUNCH_SOURCE
         : 'all-lucas-con-lucas-main-sources';
-    const { rows, headers } = isSantiScope
-      ? await buildSantiExportRows(binding.organizationId)
-      : includeAllLucasMain
-        ? await buildLucasConLucasMainExportRows(binding.organizationId)
-        : await buildLucasConLucasExportRows(binding.organizationId);
+    const { rows, headers } = isBukkuScope
+      ? await buildBukkuExportRows(binding.organizationId)
+      : isSantiScope
+        ? await buildSantiExportRows(binding.organizationId)
+        : includeAllLucasMain
+          ? await buildLucasConLucasMainExportRows(binding.organizationId)
+          : await buildLucasConLucasExportRows(binding.organizationId);
     const format = getQueryValue(req.query.format).trim().toLowerCase();
     const selectedFormat = format === 'csv' ? 'csv' : 'json';
 

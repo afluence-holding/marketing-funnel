@@ -65,6 +65,12 @@ import { workflows as recetasCamiWorkflows } from './recetas-cami/main/workflows
 import { IDS as recetasCamiIDS } from './recetas-cami/main/config';
 import { routingEngine as recetasCamiRouting } from './recetas-cami/main/routing';
 
+// -- Bukku Education / Main -------------------------------------------------
+import { sequences as bukkuSequences } from './bukku/main/sequences';
+import { workflows as bukkuWorkflows } from './bukku/main/workflows';
+import { IDS as bukkuIDS } from './bukku/main/config';
+import { routingEngine as bukkuRouting } from './bukku/main/routing';
+
 // -- Add new BUs here ---------------------------------------------------------
 
 export interface BusinessUnitBinding {
@@ -123,6 +129,12 @@ const businessUnits: BusinessUnitBinding[] = [
     organizationId: recetasCamiIDS.organizationId,
     routingEngine: recetasCamiRouting,
   },
+  {
+    orgKey: 'bukku',
+    buKey: 'main',
+    organizationId: bukkuIDS.organizationId,
+    routingEngine: bukkuRouting,
+  },
 ];
 
 function makeBusinessUnitRegistryKey(orgKey: string, buKey: string) {
@@ -149,6 +161,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
   ...lucasConLucasSequences,
   ...santiInversorResearchSequences,
   ...recetasCamiSequences,
+  ...bukkuSequences,
 };
 
 export const workflowRegistry: Record<string, WorkflowDef> = {
@@ -161,6 +174,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...lucasConLucasWorkflows,
   ...santiInversorResearchWorkflows,
   ...recetasCamiWorkflows,
+  ...bukkuWorkflows,
 };
 
 export const clickupRegistryByPipelineId: Record<string, ClickUpPipelineConfig> = {

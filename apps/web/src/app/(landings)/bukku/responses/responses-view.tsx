@@ -131,8 +131,8 @@ export default function BukkuResponsesView() {
           </h1>
           <p style={{ color: '#8B6F8B', maxWidth: 640, lineHeight: 1.5 }}>
             Panel interno para revisar leads capturados desde la landing{' '}
-            <code>/bukku</code>. Los datos se guardan en un archivo local del
-            proyecto (no requiere Supabase).
+            <code>/bukku</code>. Los datos se guardan en Supabase y persisten
+            aunque haya redeploys.
           </p>
         </header>
 
