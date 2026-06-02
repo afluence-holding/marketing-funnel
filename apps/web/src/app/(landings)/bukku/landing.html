@@ -1156,6 +1156,16 @@ function buildGuidePayload(lead, results, levelKey) {
 // Guarda las respuestas del form y, al enviar, salta directo al test.
 window.bukkuLead = {};
 
+function scrollToLandingTop() {
+  window.scrollTo(0, 0);
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'iframe-scroll-to', top: 0 }, '*');
+    }
+  } catch (_) {}
+}
+window.scrollToLandingTop = scrollToLandingTop;
+
 (function () {
   const form = document.getElementById('bukku-form');
   if (!form) return;
@@ -1196,7 +1206,10 @@ window.bukkuLead = {};
     document.getElementById('form-screen').style.display = 'none';
     document.getElementById('test-wrap').style.display = 'block';
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToLandingTop();
+    requestAnimationFrame(scrollToLandingTop);
+    setTimeout(scrollToLandingTop, 50);
+    setTimeout(scrollToLandingTop, 300);
   });
 
   // Limpiar error al interactuar
@@ -1559,7 +1572,7 @@ function nextQuestion() {
   if (currentQuestion < questions.length - 1) {
     currentQuestion++;
     showQuestion();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToLandingTop();
   } else {
     showResults();
   }
@@ -1569,7 +1582,7 @@ function prevQuestion() {
   if (currentQuestion > 0) {
     currentQuestion--;
     showQuestion();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToLandingTop();
   }
 }
 
@@ -1656,7 +1669,7 @@ function showResults() {
   
   submitBukkuLead(buildTestPayload(window.bukkuLead || {}, r));
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  scrollToLandingTop();
 }
 
 // ============ KITS PDF ============
@@ -1816,7 +1829,8 @@ function openGuide() {
   var form = document.getElementById('bukku-form');
   if (form) {
     form.addEventListener('submit', function () {
-      setTimeout(postHeight, 50); setTimeout(postHeight, 300);
+      setTimeout(function () { postHeight(); if (window.scrollToLandingTop) window.scrollToLandingTop(); }, 50);
+      setTimeout(function () { postHeight(); if (window.scrollToLandingTop) window.scrollToLandingTop(); }, 300);
     });
   }
 })();
