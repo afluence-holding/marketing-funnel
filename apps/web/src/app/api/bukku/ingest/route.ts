@@ -1,19 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const BACKEND_BASE_URL =
-  process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  'http://localhost:3000';
-
-const TARGET_INGEST_PATH = '/api/orgs/bukku/bus/main/ingest';
-
-function parseJsonSafe(text: string) {
-  try {
-    return text ? JSON.parse(text) : null;
-  } catch {
-    return null;
-  }
-}
+import { upsertBukkuLead } from '@/lib/bukku/leads-store';
 
 export async function POST(request: Request) {
   try {
@@ -27,40 +13,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await fetch(`${BACKEND_BASE_URL}${TARGET_INGEST_PATH}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      cache: 'no-store',
+    const record = await upsertBukkuLead({
+      email,
+      firstName: payload.firstName,
+      phone: payload.phone,
+      source: payload.source,
+      customFields: payload.customFields,
+      utmData: payload.utmData,
     });
 
-    const bodyText = await response.text();
-    const contentType = response.headers.get('content-type') ?? '';
-    const parsedJson = contentType.includes('application/json')
-      ? parseJsonSafe(bodyText)
-      : null;
-
-    if (parsedJson !== null) {
-      return NextResponse.json(
-        {
-          ok: response.ok,
-          ...parsedJson,
-        },
-        { status: response.status },
-      );
-    }
-
-    return new NextResponse(bodyText, {
-      status: response.status,
-      headers: {
-        'Content-Type': contentType || 'text/plain; charset=utf-8',
+    return NextResponse.json(
+      {
+        ok: true,
+        message: 'Lead saved locally',
+        lead: record,
       },
-    });
+      { status: 201 },
+    );
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
-        error: 'Failed to ingest bukku lead',
+        error: 'Failed to save bukku lead',
         details: error instanceof Error ? error.message : 'unknown_error',
       },
       { status: 500 },
