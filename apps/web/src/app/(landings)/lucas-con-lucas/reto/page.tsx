@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
+import { LUCAS } from '../lucas-config';
 import LandingFrame from './landing-frame';
+import { RetoTracker } from './reto-tracker';
 
 export const metadata: Metadata = {
   title: 'Reto Lucas con Luca$ · 15 días de inversión inmobiliaria en Chile',
@@ -16,7 +18,8 @@ export const metadata: Metadata = {
 export default function LucasConLucasRetoLandingPage() {
   return (
     <>
-      <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_LUCAS_CON_LUCAS} />
+      <LandingConfig metaPixelId={LUCAS.metaPixelId} />
+      <RetoTracker />
       <LandingFrame
         src="/lucas-con-lucas/reto/raw"
         title="Reto Lucas con Luca$ — Inversión inmobiliaria"

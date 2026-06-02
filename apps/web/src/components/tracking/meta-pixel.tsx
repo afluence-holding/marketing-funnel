@@ -39,9 +39,28 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
  */
 export function MetaPixelInit({ id }: { id: string | undefined }) {
   useEffect(() => {
-    if (!id || typeof window === 'undefined' || typeof window.fbq !== 'function') return;
-    window.fbq('init', id);
-    window.fbq('track', 'PageView');
+    if (!id || typeof window === 'undefined') return;
+
+    let cancelled = false;
+    const init = () => {
+      if (cancelled || typeof window.fbq !== 'function') return false;
+      window.fbq('init', id);
+      window.fbq('track', 'PageView');
+      return true;
+    };
+
+    if (init()) return;
+
+    const interval = window.setInterval(() => {
+      if (init()) window.clearInterval(interval);
+    }, 50);
+    const timeout = window.setTimeout(() => window.clearInterval(interval), 10_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
   }, [id]);
 
   return null;

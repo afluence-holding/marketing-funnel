@@ -6,11 +6,17 @@ import { PhoneInput } from 'react-international-phone';
 import 'react-international-phone/style.css';
 import logoLucas from '../pre-launch-form/logo-lucas.png';
 import { useUtm, type UtmParams } from '@/lib/tracking/use-utm';
-import { trackEvent } from '@/lib/tracking/events';
+import { trackEventForPixel } from '@/lib/tracking/events';
+import { buildMetaTrackingPayload, createMetaEventId } from '@/lib/tracking/meta-capi';
+import {
+  lucasWebinarCompleteRegistration,
+  lucasWebinarLead,
+  lucasWebinarViewContent,
+} from '@/lib/tracking/lucas-meta';
 import { normalizePhoneAndGetTimezone } from '@/lib/utils/phone';
+import { LUCAS_WEBINAR } from './webinar-config';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-const INGEST_SOURCE = 'landing-lucas-con-lucas-webinar-2026-06-04';
 
 const WHATSAPP_GROUP_URL =
   'https://chat.whatsapp.com/FrS6wqhSWM2HdepEdajz92?mode=gi_t';
@@ -39,6 +45,12 @@ function WebinarRegistrationInner() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const utm = useUtm();
+
+  useEffect(() => {
+    const pixelId = LUCAS_WEBINAR.metaPixelId;
+    if (!pixelId) return;
+    trackEventForPixel(pixelId, 'ViewContent', lucasWebinarViewContent());
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -179,15 +191,8 @@ function WebinarRegistrationInner() {
 
     setLoading(true);
 
-    const eventId =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : String(Date.now());
-    const fbp = getCookie('_fbp');
-    const fbc = getCookie('_fbc');
-    const metaTracking: Record<string, string> = { eventId };
-    if (fbp) metaTracking.fbp = fbp;
-    if (fbc) metaTracking.fbc = fbc;
+    const eventId = createMetaEventId('lucas-webinar');
+    const metaTracking = buildMetaTrackingPayload(eventId);
 
     const utmData = buildUtmData(utm);
 
@@ -195,13 +200,13 @@ function WebinarRegistrationInner() {
       firstName: name,
       email: emailVal,
       phone: normalizedPhone.phone,
-      source: INGEST_SOURCE,
+      source: LUCAS_WEBINAR.source,
       channel: 'inbound',
       customFields: {
         event_type: 'webinar',
-        webinar_date: '2026-06-04',
-        webinar_time: '19:00',
-        webinar_timezone: 'America/Santiago',
+        webinar_date: LUCAS_WEBINAR.dateIso,
+        webinar_time: LUCAS_WEBINAR.time,
+        webinar_timezone: LUCAS_WEBINAR.timezone,
       },
       tracking: { meta: metaTracking },
     };
@@ -229,11 +234,16 @@ function WebinarRegistrationInner() {
             `Request failed (${res.status})`,
         );
       }
-      trackEvent(
-        'CompleteRegistration',
-        { content_name: 'lucas-con-lucas-webinar-2026-06-04' },
-        { eventId },
-      );
+      const pixelId = LUCAS_WEBINAR.metaPixelId;
+      if (pixelId) {
+        trackEventForPixel(pixelId, 'Lead', lucasWebinarLead(), { eventId });
+        trackEventForPixel(
+          pixelId,
+          'CompleteRegistration',
+          lucasWebinarCompleteRegistration(),
+          { eventId },
+        );
+      }
       setSubmitted(true);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Algo salió mal');
@@ -387,12 +397,6 @@ function buildUtmData(utm: UtmParams): Record<string, string> {
   if (utm.utm_content) data.utm_content = utm.utm_content;
   if (utm.utm_term) data.utm_term = utm.utm_term;
   return data;
-}
-
-function getCookie(name: string): string | undefined {
-  if (typeof document === 'undefined') return undefined;
-  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-  return match?.[1];
 }
 
 const styles = `
