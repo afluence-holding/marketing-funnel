@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState, type CSSProperties } from 'react';
 
 type LeadRow = Record<string, string>;
 
@@ -9,6 +9,15 @@ type LeadsResponse = {
   total?: number;
   data?: LeadRow[];
   error?: string;
+};
+
+const ACTION_COLUMN_STYLE: CSSProperties = {
+  position: 'sticky',
+  right: 0,
+  zIndex: 1,
+  minWidth: 96,
+  whiteSpace: 'nowrap',
+  boxShadow: '-6px 0 12px rgba(45, 36, 56, 0.06)',
 };
 
 const DISPLAY_COLUMNS: Array<{ key: string; label: string }> = [
@@ -101,7 +110,7 @@ export default function BukkuResponsesView() {
         padding: '32px 20px 64px',
       }}
     >
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1440, width: '100%', margin: '0 auto' }}>
         <header style={{ marginBottom: 28 }}>
           <p
             style={{
@@ -218,16 +227,24 @@ export default function BukkuResponsesView() {
             borderRadius: 16,
             boxShadow: '0 12px 40px rgba(45, 36, 56, 0.08)',
             border: '1px solid #F2E8D5',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <table
+            style={{
+              width: '100%',
+              minWidth: 1100,
+              borderCollapse: 'collapse',
+              fontSize: 13,
+            }}
+          >
             <thead>
               <tr style={{ background: '#FFF6E8', textAlign: 'left' }}>
                 {DISPLAY_COLUMNS.map((col) => (
                   <th
                     key={col.key}
                     style={{
-                      padding: '12px 14px',
+                      padding: '10px 12px',
                       fontWeight: 700,
                       whiteSpace: 'nowrap',
                       borderBottom: '1px solid #F2E8D5',
@@ -236,7 +253,17 @@ export default function BukkuResponsesView() {
                     {col.label}
                   </th>
                 ))}
-                <th style={{ padding: '12px 14px', borderBottom: '1px solid #F2E8D5' }} />
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    borderBottom: '1px solid #F2E8D5',
+                    background: '#FFF6E8',
+                    fontWeight: 700,
+                    ...ACTION_COLUMN_STYLE,
+                  }}
+                >
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -258,11 +285,26 @@ export default function BukkuResponsesView() {
                   <Fragment key={row.lead_id}>
                     <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid #F7F0E4' }}>
                       {DISPLAY_COLUMNS.map((col) => (
-                        <td key={col.key} style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                        <td
+                          key={col.key}
+                          style={{
+                            padding: '10px 12px',
+                            verticalAlign: 'top',
+                            maxWidth: col.key === 'email' ? 200 : undefined,
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
                           {formatCell(col.key, row[col.key] ?? '')}
                         </td>
                       ))}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          verticalAlign: 'top',
+                          background: 'white',
+                          ...ACTION_COLUMN_STYLE,
+                        }}
+                      >
                         <button
                           type="button"
                           onClick={() =>
