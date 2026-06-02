@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
-import { isBukkuSupabaseConfigured } from '@/lib/bukku/supabase-store';
+import { BUKKU_LEADS_API_PATH, getBukkuBackendBaseUrl } from '@/lib/bukku/api-config';
 import { upsertBukkuLead } from '@/lib/bukku/leads-store';
+
+function parseJsonSafe(text: string) {
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -12,6 +20,22 @@ export async function POST(request: Request) {
         { ok: false, error: 'Email is required' },
         { status: 400 },
       );
+    }
+
+    const backendUrl = `${getBukkuBackendBaseUrl()}${BUKKU_LEADS_API_PATH}`;
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      cache: 'no-store',
+    });
+
+    if (response.ok) {
+      const bodyText = await response.text();
+      const parsedJson = parseJsonSafe(bodyText);
+      if (parsedJson !== null) {
+        return NextResponse.json(parsedJson, { status: response.status });
+      }
     }
 
     const record = await upsertBukkuLead({
@@ -26,8 +50,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: true,
-        message: isBukkuSupabaseConfigured() ? 'Lead saved to Supabase' : 'Lead saved locally',
-        storage: isBukkuSupabaseConfigured() ? 'supabase' : 'local-file',
+        message: 'Lead saved locally (API fallback)',
+        storage: 'local-file',
         lead: record,
       },
       { status: 201 },

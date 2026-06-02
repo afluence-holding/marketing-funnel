@@ -1,19 +1,26 @@
 import { randomUUID } from 'node:crypto';
-import type { BukkuLeadRecord } from './leads-store';
+import { env } from '@marketing-funnel/config';
 
-type SupabaseConfig = {
-  url: string;
-  serviceRoleKey: string;
-};
+export interface BukkuLeadRecord {
+  id: string;
+  email: string;
+  firstName: string;
+  phone: string;
+  source: string;
+  customFields: Record<string, string>;
+  utmData: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
 
-type SupabaseRow = {
+type BukkuLeadRow = {
   id: string;
   email: string;
   first_name: string;
   phone: string;
   source: string;
-  custom_fields: Record<string, string>;
-  utm_data: Record<string, string>;
+  custom_fields: Record<string, string> | null;
+  utm_data: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 };
@@ -28,27 +35,16 @@ const BASE_HEADERS = [
   'updated_at',
 ] as const;
 
-function getSupabaseConfig(): SupabaseConfig | null {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceRoleKey) {
-    return null;
-  }
-
-  return { url: url.replace(/\/$/, ''), serviceRoleKey };
-}
-
-function buildHeaders(config: SupabaseConfig, prefer?: string) {
+function buildHeaders(prefer?: string) {
   return {
-    apikey: config.serviceRoleKey,
-    Authorization: `Bearer ${config.serviceRoleKey}`,
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
     'Content-Type': 'application/json',
     ...(prefer ? { Prefer: prefer } : {}),
   };
 }
 
-function rowToRecord(row: SupabaseRow): BukkuLeadRecord {
+function rowToRecord(row: BukkuLeadRow): BukkuLeadRecord {
   return {
     id: row.id,
     email: row.email,
@@ -70,11 +66,7 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   return text ? (JSON.parse(text) as T) : ([] as T);
 }
 
-export function isBukkuSupabaseConfigured() {
-  return getSupabaseConfig() !== null;
-}
-
-export async function upsertBukkuLeadInSupabase(input: {
+export async function upsertBukkuLead(input: {
   email: string;
   firstName?: string;
   phone?: string;
@@ -82,22 +74,19 @@ export async function upsertBukkuLeadInSupabase(input: {
   customFields?: Record<string, string>;
   utmData?: Record<string, string>;
 }): Promise<BukkuLeadRecord> {
-  const config = getSupabaseConfig();
-  if (!config) {
-    throw new Error('Supabase is not configured for Bukku storage');
+  const email = input.email.trim().toLowerCase();
+  if (!email) {
+    throw new Error('Email is required');
   }
 
-  const email = input.email.trim().toLowerCase();
+  const baseUrl = env.SUPABASE_URL.replace(/\/$/, '');
   const now = new Date().toISOString();
 
   const existingResponse = await fetch(
-    `${config.url}/rest/v1/bukku_leads?select=*&email=eq.${encodeURIComponent(email)}&limit=1`,
-    {
-      headers: buildHeaders(config),
-      cache: 'no-store',
-    },
+    `${baseUrl}/rest/v1/bukku_leads?select=*&email=eq.${encodeURIComponent(email)}&limit=1`,
+    { headers: buildHeaders(), cache: 'no-store' },
   );
-  const existingRows = await parseJsonResponse<SupabaseRow[]>(existingResponse);
+  const existingRows = await parseJsonResponse<BukkuLeadRow[]>(existingResponse);
   const existing = existingRows[0];
 
   if (existing) {
@@ -117,15 +106,15 @@ export async function upsertBukkuLeadInSupabase(input: {
     };
 
     const updateResponse = await fetch(
-      `${config.url}/rest/v1/bukku_leads?id=eq.${encodeURIComponent(existing.id)}`,
+      `${baseUrl}/rest/v1/bukku_leads?id=eq.${encodeURIComponent(existing.id)}`,
       {
         method: 'PATCH',
-        headers: buildHeaders(config, 'return=representation'),
+        headers: buildHeaders('return=representation'),
         body: JSON.stringify(payload),
         cache: 'no-store',
       },
     );
-    const updatedRows = await parseJsonResponse<SupabaseRow[]>(updateResponse);
+    const updatedRows = await parseJsonResponse<BukkuLeadRow[]>(updateResponse);
     return rowToRecord(updatedRows[0] ?? { ...existing, ...payload, email });
   }
 
@@ -141,30 +130,23 @@ export async function upsertBukkuLeadInSupabase(input: {
     updated_at: now,
   };
 
-  const createResponse = await fetch(`${config.url}/rest/v1/bukku_leads`, {
+  const createResponse = await fetch(`${baseUrl}/rest/v1/bukku_leads`, {
     method: 'POST',
-    headers: buildHeaders(config, 'return=representation'),
+    headers: buildHeaders('return=representation'),
     body: JSON.stringify(createdPayload),
     cache: 'no-store',
   });
-  const createdRows = await parseJsonResponse<SupabaseRow[]>(createResponse);
+  const createdRows = await parseJsonResponse<BukkuLeadRow[]>(createResponse);
   return rowToRecord(createdRows[0] ?? createdPayload);
 }
 
-export async function listBukkuLeadsFromSupabase() {
-  const config = getSupabaseConfig();
-  if (!config) {
-    throw new Error('Supabase is not configured for Bukku storage');
-  }
-
-  const response = await fetch(
-    `${config.url}/rest/v1/bukku_leads?select=*&order=created_at.desc`,
-    {
-      headers: buildHeaders(config),
-      cache: 'no-store',
-    },
-  );
-  const rows = await parseJsonResponse<SupabaseRow[]>(response);
+export async function listBukkuLeadsForTable() {
+  const baseUrl = env.SUPABASE_URL.replace(/\/$/, '');
+  const response = await fetch(`${baseUrl}/rest/v1/bukku_leads?select=*&order=created_at.desc`, {
+    headers: buildHeaders(),
+    cache: 'no-store',
+  });
+  const rows = await parseJsonResponse<BukkuLeadRow[]>(response);
   const records = rows.map(rowToRecord);
   const customFieldKeys = new Set<string>();
 

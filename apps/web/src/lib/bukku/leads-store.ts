@@ -1,11 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {
-  isBukkuSupabaseConfigured,
-  listBukkuLeadsFromSupabase,
-  upsertBukkuLeadInSupabase,
-} from './supabase-store';
 
 export interface BukkuLeadRecord {
   id: string;
@@ -77,10 +72,6 @@ export async function upsertBukkuLead(input: {
   customFields?: Record<string, string>;
   utmData?: Record<string, string>;
 }): Promise<BukkuLeadRecord> {
-  if (isBukkuSupabaseConfigured()) {
-    return upsertBukkuLeadInSupabase(input);
-  }
-
   const email = input.email.trim().toLowerCase();
   if (!email) {
     throw new Error('Email is required');
@@ -130,10 +121,6 @@ export async function upsertBukkuLead(input: {
 }
 
 export async function listBukkuLeadsForTable() {
-  if (isBukkuSupabaseConfigured()) {
-    return listBukkuLeadsFromSupabase();
-  }
-
   const records = await readAll();
   const customFieldKeys = new Set<string>();
 
