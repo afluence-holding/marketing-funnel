@@ -22,8 +22,8 @@ type BukkuLeadRow = {
   source: string;
   custom_fields: Record<string, string>;
   utm_data: Record<string, string>;
-  created_at: string;
-  updated_at: string;
+  created_at: string | Date;
+  updated_at: string | Date;
 };
 
 const BASE_HEADERS = [
@@ -37,6 +37,11 @@ const BASE_HEADERS = [
 ] as const;
 
 function rowToRecord(row: BukkuLeadRow): BukkuLeadRecord {
+  const createdAt =
+    row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at);
+  const updatedAt =
+    row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at);
+
   return {
     id: row.id,
     email: row.email,
@@ -45,8 +50,8 @@ function rowToRecord(row: BukkuLeadRow): BukkuLeadRecord {
     source: row.source,
     customFields: row.custom_fields ?? {},
     utmData: row.utm_data ?? {},
-    createdAt: row.created_at.toISOString(),
-    updatedAt: row.updated_at.toISOString(),
+    createdAt,
+    updatedAt,
   };
 }
 
