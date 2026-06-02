@@ -40,6 +40,8 @@ function buildHeaders(prefer?: string) {
     apikey: env.SUPABASE_SERVICE_ROLE_KEY,
     Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
     'Content-Type': 'application/json',
+    'Accept-Profile': 'marketing',
+    'Content-Profile': 'marketing',
     ...(prefer ? { Prefer: prefer } : {}),
   };
 }
