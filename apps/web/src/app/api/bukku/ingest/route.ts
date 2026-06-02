@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isBukkuSupabaseConfigured } from '@/lib/bukku/supabase-store';
 import { upsertBukkuLead } from '@/lib/bukku/leads-store';
 
 export async function POST(request: Request) {
@@ -25,7 +26,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: true,
-        message: 'Lead saved locally',
+        message: isBukkuSupabaseConfigured() ? 'Lead saved to Supabase' : 'Lead saved locally',
+        storage: isBukkuSupabaseConfigured() ? 'supabase' : 'local-file',
         lead: record,
       },
       { status: 201 },

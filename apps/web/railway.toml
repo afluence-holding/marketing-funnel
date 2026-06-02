@@ -1,7 +1,7 @@
 # Railway config for @marketing-funnel/web (monorepo root build).
 # In Railway service settings, set "Config file path" to: /apps/web/railway.toml
 #
-# Also attach a Volume mounted at /data — leads persist at /data/bukku automatically.
+# Also attach a Volume mounted at /data for local-file fallback when Supabase is not configured.
 
 [build]
 builder = "RAILPACK"
