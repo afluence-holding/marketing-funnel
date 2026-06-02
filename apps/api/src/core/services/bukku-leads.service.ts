@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { env } from '@marketing-funnel/config';
+import { ensureBukkuLeadsTable } from '../bootstrap/ensure-bukku-leads-table';
 
 export interface BukkuLeadRecord {
   id: string;
@@ -56,6 +57,7 @@ function rowToRecord(row: BukkuLeadRow): BukkuLeadRecord {
 }
 
 async function withClient<T>(fn: (client: Client) => Promise<T>) {
+  await ensureBukkuLeadsTable();
   const client = new Client({ connectionString: env.DATABASE_URL });
   await client.connect();
   try {
