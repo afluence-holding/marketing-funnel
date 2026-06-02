@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Client } from 'pg';
 import { env } from '@marketing-funnel/config';
 
 export interface BukkuLeadRecord {
@@ -19,8 +20,8 @@ type BukkuLeadRow = {
   first_name: string;
   phone: string;
   source: string;
-  custom_fields: Record<string, string> | null;
-  utm_data: Record<string, string> | null;
+  custom_fields: Record<string, string>;
+  utm_data: Record<string, string>;
   created_at: string;
   updated_at: string;
 };
@@ -35,17 +36,6 @@ const BASE_HEADERS = [
   'updated_at',
 ] as const;
 
-function buildHeaders(prefer?: string) {
-  return {
-    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-    Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-    'Content-Type': 'application/json',
-    'Accept-Profile': 'marketing',
-    'Content-Profile': 'marketing',
-    ...(prefer ? { Prefer: prefer } : {}),
-  };
-}
-
 function rowToRecord(row: BukkuLeadRow): BukkuLeadRecord {
   return {
     id: row.id,
@@ -55,17 +45,19 @@ function rowToRecord(row: BukkuLeadRow): BukkuLeadRecord {
     source: row.source,
     customFields: row.custom_fields ?? {},
     utmData: row.utm_data ?? {},
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
   };
 }
 
-async function parseJsonResponse<T>(response: Response): Promise<T> {
-  const text = await response.text();
-  if (!response.ok) {
-    throw new Error(text || `Supabase request failed (${response.status})`);
+async function withClient<T>(fn: (client: Client) => Promise<T>) {
+  const client = new Client({ connectionString: env.DATABASE_URL });
+  await client.connect();
+  try {
+    return await fn(client);
+  } finally {
+    await client.end();
   }
-  return text ? (JSON.parse(text) as T) : ([] as T);
 }
 
 export async function upsertBukkuLead(input: {
@@ -81,107 +73,115 @@ export async function upsertBukkuLead(input: {
     throw new Error('Email is required');
   }
 
-  const baseUrl = env.SUPABASE_URL.replace(/\/$/, '');
-  const now = new Date().toISOString();
-
-  const existingResponse = await fetch(
-    `${baseUrl}/rest/v1/bukku_leads?select=*&email=eq.${encodeURIComponent(email)}&limit=1`,
-    { headers: buildHeaders(), cache: 'no-store' },
-  );
-  const existingRows = await parseJsonResponse<BukkuLeadRow[]>(existingResponse);
-  const existing = existingRows[0];
-
-  if (existing) {
-    const payload = {
-      first_name: input.firstName?.trim() || existing.first_name,
-      phone: input.phone?.trim() || existing.phone,
-      source: input.source || existing.source,
-      custom_fields: {
-        ...(existing.custom_fields ?? {}),
-        ...(input.customFields ?? {}),
-      },
-      utm_data: {
-        ...(existing.utm_data ?? {}),
-        ...(input.utmData ?? {}),
-      },
-      updated_at: now,
-    };
-
-    const updateResponse = await fetch(
-      `${baseUrl}/rest/v1/bukku_leads?id=eq.${encodeURIComponent(existing.id)}`,
-      {
-        method: 'PATCH',
-        headers: buildHeaders('return=representation'),
-        body: JSON.stringify(payload),
-        cache: 'no-store',
-      },
+  return withClient(async (client) => {
+    const existing = await client.query<BukkuLeadRow>(
+      `SELECT id, email, first_name, phone, source, custom_fields, utm_data, created_at, updated_at
+       FROM marketing.bukku_leads
+       WHERE lower(email) = $1
+       LIMIT 1`,
+      [email],
     );
-    const updatedRows = await parseJsonResponse<BukkuLeadRow[]>(updateResponse);
-    return rowToRecord(updatedRows[0] ?? { ...existing, ...payload, email });
-  }
 
-  const createdPayload = {
-    id: randomUUID(),
-    email,
-    first_name: input.firstName?.trim() ?? '',
-    phone: input.phone?.trim() ?? '',
-    source: input.source ?? 'landing-bukku-test-ingles',
-    custom_fields: input.customFields ?? {},
-    utm_data: input.utmData ?? {},
-    created_at: now,
-    updated_at: now,
-  };
+    const now = new Date();
 
-  const createResponse = await fetch(`${baseUrl}/rest/v1/bukku_leads`, {
-    method: 'POST',
-    headers: buildHeaders('return=representation'),
-    body: JSON.stringify(createdPayload),
-    cache: 'no-store',
+    if (existing.rows[0]) {
+      const row = existing.rows[0];
+      const customFields = {
+        ...(row.custom_fields ?? {}),
+        ...(input.customFields ?? {}),
+      };
+      const utmData = {
+        ...(row.utm_data ?? {}),
+        ...(input.utmData ?? {}),
+      };
+
+      const updated = await client.query<BukkuLeadRow>(
+        `UPDATE marketing.bukku_leads
+         SET first_name = $2,
+             phone = $3,
+             source = $4,
+             custom_fields = $5::jsonb,
+             utm_data = $6::jsonb,
+             updated_at = $7
+         WHERE id = $1
+         RETURNING id, email, first_name, phone, source, custom_fields, utm_data, created_at, updated_at`,
+        [
+          row.id,
+          input.firstName?.trim() || row.first_name,
+          input.phone?.trim() || row.phone,
+          input.source || row.source,
+          JSON.stringify(customFields),
+          JSON.stringify(utmData),
+          now,
+        ],
+      );
+
+      return rowToRecord(updated.rows[0]);
+    }
+
+    const created = await client.query<BukkuLeadRow>(
+      `INSERT INTO marketing.bukku_leads
+         (id, email, first_name, phone, source, custom_fields, utm_data, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $8)
+       RETURNING id, email, first_name, phone, source, custom_fields, utm_data, created_at, updated_at`,
+      [
+        randomUUID(),
+        email,
+        input.firstName?.trim() ?? '',
+        input.phone?.trim() ?? '',
+        input.source ?? 'landing-bukku-test-ingles',
+        JSON.stringify(input.customFields ?? {}),
+        JSON.stringify(input.utmData ?? {}),
+        now,
+      ],
+    );
+
+    return rowToRecord(created.rows[0]);
   });
-  const createdRows = await parseJsonResponse<BukkuLeadRow[]>(createResponse);
-  return rowToRecord(createdRows[0] ?? createdPayload);
 }
 
 export async function listBukkuLeadsForTable() {
-  const baseUrl = env.SUPABASE_URL.replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/rest/v1/bukku_leads?select=*&order=created_at.desc`, {
-    headers: buildHeaders(),
-    cache: 'no-store',
-  });
-  const rows = await parseJsonResponse<BukkuLeadRow[]>(response);
-  const records = rows.map(rowToRecord);
-  const customFieldKeys = new Set<string>();
+  return withClient(async (client) => {
+    const result = await client.query<BukkuLeadRow>(
+      `SELECT id, email, first_name, phone, source, custom_fields, utm_data, created_at, updated_at
+       FROM marketing.bukku_leads
+       ORDER BY created_at DESC`,
+    );
 
-  for (const record of records) {
-    for (const key of Object.keys(record.customFields)) {
-      customFieldKeys.add(key);
+    const records = result.rows.map(rowToRecord);
+    const customFieldKeys = new Set<string>();
+
+    for (const record of records) {
+      for (const key of Object.keys(record.customFields)) {
+        customFieldKeys.add(key);
+      }
     }
-  }
 
-  const tableRows = records.map((record) => {
-    const row: Record<string, string> = {
-      lead_id: record.id,
-      email: record.email,
-      first_name: record.firstName,
-      phone: record.phone,
-      source: record.source,
-      created_at: record.createdAt,
-      updated_at: record.updatedAt,
+    const tableRows = records.map((record) => {
+      const row: Record<string, string> = {
+        lead_id: record.id,
+        email: record.email,
+        first_name: record.firstName,
+        phone: record.phone,
+        source: record.source,
+        created_at: record.createdAt,
+        updated_at: record.updatedAt,
+      };
+
+      for (const key of customFieldKeys) {
+        row[key] = record.customFields[key] ?? '';
+      }
+
+      return row;
+    });
+
+    return {
+      ok: true as const,
+      source: 'landing-bukku-test-ingles',
+      storage: 'supabase' as const,
+      total: tableRows.length,
+      headers: [...BASE_HEADERS, ...Array.from(customFieldKeys).sort()],
+      data: tableRows,
     };
-
-    for (const key of customFieldKeys) {
-      row[key] = record.customFields[key] ?? '';
-    }
-
-    return row;
   });
-
-  return {
-    ok: true as const,
-    source: 'landing-bukku-test-ingles',
-    storage: 'supabase' as const,
-    total: tableRows.length,
-    headers: [...BASE_HEADERS, ...Array.from(customFieldKeys).sort()],
-    data: tableRows,
-  };
 }
