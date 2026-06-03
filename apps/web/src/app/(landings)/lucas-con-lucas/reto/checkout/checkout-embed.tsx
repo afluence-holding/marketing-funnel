@@ -1,8 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { WhopCheckoutEmbed } from '@whop/checkout/react';
-import { LUCAS, getLucasRetoGraciasUrl } from '../../lucas-config';
+import { useEffect, useRef, useState } from 'react';
+import { getLucasRetoGraciasUrl } from '../../lucas-config';
+import {
+  cacheWhopSession,
+  getCachedWhopSession,
+  prefetchRetoCheckoutSession,
+  preloadWhopCheckoutModule,
+  requestWhopCheckoutSession,
+  type WhopCheckoutSession,
+} from '@/lib/lucas/whop-checkout-session';
 import { buildMetaTrackingPayload } from '@/lib/tracking/meta-capi';
 import {
   getLucasRetoGraciasRedirectUrl,
@@ -10,65 +18,81 @@ import {
   trackLucasRetoInitiateCheckout,
 } from '@/lib/tracking/lucas-meta';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-
 type SessionState =
   | { status: 'loading' }
-  | { status: 'ready'; sessionId: string; planId: string }
+  | { status: 'ready'; session: WhopCheckoutSession }
   | { status: 'error'; message: string };
 
-export function LucasRetoCheckoutEmbed() {
-  const [session, setSession] = useState<SessionState>({ status: 'loading' });
-  const initiateFired = useRef(false);
+function toInitialState(
+  initial: WhopCheckoutSession | null | undefined,
+): SessionState {
+  if (initial?.sessionId && initial.purchaseEventId) {
+    return { status: 'ready', session: initial };
+  }
+  return { status: 'loading' };
+}
+
+async function resolveCheckoutSession(
+  initial: WhopCheckoutSession | null | undefined,
+): Promise<WhopCheckoutSession> {
+  if (initial?.sessionId && initial.purchaseEventId) return initial;
+
+  const cached = getCachedWhopSession();
+  if (cached) return cached;
+
+  const meta = buildMetaTrackingPayload('lucas-reto-checkout-bootstrap');
+  return requestWhopCheckoutSession({ fbp: meta.fbp, fbc: meta.fbc });
+}
+
+function activateCheckoutSession(session: WhopCheckoutSession): void {
+  cacheWhopSession(session);
+  persistRetoCheckoutSession(session.purchaseEventId);
+  trackLucasRetoInitiateCheckout();
+}
+
+export function LucasRetoCheckoutEmbed({
+  initialSession = null,
+}: {
+  initialSession?: WhopCheckoutSession | null;
+}) {
+  const [session, setSession] = useState<SessionState>(() =>
+    toInitialState(initialSession),
+  );
+  const activated = useRef(false);
 
   useEffect(() => {
+    preloadWhopCheckoutModule();
+    if (initialSession?.sessionId) {
+      cacheWhopSession(initialSession);
+    }
+  }, [initialSession]);
+
+  useEffect(() => {
+    if (session.status === 'ready') {
+      if (!activated.current) {
+        activated.current = true;
+        activateCheckoutSession(session.session);
+      }
+      return;
+    }
+
     let cancelled = false;
 
     async function bootstrap() {
       try {
-        const meta = buildMetaTrackingPayload('lucas-reto-checkout-bootstrap');
-        const response = await fetch(
-          `${API_URL}/api/orgs/lucas-con-lucas/bus/main/whop-checkout-session`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              tracking: { meta: { fbp: meta.fbp, fbc: meta.fbc } },
-            }),
-          },
-        );
-
-        const data = (await response.json()) as {
-          ok?: boolean;
-          sessionId?: string;
-          planId?: string;
-          purchaseEventId?: string;
-          error?: string;
-        };
-
-        if (!response.ok || !data.sessionId || !data.purchaseEventId) {
-          throw new Error(data.error ?? `Checkout session failed (${response.status})`);
-        }
-
+        const resolved = await resolveCheckoutSession(initialSession);
         if (cancelled) return;
-
-        persistRetoCheckoutSession(data.purchaseEventId);
-
-        if (!initiateFired.current) {
-          initiateFired.current = true;
-          trackLucasRetoInitiateCheckout();
+        if (!activated.current) {
+          activated.current = true;
+          activateCheckoutSession(resolved);
         }
-
-        setSession({
-          status: 'ready',
-          sessionId: data.sessionId,
-          planId: data.planId ?? LUCAS.reto.planId,
-        });
+        setSession({ status: 'ready', session: resolved });
       } catch (err) {
         if (cancelled) return;
         setSession({
           status: 'error',
-          message: err instanceof Error ? err.message : 'No se pudo iniciar el checkout',
+          message:
+            err instanceof Error ? err.message : 'No se pudo iniciar el checkout',
         });
       }
     }
@@ -77,17 +101,15 @@ export function LucasRetoCheckoutEmbed() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialSession, session.status]);
 
-  const returnUrl = getLucasRetoGraciasUrl(
-    typeof window !== 'undefined' ? window.location.origin : undefined,
-  );
+  const returnUrl = getLucasRetoGraciasUrl();
 
   if (session.status === 'loading') {
     return (
       <div className="checkout-state">
         <div className="spinner" aria-hidden />
-        <p>Preparando checkout seguro…</p>
+        <p>Preparando formulario de pago…</p>
       </div>
     );
   }
@@ -97,6 +119,31 @@ export function LucasRetoCheckoutEmbed() {
       <div className="checkout-state checkout-state-error">
         <p>No pudimos cargar el checkout.</p>
         <p className="muted">{session.message}</p>
+        <button
+          type="button"
+          className="retry-btn"
+          onClick={() => {
+            activated.current = false;
+            setSession({ status: 'loading' });
+            void prefetchRetoCheckoutSession()
+              .then((resolved) => {
+                activated.current = true;
+                activateCheckoutSession(resolved);
+                setSession({ status: 'ready', session: resolved });
+              })
+              .catch((err) => {
+                setSession({
+                  status: 'error',
+                  message:
+                    err instanceof Error
+                      ? err.message
+                      : 'No se pudo iniciar el checkout',
+                });
+              });
+          }}
+        >
+          Reintentar
+        </button>
         <a href="/lucas-con-lucas/reto" className="back-link">
           ← Volver al reto
         </a>
@@ -104,13 +151,17 @@ export function LucasRetoCheckoutEmbed() {
     );
   }
 
+  const { sessionId } = session.session;
+
   return (
     <div className="checkout-embed-wrap">
       <WhopCheckoutEmbed
-        planId={session.planId}
-        sessionId={session.sessionId}
+        sessionId={sessionId}
         returnUrl={returnUrl}
         theme="dark"
+        adaptivePricing
+        skipRedirect
+        themeOptions={{ accentColor: 'orange' }}
         fallback={
           <div className="checkout-state">
             <div className="spinner" aria-hidden />
@@ -120,7 +171,14 @@ export function LucasRetoCheckoutEmbed() {
         onComplete={(_planId, receiptId) => {
           window.location.assign(getLucasRetoGraciasRedirectUrl(receiptId));
         }}
-        styles={{ container: { paddingX: 0, paddingY: 16 } }}
+        styles={{
+          container: {
+            paddingTop: 8,
+            paddingBottom: 8,
+            paddingLeft: 0,
+            paddingRight: 0,
+          },
+        }}
       />
     </div>
   );

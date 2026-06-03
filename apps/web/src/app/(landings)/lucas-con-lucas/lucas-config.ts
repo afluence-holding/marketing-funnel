@@ -31,10 +31,21 @@ export const LUCAS = {
     planId:
       process.env.NEXT_PUBLIC_WHOP_LUCAS_RETO_PLAN_ID ?? 'plan_aKOjfecUWLzFo',
     graciasPath: '/lucas-con-lucas/reto/gracias',
+    /** Copia del producto en Whop (plan_aKOjfecUWLzFo) */
+    whopProductTitle: 'Reto Lucas con Luca$ - 15 días de inversión inmobiliara',
+    whopProductHeadline:
+      'APRENDE LO NECESARIO DE INVERSIÓN INMOBILIARIA EN CHILE EN 15 DÍAS.',
     /** Tier vigente — override con NEXT_PUBLIC_LUCAS_RETO_PRICE */
     defaultPrice: 77000,
   },
 } as const;
+
+export function getLucasRetoPublicBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_LUCAS_RETO_PUBLIC_URL?.trim() ??
+    'https://marketing.byafluence.com'
+  ).replace(/\/$/, '');
+}
 
 export function getLucasRetoPrice(): number {
   const raw = process.env.NEXT_PUBLIC_LUCAS_RETO_PRICE;
@@ -43,9 +54,17 @@ export function getLucasRetoPrice(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : LUCAS.reto.defaultPrice;
 }
 
-export function getLucasRetoGraciasUrl(origin?: string): string {
-  const base = origin ?? 'https://marketing.byafluence.com';
-  return `${base.replace(/\/$/, '')}${LUCAS.reto.graciasPath}?status=success`;
+export function getLucasRetoGraciasUrl(_origin?: string): string {
+  const base = getLucasRetoPublicBaseUrl();
+  return `${base}${LUCAS.reto.graciasPath}?status=success`;
+}
+
+export function formatLucasRetoPrice(): string {
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: LUCAS.currency,
+    maximumFractionDigits: 0,
+  }).format(getLucasRetoPrice());
 }
 
 export function getLucasRetoCheckoutPath(): string {
