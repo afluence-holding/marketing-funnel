@@ -5,6 +5,7 @@ import { errorHandler } from './core/middleware/error-handler';
 import ingestionRoutes from './core/routes/ingestion.routes';
 import leadsRoutes from './core/routes/leads.routes';
 import elevenLabsRoutes from './core/routes/elevenlabs.routes';
+import { whopWebhookHandler } from './core/routes/whop.routes';
 import { startAll as startCron, getRegisteredJobs } from './core/cron';
 import { startWorkflowEngine } from './core/engine/workflow-engine';
 import enrollmentRoutes from './core/routes/enrollment.routes';
@@ -16,6 +17,14 @@ import { ensureMamaSinCaosLeadsTable } from './core/bootstrap/ensure-mama-sin-ca
 const app = express();
 
 app.use(cors());
+
+// Whop Standard Webhooks require the raw body for signature verification.
+app.post(
+  '/api/whop/webhook',
+  express.raw({ type: 'application/json' }),
+  whopWebhookHandler,
+);
+
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {

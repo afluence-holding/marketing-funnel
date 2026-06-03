@@ -82,6 +82,26 @@ export function trackEventForPixel(
 }
 
 /**
+ * Track a custom event on a SPECIFIC Meta Pixel only.
+ */
+export function trackCustomEventForPixel(
+  pixelId: string,
+  eventName: string,
+  data: Record<string, unknown> = {},
+  meta: MetaTrackOptions = {},
+) {
+  if (typeof window === 'undefined') return;
+
+  if (typeof window.fbq === 'function') {
+    if (meta.eventId) {
+      window.fbq('trackSingleCustom', pixelId, eventName, data, { eventID: meta.eventId });
+    } else {
+      window.fbq('trackSingleCustom', pixelId, eventName, data);
+    }
+  }
+}
+
+/**
  * Track a custom (non-standard) event across all pixels.
  *
  * @example

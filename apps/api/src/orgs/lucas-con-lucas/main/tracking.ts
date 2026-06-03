@@ -24,6 +24,7 @@ export const LUCAS_CAPI = {
   reto: {
     contentIds: ['reto-lcl-jun29'],
     contentName: 'Reto Lucas con Luca$ 15 días',
+    contentCategory: 'reto-low-ticket',
     contentType: 'product',
     defaultValue: 77000,
   },

@@ -17,22 +17,23 @@
   },
   "dependencies": {
     "@marketing-funnel/clickup-client": "*",
-    "pg": "^8.13.0",
     "@marketing-funnel/config": "*",
     "@marketing-funnel/db": "*",
     "@marketing-funnel/elevenlabs": "*",
     "@marketing-funnel/email": "*",
     "@marketing-funnel/whatsapp-client": "*",
+    "@whop/sdk": "^0.0.39",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "node-cron": "^4.2.1",
+    "pg": "^8.13.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",
+    "@types/pg": "^8.11.0",
     "supabase": "^2.76.13",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

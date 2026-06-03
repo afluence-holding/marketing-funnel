@@ -1819,8 +1819,9 @@ const LANDING_HTML = `<!DOCTYPE html>
       </ul>
 
       <!-- CTA pago -->
-      <a href="https://whop.com/checkout/plan_aKOjfecUWLzFo"
-         class="btn btn-grande btn-amarillo" target="_blank" rel="noopener"
+      <a href="/lucas-con-lucas/reto/checkout"
+         class="btn btn-grande btn-amarillo lucas-whop-checkout"
+         data-lucas-whop-checkout="1"
          style="width:100%; max-width:420px; margin-top:10px;">
         Reservar mi cupo ahora →
       </a>
@@ -1932,8 +1933,9 @@ const LANDING_HTML = `<!DOCTYPE html>
     Cada mes que pasa sin invertir, la inflación se come tus ahorros.
     En 15 días puedes tener un método. La decisión es ahora.
   </p>
-  <a href="https://whop.com/checkout/plan_aKOjfecUWLzFo"
-     class="btn btn-grande" target="_blank" rel="noopener">
+  <a href="/lucas-con-lucas/reto/checkout"
+     class="btn btn-grande lucas-whop-checkout"
+     data-lucas-whop-checkout="1">
     Reservar mi cupo ahora →
   </a>
   <div style="margin-top:18px; font-size:13px; color:var(--gris-claro);">
@@ -2060,6 +2062,30 @@ const LANDING_HTML = `<!DOCTYPE html>
       var req = frame.requestFullscreen || frame.webkitRequestFullscreen;
       if (req) { var p=req.call(frame); if(p&&p.catch)p.catch(function(){}); }
     });
+
+    var milestones = { 25: false, 50: false, 75: false, 100: false };
+    window.addEventListener('message', function (e) {
+      var data;
+      try {
+        data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+      } catch (_) { return; }
+      if (!data || data.event !== 'infoDelivery' || !data.info) return;
+      var ct = data.info.currentTime;
+      var dur = data.info.duration;
+      if (!dur || ct == null) return;
+      var pct = (ct / dur) * 100;
+      [25, 50, 75, 100].forEach(function (m) {
+        if (pct >= m && !milestones[m]) {
+          milestones[m] = true;
+          try {
+            window.parent.postMessage(
+              { type: 'vsl-milestone', milestone: m, videoId: YT_ID },
+              '*'
+            );
+          } catch (_) {}
+        }
+      });
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){setTimeout(boot,200);});
   else setTimeout(boot, 200);
@@ -2108,11 +2134,11 @@ const LANDING_HTML = `<!DOCTYPE html>
   function inIframe() { try { return window.parent && window.parent !== window; } catch (_) { return true; } }
   if (!inIframe()) return;
   document.addEventListener('click', function (e) {
-    var link = e.target && e.target.closest ? e.target.closest('a[href*="whop.com/checkout"]') : null;
+    var link = e.target && e.target.closest ? e.target.closest('a[data-lucas-whop-checkout]') : null;
     if (!link) return;
     e.preventDefault();
     try {
-      window.parent.postMessage({ type: 'lucas-reto-checkout', href: link.href }, '*');
+      window.parent.postMessage({ type: 'lucas-reto-checkout-navigate' }, '*');
     } catch (_) {}
   }, true);
 })();

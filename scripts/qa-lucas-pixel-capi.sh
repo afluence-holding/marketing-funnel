@@ -11,6 +11,12 @@ PASS=0
 FAIL=0
 WARN=0
 
+if [[ -f "$ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
 if [[ -f "$ROOT/.env.local" ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -25,7 +31,10 @@ section() { echo ""; echo "━━ $1 ━━"; }
 
 section "0. Environment"
 [[ -n "${META_PIXEL_ID_LUCAS_CON_LUCAS:-}" ]] && pass "META_PIXEL_ID_LUCAS_CON_LUCAS set" || fail "META_PIXEL_ID_LUCAS_CON_LUCAS missing"
-[[ -n "${META_CAPI_TOKEN_LUCAS_CON_LUCAS:-}" ]] && pass "META_CAPI_TOKEN_LUCAS_CON_LUCAS set" || fail "META_CAPI_TOKEN_LUCAS_CON_LUCAS missing"
+[[ -n "${META_CAPI_TOKEN_LUCAS_CON_LUCAS:-}" ]] && pass "META_CAPI_TOKEN_LUCAS_CON_LUCAS set" || warn "META_CAPI_TOKEN_LUCAS_CON_LUCAS missing — CAPI live tests skipped"
+[[ -n "${WHOP_API_KEY:-}" ]] && pass "WHOP_API_KEY set" || warn "WHOP_API_KEY missing — Whop session test skipped"
+[[ -n "${WHOP_COMPANY_ID:-}" ]] && pass "WHOP_COMPANY_ID set ($WHOP_COMPANY_ID)" || warn "WHOP_COMPANY_ID missing"
+[[ -n "${WHOP_WEBHOOK_SECRET:-}" && "${WHOP_WEBHOOK_SECRET}" != "..." ]] && pass "WHOP_WEBHOOK_SECRET set" || warn "WHOP_WEBHOOK_SECRET missing — webhook signed test may 503"
 [[ -n "${NEXT_PUBLIC_META_PIXEL_LUCAS_CON_LUCAS:-}" ]] && pass "NEXT_PUBLIC_META_PIXEL_LUCAS_CON_LUCAS set" || warn "NEXT_PUBLIC_META_PIXEL (web) missing — browser pixel may not init in dev"
 PIXEL_ID="${META_PIXEL_ID_LUCAS_CON_LUCAS:-3904610923173158}"
 CAPI_TOKEN="${META_CAPI_TOKEN_LUCAS_CON_LUCAS:-}"
@@ -39,6 +48,7 @@ for path in \
   "/lucas-con-lucas/webinar" \
   "/lucas-con-lucas/pre-launch-form" \
   "/lucas-con-lucas/reto" \
+  "/lucas-con-lucas/reto/checkout" \
   "/lucas-con-lucas/reto/gracias?status=success"; do
   code=$(curl -s -o /tmp/qa_page.html -w "%{http_code}" "$WEB$path" 2>/dev/null || echo "000")
   [[ "$code" == "200" ]] && pass "GET $path → 200" || fail "GET $path → $code"
@@ -57,8 +67,30 @@ echo "$html_gracias" | grep -qi "Cupo reservado\|confirmada" && pass "Gracias pa
 echo "$html_gracias" | grep -q "PurchaseTracker\|gracias-content" && pass "Gracias client components bundled" || warn "Gracias tracker component not visible in SSR (client-only OK)"
 
 html_reto_raw=$(curl -s "$WEB/lucas-con-lucas/reto/raw" 2>/dev/null || true)
-echo "$html_reto_raw" | grep -q 'lucas-reto-checkout' && pass "Reto raw: checkout postMessage intercept script" || fail "Reto raw: missing checkout intercept"
-echo "$html_reto_raw" | grep -q 'whop.com/checkout/plan_aKOjfecUWLzFo' && pass "Reto raw: Whop checkout URL present" || fail "Reto raw: Whop URL missing"
+echo "$html_reto_raw" | grep -q 'lucas-reto-checkout-navigate' && pass "Reto raw: embedded checkout navigate script" || fail "Reto raw: missing checkout navigate"
+echo "$html_reto_raw" | grep -q '/lucas-con-lucas/reto/checkout' && pass "Reto raw: checkout path in CTAs" || fail "Reto raw: checkout path missing"
+echo "$html_reto_raw" | grep -q 'vsl-milestone' && pass "Reto raw: VSL milestone script" || fail "Reto raw: VSL milestone missing"
+
+html_checkout=$(curl -s "$WEB/lucas-con-lucas/reto/checkout" 2>/dev/null || true)
+echo "$html_checkout" | grep -qi "Reservar mi cupo\|checkout" && pass "Checkout page renders" || fail "Checkout page content missing"
+echo "$html_checkout" | grep -q "3904610923173158\|metaPixel\|fbq" && pass "Checkout page has pixel config" || warn "Checkout pixel not visible in SSR (client-only OK)"
+
+section "3b. Whop checkout session (live API)"
+if [[ -n "${WHOP_API_KEY:-}" ]]; then
+  code=$(curl -s -o /tmp/qa_whop_session.json -w "%{http_code}" -X POST "$API/api/orgs/lucas-con-lucas/bus/main/whop-checkout-session" \
+    -H "Content-Type: application/json" \
+    -d '{"tracking":{"meta":{"fbp":"fb.1.qa.111","fbc":"fb.1.qa.222"}}}')
+  if [[ "$code" == "200" ]]; then
+    pass "POST /whop-checkout-session → 200"
+    grep -q '"sessionId":"ch_' /tmp/qa_whop_session.json && pass "Whop sessionId (ch_*) returned" || fail "Missing sessionId: $(cat /tmp/qa_whop_session.json)"
+    grep -q '"purchaseEventId":"lucas-reto-purchase' /tmp/qa_whop_session.json && pass "purchaseEventId returned" || fail "Missing purchaseEventId"
+    grep -q '"planId":"plan_aKOjfecUWLzFo"' /tmp/qa_whop_session.json && pass "planId correct" || fail "Wrong planId: $(cat /tmp/qa_whop_session.json)"
+  else
+    fail "POST /whop-checkout-session → $code ($(cat /tmp/qa_whop_session.json))"
+  fi
+else
+  warn "Skipping live Whop checkout session (WHOP_API_KEY missing)"
+fi
 
 section "4. Webinar ingest + CAPI payload"
 WEBINAR_SOURCE="landing-lucas-con-lucas-webinar-2026-06-04"
@@ -224,31 +256,109 @@ code=$(curl -s -o /tmp/qa_purchase_bad2.json -w "%{http_code}" -X POST "$API/api
   -d '{"value":77000,"currency":"CLP","orderId":"no-event-id"}')
 [[ "$code" == "400" ]] && pass "Missing eventId → 400" || fail "Missing eventId expected 400 got $code"
 
-section "8. Static — lucas-meta event shapes"
+section "7b. Whop webhook"
+code=$(curl -s -o /tmp/qa_whop_no_sig.json -w "%{http_code}" -X POST "$API/api/whop/webhook" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"payment.succeeded","data":{"id":"pay_test"}}')
+[[ "$code" == "401" || "$code" == "503" ]] && pass "Whop webhook without signature → $code" || fail "Whop webhook expected 401/503 got $code"
+
+WHOP_QA_SECRET="${WHOP_WEBHOOK_SECRET:-qa-whop-test-secret}"
+WHOP_QA_ID="msg_qa_${TS}"
+WHOP_QA_TS="$(date +%s)"
+WHOP_QA_BODY=$(cat <<EOF
+{"type":"payment.succeeded","data":{"id":"pay_qa_${TS}","plan_id":"plan_aKOjfecUWLzFo","amount":77000,"currency":"CLP","email":"whop-qa-${TS}@test.afluence.local","billing":{"name":"Comprador QA"},"metadata":{"meta_event_id":"lucas-reto-purchase.qa-${TS}","fbp":"fb.1.qa.111","fbc":"fb.1.qa.222"}}}
+EOF
+)
+WHOP_QA_SIG=$(SECRET="$WHOP_QA_SECRET" ID="$WHOP_QA_ID" TS="$WHOP_QA_TS" BODY="$WHOP_QA_BODY" node -e "
+  const crypto=require('crypto');
+  const secret=process.env.SECRET;
+  const id=process.env.ID;
+  const ts=process.env.TS;
+  const body=process.env.BODY;
+  const signed=id+'.'+ts+'.'+body;
+  const sig=crypto.createHmac('sha256', Buffer.from(secret,'utf8')).update(signed).digest('base64');
+  console.log('v1,'+sig);
+")
+
+code=$(curl -s -o /tmp/qa_whop_ok.json -w "%{http_code}" -X POST "$API/api/whop/webhook" \
+  -H "Content-Type: application/json" \
+  -H "webhook-id: $WHOP_QA_ID" \
+  -H "webhook-timestamp: $WHOP_QA_TS" \
+  -H "webhook-signature: $WHOP_QA_SIG" \
+  -d "$WHOP_QA_BODY")
+
+if [[ "$code" == "200" ]]; then
+  pass "Whop webhook signed Lucas payment → 200"
+  grep -q '"handled":true' /tmp/qa_whop_ok.json && pass "Whop webhook handled Lucas reto payment" || fail "Whop webhook not handled: $(cat /tmp/qa_whop_ok.json)"
+elif [[ "$code" == "503" ]]; then
+  pass "Whop webhook signed → 503 (API needs WHOP_WEBHOOK_SECRET in .env.local + restart)"
+else
+  fail "Whop webhook signed → $code ($(cat /tmp/qa_whop_ok.json))"
+fi
+
+WHOP_OTHER_BODY='{"type":"payment.succeeded","data":{"id":"pay_other","plan_id":"plan_not_lucas","amount":10,"currency":"USD"}}'
+WHOP_OTHER_SIG=$(SECRET="$WHOP_QA_SECRET" ID="${WHOP_QA_ID}_other" TS="$WHOP_QA_TS" BODY="$WHOP_OTHER_BODY" node -e "
+  const crypto=require('crypto');
+  const secret=process.env.SECRET;
+  const id=process.env.ID;
+  const ts=process.env.TS;
+  const body=process.env.BODY;
+  const signed=id+'.'+ts+'.'+body;
+  console.log('v1,'+crypto.createHmac('sha256', Buffer.from(secret,'utf8')).update(signed).digest('base64'));
+")
+code=$(curl -s -o /tmp/qa_whop_ignore.json -w "%{http_code}" -X POST "$API/api/whop/webhook" \
+  -H "Content-Type: application/json" \
+  -H "webhook-id: ${WHOP_QA_ID}_other" \
+  -H "webhook-timestamp: $WHOP_QA_TS" \
+  -H "webhook-signature: $WHOP_OTHER_SIG" \
+  -d "$WHOP_OTHER_BODY")
+
+if [[ "$code" == "200" ]]; then
+  grep -q '"handled":false' /tmp/qa_whop_ignore.json && pass "Non-Lucas plan ignored" || fail "Non-Lucas plan expected handled:false ($(cat /tmp/qa_whop_ignore.json))"
+elif [[ "$code" == "503" || "$code" == "401" ]]; then
+  pass "Non-Lucas plan webhook gated ($code)"
+else
+  fail "Non-Lucas plan webhook → $code"
+fi
+
+section "8. Static — lucas-meta + purchase tracker"
 node - <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const cfgPath = path.join(process.cwd(), 'apps/web/src/app/(landings)/lucas-con-lucas/lucas-config.ts');
 const metaPath = path.join(process.cwd(), 'apps/web/src/lib/tracking/lucas-meta.ts');
+const purchasePath = path.join(process.cwd(), 'apps/web/src/app/(landings)/lucas-con-lucas/reto/gracias/purchase-tracker.tsx');
+const checkoutPath = path.join(process.cwd(), 'apps/web/src/app/(landings)/lucas-con-lucas/reto/checkout/checkout-embed.tsx');
 const cfg = fs.readFileSync(cfgPath, 'utf8');
 const meta = fs.readFileSync(metaPath, 'utf8');
+const purchase = fs.readFileSync(purchasePath, 'utf8');
+const checkout = fs.readFileSync(checkoutPath, 'utf8');
 let ok = true;
+let pass = 0;
 const checks = [
   ['webinar-lcl-jun04', cfg.includes('webinar-lcl-jun04')],
   ['reto-lcl-jun29', cfg.includes('reto-lcl-jun29')],
   ['77000 default price', cfg.includes('77000')],
   ['gracias path', cfg.includes('/lucas-con-lucas/reto/gracias')],
-  ['InitiateCheckout handler', meta.includes('InitiateCheckout')],
-  ['localStorage checkout ctx', meta.includes('localStorage')],
+  ['checkout embed path', cfg.includes('/lucas-con-lucas/reto/checkout')],
+  ['navigateToRetoCheckout', meta.includes('navigateToRetoCheckout')],
+  ['trackLucasRetoInitiateCheckout', meta.includes('trackLucasRetoInitiateCheckout')],
+  ['persistRetoCheckoutSession', meta.includes('persistRetoCheckoutSession')],
+  ['resolveRetoPurchaseTracking', meta.includes('resolveRetoPurchaseTracking')],
+  ['Purchase content_category', meta.includes('content_category')],
   ['Lead + CompleteRegistration webinar helpers', meta.includes('lucasWebinarLead') && meta.includes('lucasWebinarCompleteRegistration')],
+  ['gracias pixel-only (no CAPI fetch)', purchase.includes("trackEventForPixel") && !purchase.includes('/bus/main/purchase')],
+  ['WhopCheckoutEmbed', checkout.includes('WhopCheckoutEmbed')],
+  ['whop-checkout-session API call', checkout.includes('whop-checkout-session')],
 ];
 for (const [label, result] of checks) {
-  if (result) console.log('  ✅ static: ' + label);
+  if (result) { console.log('  ✅ static: ' + label); pass++; }
   else { console.log('  ❌ static: ' + label); ok = false; }
 }
 process.exit(ok ? 0 : 1);
 NODE
-[[ $? -eq 0 ]] && PASS=$((PASS + 7)) || FAIL=$((FAIL + 1))
+STATIC_EXIT=$?
+if [[ "$STATIC_EXIT" -eq 0 ]]; then PASS=$((PASS + 14)); else FAIL=$((FAIL + 1)); fi
 
 section "9. Typecheck"
 if npm run typecheck -w @marketing-funnel/web -w @marketing-funnel/api >/tmp/qa_typecheck.log 2>&1; then

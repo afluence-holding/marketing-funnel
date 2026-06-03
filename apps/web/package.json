@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.1",
+    "@whop/checkout": "^0.0.54",
     "lightningcss": "^1.31.1",
     "lucide-react": "^0.577.0",
     "motion": "^12.35.2",

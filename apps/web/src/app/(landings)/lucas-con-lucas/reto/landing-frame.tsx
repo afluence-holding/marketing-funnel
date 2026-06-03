@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LUCAS } from '../lucas-config';
-import { handleRetoCheckoutClick } from '@/lib/tracking/lucas-meta';
+import { getLucasRetoCheckoutPath } from '../lucas-config';
+import { navigateToRetoCheckout } from '@/lib/tracking/lucas-meta';
 
-const CHECKOUT_HREF = LUCAS.reto.checkoutUrl;
+const CHECKOUT_PATH = getLucasRetoCheckoutPath();
 
 export default function LandingFrame({
   src,
@@ -19,13 +19,18 @@ export default function LandingFrame({
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       const data = e.data as
-        | { type?: string; height?: number; top?: number; hash?: string; href?: string }
+        | {
+            type?: string;
+            height?: number;
+            top?: number;
+            hash?: string;
+          }
         | null
         | undefined;
       if (!data || typeof data !== 'object') return;
 
-      if (data.type === 'lucas-reto-checkout' && typeof data.href === 'string') {
-        handleRetoCheckoutClick(data.href);
+      if (data.type === 'lucas-reto-checkout-navigate') {
+        navigateToRetoCheckout();
         return;
       }
 
@@ -127,14 +132,12 @@ function FloatingCheckout() {
     <>
       <style>{floatingCheckoutCss}</style>
       <a
-        href={CHECKOUT_HREF}
-        target="_blank"
-        rel="noopener"
+        href={CHECKOUT_PATH}
         className="wa-float"
         aria-label="Reservar mi cupo ahora"
         onClick={(e) => {
           e.preventDefault();
-          handleRetoCheckoutClick(CHECKOUT_HREF);
+          navigateToRetoCheckout();
         }}
       >
         <span className="wa-icon-wrap">
