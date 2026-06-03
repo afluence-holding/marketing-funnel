@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getLucasRetoCheckoutPath } from '../lucas-config';
-import { navigateToRetoCheckout } from '@/lib/tracking/lucas-meta';
+import { navigateToRetoCheckout, warmRetoCheckoutSession } from '@/lib/tracking/lucas-meta';
 
 const CHECKOUT_PATH = getLucasRetoCheckoutPath();
 
@@ -15,6 +15,11 @@ export default function LandingFrame({
 }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState<number>(4800);
+  const [navigatingCheckout, setNavigatingCheckout] = useState(false);
+
+  useEffect(() => {
+    warmRetoCheckoutSession();
+  }, []);
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
@@ -30,6 +35,7 @@ export default function LandingFrame({
       if (!data || typeof data !== 'object') return;
 
       if (data.type === 'lucas-reto-checkout-navigate') {
+        setNavigatingCheckout(true);
         navigateToRetoCheckout();
         return;
       }
@@ -122,12 +128,25 @@ export default function LandingFrame({
           display: 'block',
         }}
       />
-      <FloatingCheckout />
+      {navigatingCheckout ? <CheckoutNavOverlay /> : null}
+      <FloatingCheckout onNavigate={() => setNavigatingCheckout(true)} />
     </>
   );
 }
 
-function FloatingCheckout() {
+function CheckoutNavOverlay() {
+  return (
+    <>
+      <style>{checkoutNavOverlayCss}</style>
+      <div className="checkout-nav-overlay" role="status" aria-live="polite">
+        <div className="checkout-nav-spinner" aria-hidden />
+        <p>Preparando checkout seguro…</p>
+      </div>
+    </>
+  );
+}
+
+function FloatingCheckout({ onNavigate }: { onNavigate: () => void }) {
   return (
     <>
       <style>{floatingCheckoutCss}</style>
@@ -137,6 +156,7 @@ function FloatingCheckout() {
         aria-label="Reservar mi cupo ahora"
         onClick={(e) => {
           e.preventDefault();
+          onNavigate();
           navigateToRetoCheckout();
         }}
       >
@@ -150,6 +170,31 @@ function FloatingCheckout() {
     </>
   );
 }
+
+const checkoutNavOverlayCss = `
+.checkout-nav-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: rgba(10,10,10,0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #fff;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.checkout-nav-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(232,98,42,0.25);
+  border-top-color: #E8622A;
+  border-radius: 50%;
+  animation: checkout-nav-spin 0.8s linear infinite;
+}
+@keyframes checkout-nav-spin { to { transform: rotate(360deg); } }
+`;
 
 const floatingCheckoutCss = `
 .wa-float {

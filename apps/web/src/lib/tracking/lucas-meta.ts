@@ -4,7 +4,12 @@ import {
   getLucasRetoCheckoutPath,
   getLucasRetoGraciasUrl,
   getLucasRetoPrice,
+  getLucasRetoPublicBaseUrl,
 } from '@/app/(landings)/lucas-con-lucas/lucas-config';
+import {
+  prefetchRetoCheckoutSession,
+  preloadWhopCheckoutModule,
+} from '@/lib/lucas/whop-checkout-session';
 import { buildMetaTrackingPayload, createMetaEventId } from '@/lib/tracking/meta-capi';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -270,17 +275,26 @@ export function trackLucasRetoInitiateCheckout(): void {
   });
 }
 
+/** Prefetch Whop session en background mientras el usuario está en la landing. */
+export function warmRetoCheckoutSession(): void {
+  if (typeof window === 'undefined') return;
+  preloadWhopCheckoutModule();
+  void prefetchRetoCheckoutSession().catch(() => {
+    /* checkout page reintenta */
+  });
+}
+
 export function navigateToRetoCheckout(): void {
   if (typeof window === 'undefined') return;
+  preloadWhopCheckoutModule();
+  void prefetchRetoCheckoutSession();
   window.location.assign(getLucasRetoCheckoutPath());
 }
 
 export function getLucasRetoGraciasRedirectUrl(receiptId?: string): string {
-  const base = getLucasRetoGraciasUrl(
-    typeof window !== 'undefined' ? window.location.origin : undefined,
-  );
+  const base = getLucasRetoGraciasUrl();
   if (!receiptId) return base;
-  const url = new URL(base, typeof window !== 'undefined' ? window.location.origin : 'https://marketing.byafluence.com');
+  const url = new URL(base, getLucasRetoPublicBaseUrl());
   url.searchParams.set('receipt_id', receiptId);
   return url.pathname + url.search;
 }
