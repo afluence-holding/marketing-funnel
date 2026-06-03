@@ -16,7 +16,10 @@
     "start:web": "npm run start -w @marketing-funnel/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "whop": "whop",
-    "whop:companies": "node scripts/whop-list-companies.mjs"
+    "whop:companies": "node scripts/whop-list-companies.mjs",
+    "meta:build": "npm run build -w @marketing-funnel/meta-ads",
+    "meta:encrypt-token": "npm run meta:build && node packages/meta-ads/dist/scripts/encrypt-token.js",
+    "meta:pull-lucas": "npm run meta:build && node packages/meta-ads/dist/scripts/pull-bu.js --organizer-slug lucas-con-lucas --bu-slug main"
   },
   "repository": {
     "type": "git",
