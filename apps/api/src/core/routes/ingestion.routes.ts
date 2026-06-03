@@ -8,10 +8,17 @@ import { getBusinessUnitBinding } from '../../orgs';
 import { normalizePhoneAndGetTimezone } from '../utils/phone';
 import { moveStage } from '../services/lead-pipeline.service';
 import { saveCustomFieldValues } from '../services/custom-field.service';
+import { sendLucasRetoPurchaseCapi } from '../services/lucas-reto-purchase.service';
 import { sendMetaCapiEvent, buildMetaCapiUserData } from '../services/meta-capi.service';
+import {
+  createLucasRetoPurchaseEventId,
+  createLucasRetoWhopCheckoutSession,
+  WhopCheckoutError,
+} from '../services/whop-checkout.service';
 import { IDS as aiFactoryCreatorsIds } from '../../orgs/afluence/ai-factory-creators/config';
 import {
   LUCAS_CAPI,
+  getLucasRetoPriceFromEnv,
   resolveLucasIngestCapi,
 } from '../../orgs/lucas-con-lucas/main/tracking';
 
@@ -59,7 +66,7 @@ const meetingScheduledSchema = z.object({
 });
 
 const videoEventSchema = z.object({
-  eventName: z.enum(['VSL_25', 'VSL_50', 'VSL_75', 'VSL_100']),
+  eventName: z.enum(['VSL_25', 'VSL_50', 'VSL_75', 'VSL_100', 'InitiateCheckout']),
   source: z.string().min(1).optional(),
   contentName: z.string().min(1).optional(),
   milestone: z.number().int().min(0).max(100).optional(),
@@ -85,6 +92,21 @@ const lucasPurchaseSchema = z.object({
   phone: z.string().optional(),
   value: z.number().positive(),
   currency: z.string().default('CLP'),
+  source: z.string().optional(),
+  eventSourceUrl: z.string().url().optional(),
+  tracking: z
+    .object({
+      meta: z
+        .object({
+          fbp: z.string().min(1).optional(),
+          fbc: z.string().min(1).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+const lucasWhopCheckoutSessionSchema = z.object({
   tracking: z
     .object({
       meta: z
@@ -722,23 +744,38 @@ router.post(
         : xForwardedFor?.split(',')[0]?.trim() ?? req.ip;
       const capiCreds = getCapiCredentials(orgKey);
 
+      const lucasVideoCustomData =
+        orgKey === 'lucas-con-lucas'
+          ? {
+              content_ids: LUCAS_CAPI.reto.contentIds,
+              content_name: req.body.contentName ?? LUCAS_CAPI.reto.contentName,
+              content_type: LUCAS_CAPI.reto.contentType,
+              value: getLucasRetoPriceFromEnv(),
+              currency: LUCAS_CAPI.currency,
+              source: req.body.source ?? null,
+              milestone: req.body.milestone ?? null,
+              bu_key: buKey,
+            }
+          : {
+              content_name: req.body.contentName ?? req.body.source ?? 'unknown',
+              source: req.body.source ?? null,
+              milestone: req.body.milestone ?? null,
+              bu_key: buKey,
+            };
+
       try {
         await sendMetaCapiEvent({
           eventName: req.body.eventName,
           eventId,
           eventSourceUrl: req.get('referer') ?? req.get('origin'),
-          userData: {
+          userData: buildMetaCapiUserData({
             fbp: req.body.tracking?.meta?.fbp,
             fbc: req.body.tracking?.meta?.fbc,
+            country: orgKey === 'lucas-con-lucas' ? LUCAS_CAPI.country : undefined,
             clientIpAddress,
             clientUserAgent: req.get('user-agent') ?? undefined,
-          },
-          customData: {
-            content_name: req.body.contentName ?? req.body.source ?? 'unknown',
-            source: req.body.source ?? null,
-            milestone: req.body.milestone ?? null,
-            bu_key: buKey,
-          },
+          }),
+          customData: lucasVideoCustomData,
           ...capiCreds,
         });
       } catch (error) {
@@ -914,6 +951,36 @@ router.post('/ingest', (_req, res) => {
 });
 
 router.post(
+  '/orgs/lucas-con-lucas/bus/main/whop-checkout-session',
+  validate(lucasWhopCheckoutSessionSchema),
+  async (req, res, next) => {
+    try {
+      const purchaseEventId = createLucasRetoPurchaseEventId();
+      const session = await createLucasRetoWhopCheckoutSession({
+        purchaseEventId,
+        fbp: req.body.tracking?.meta?.fbp,
+        fbc: req.body.tracking?.meta?.fbc,
+      });
+
+      res.status(200).json({
+        ok: true,
+        sessionId: session.sessionId,
+        planId: session.planId,
+        purchaseEventId: session.purchaseEventId,
+        value: getLucasRetoPriceFromEnv(),
+        currency: LUCAS_CAPI.currency,
+      });
+    } catch (err) {
+      if (err instanceof WhopCheckoutError) {
+        res.status(err.statusCode).json({ error: err.message });
+        return;
+      }
+      next(err);
+    }
+  },
+);
+
+router.post(
   '/orgs/lucas-con-lucas/bus/main/purchase',
   validate(lucasPurchaseSchema),
   async (req, res, next) => {
@@ -922,37 +989,37 @@ router.post(
       const clientIpAddress = Array.isArray(xForwardedFor)
         ? xForwardedFor[0]
         : xForwardedFor?.split(',')[0]?.trim() ?? req.ip;
-      const capiCreds = getCapiCredentials('lucas-con-lucas');
-      const { eventId, orderId, email, firstName, lastName, phone, value, currency } = req.body;
-      const reto = LUCAS_CAPI.reto;
-
-      await sendMetaCapiEvent({
-        eventName: 'Purchase',
+      const {
         eventId,
+        orderId,
+        email,
+        firstName,
+        lastName,
+        phone,
+        value,
+        currency,
+        source,
+        eventSourceUrl,
+      } = req.body;
+
+      await sendLucasRetoPurchaseCapi({
+        eventId,
+        orderId,
+        email,
+        firstName,
+        lastName,
+        phone,
+        value,
+        currency,
+        source,
         eventSourceUrl:
+          eventSourceUrl ??
           req.get('referer') ??
           'https://marketing.byafluence.com/lucas-con-lucas/reto/gracias',
-        userData: buildMetaCapiUserData({
-          email,
-          phone,
-          firstName,
-          lastName,
-          country: LUCAS_CAPI.country,
-          fbp: req.body.tracking?.meta?.fbp,
-          fbc: req.body.tracking?.meta?.fbc,
-          clientIpAddress,
-          clientUserAgent: req.get('user-agent') ?? undefined,
-        }),
-        customData: {
-          content_ids: reto.contentIds,
-          content_name: reto.contentName,
-          content_type: reto.contentType,
-          value,
-          currency,
-          order_id: orderId,
-          num_items: 1,
-        },
-        ...capiCreds,
+        fbp: req.body.tracking?.meta?.fbp,
+        fbc: req.body.tracking?.meta?.fbc,
+        clientIpAddress,
+        clientUserAgent: req.get('user-agent') ?? undefined,
       });
 
       res.status(200).json({ ok: true, eventId, orderId });

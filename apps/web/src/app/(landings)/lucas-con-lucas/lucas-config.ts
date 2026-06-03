@@ -25,7 +25,11 @@ export const LUCAS = {
     contentName: 'Reto Lucas con Luca$ 15 días',
     contentCategory: 'reto-low-ticket',
     contentType: 'product',
+    source: 'landing-lucas-con-lucas-reto',
+    checkoutPath: '/lucas-con-lucas/reto/checkout',
     checkoutUrl: 'https://whop.com/checkout/plan_aKOjfecUWLzFo',
+    planId:
+      process.env.NEXT_PUBLIC_WHOP_LUCAS_RETO_PLAN_ID ?? 'plan_aKOjfecUWLzFo',
     graciasPath: '/lucas-con-lucas/reto/gracias',
     /** Tier vigente — override con NEXT_PUBLIC_LUCAS_RETO_PRICE */
     defaultPrice: 77000,
@@ -39,6 +43,11 @@ export function getLucasRetoPrice(): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : LUCAS.reto.defaultPrice;
 }
 
-export function getLucasRetoGraciasUrl(): string {
-  return `https://marketing.byafluence.com${LUCAS.reto.graciasPath}?status=success`;
+export function getLucasRetoGraciasUrl(origin?: string): string {
+  const base = origin ?? 'https://marketing.byafluence.com';
+  return `${base.replace(/\/$/, '')}${LUCAS.reto.graciasPath}?status=success`;
+}
+
+export function getLucasRetoCheckoutPath(): string {
+  return LUCAS.reto.checkoutPath;
 }
