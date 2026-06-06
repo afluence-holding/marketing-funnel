@@ -7,8 +7,10 @@ type LeadRow = Record<string, string>;
 type LeadsResponse = {
   ok?: boolean;
   total?: number;
+  storage?: string;
   data?: LeadRow[];
   error?: string;
+  details?: string;
 };
 
 const ACTION_COLUMN_STYLE: CSSProperties = {
@@ -60,14 +62,38 @@ function getDetailEntries(row: LeadRow) {
 
 export default function BukkuResponsesView() {
   const [rows, setRows] = useState<LeadRow[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [storage, setStorage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorDetails, setErrorDetails] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState('');
+  const [exporting, setExporting] = useState<'csv' | 'xlsx' | null>(null);
+
+  const canExport = !loading && !error && rows.length > 0;
+
+  async function handleExport(format: 'csv' | 'xlsx') {
+    if (!canExport || exporting) return;
+    setExporting(format);
+    try {
+      const { downloadLeadsCsv, downloadLeadsXlsx } = await import('@/lib/bukku/export-leads');
+      if (format === 'csv') {
+        downloadLeadsCsv(rows);
+      } else {
+        await downloadLeadsXlsx(rows);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo exportar');
+    } finally {
+      setExporting(null);
+    }
+  }
 
   const loadLeads = useCallback(async (token?: string) => {
     setLoading(true);
     setError('');
+    setErrorDetails('');
 
     try {
       const params = new URLSearchParams(window.location.search);
@@ -83,13 +109,21 @@ export default function BukkuResponsesView() {
 
       if (!res.ok) {
         setRows([]);
+        setTotal(null);
+        setStorage('');
         setError(payload.error ?? `Error ${res.status}`);
+        setErrorDetails(payload.details ?? '');
         return;
       }
 
-      setRows(Array.isArray(payload.data) ? payload.data : []);
+      const data = Array.isArray(payload.data) ? payload.data : [];
+      setRows(data);
+      setTotal(typeof payload.total === 'number' ? payload.total : data.length);
+      setStorage(payload.storage ?? '');
     } catch (err) {
       setRows([]);
+      setTotal(null);
+      setStorage('');
       setError(err instanceof Error ? err.message : 'No se pudo cargar');
     } finally {
       setLoading(false);
@@ -168,8 +202,44 @@ export default function BukkuResponsesView() {
           >
             Actualizar
           </button>
+          <button
+            type="button"
+            disabled={!canExport || exporting !== null}
+            onClick={() => void handleExport('csv')}
+            style={{
+              background: canExport ? '#2D2438' : '#C4B8C4',
+              color: 'white',
+              border: 'none',
+              borderRadius: 10,
+              padding: '10px 16px',
+              fontWeight: 700,
+              cursor: canExport && !exporting ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {exporting === 'csv' ? 'Exportando…' : 'CSV'}
+          </button>
+          <button
+            type="button"
+            disabled={!canExport || exporting !== null}
+            onClick={() => void handleExport('xlsx')}
+            style={{
+              background: canExport ? '#0DAA65' : '#A8DCC4',
+              color: 'white',
+              border: 'none',
+              borderRadius: 10,
+              padding: '10px 16px',
+              fontWeight: 700,
+              cursor: canExport && !exporting ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {exporting === 'xlsx' ? 'Exportando…' : 'Excel'}
+          </button>
           <span style={{ color: '#8B6F8B', fontSize: 14 }}>
-            {loading ? 'Cargando…' : `${rows.length} respuesta${rows.length === 1 ? '' : 's'}`}
+            {loading
+              ? 'Cargando…'
+              : `${total ?? rows.length} respuesta${(total ?? rows.length) === 1 ? '' : 's'}${
+                  storage ? ` · ${storage}` : ''
+                }`}
           </span>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <input
@@ -217,6 +287,25 @@ export default function BukkuResponsesView() {
             {error === 'Unauthorized'
               ? 'Acceso no autorizado. Agrega ?token=TU_TOKEN en la URL o usa el campo de token.'
               : error}
+            {errorDetails ? (
+              <p style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>{errorDetails}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!loading && !error && storage && storage !== 'supabase' ? (
+          <div
+            style={{
+              background: '#FFF8E8',
+              border: '1px solid #E8DAC0',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 20,
+              color: '#6A4A12',
+            }}
+          >
+            Los datos vienen de <code>{storage}</code>, no de Supabase. Puede no coincidir con la
+            base de datos.
           </div>
         ) : null}
 
