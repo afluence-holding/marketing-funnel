@@ -38,6 +38,18 @@ export async function POST(request: Request) {
       }
     }
 
+    if (process.env.NODE_ENV === 'production') {
+      const errorText = await response.text().catch(() => '');
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Lead storage unavailable. Please try again later.',
+          details: `API ${response.status}: ${errorText.slice(0, 200)}`,
+        },
+        { status: 503 },
+      );
+    }
+
     const record = await upsertBukkuLead({
       email,
       firstName: payload.firstName,

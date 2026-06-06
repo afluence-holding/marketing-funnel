@@ -9,3 +9,14 @@ export function getBukkuBackendBaseUrl() {
 }
 
 export const BUKKU_LEADS_API_PATH = '/api/bukku/leads';
+
+/** Token explicitly provided by the client (URL or header). */
+export function getBukkuUserViewToken(request: Request): string {
+  const url = new URL(request.url);
+  return url.searchParams.get('token') ?? request.headers.get('x-view-token') ?? '';
+}
+
+/** Token to authenticate with the API — user token first, then server env. */
+export function resolveBukkuApiViewToken(request: Request): string {
+  return getBukkuUserViewToken(request) || process.env.BUKKU_VIEW_TOKEN || '';
+}
