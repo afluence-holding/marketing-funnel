@@ -51,7 +51,10 @@ for f in \
   "apps/web/src/app/(landings)/caro-fitness/diagnostico/raw/route.ts" \
   "apps/web/src/app/(landings)/caro-fitness/diagnostico/landing.html" \
   "apps/web/src/app/api/caro-fitness/ingest/route.ts" \
+  "apps/web/src/app/api/caro-fitness/progress/route.ts" \
   "apps/web/src/lib/caro-fitness/api-config.ts" \
+  "apps/api/src/core/routes/caro-fitness-progress.routes.ts" \
+  "apps/api/src/core/services/caro-fitness-progress.service.ts" \
   "apps/api/src/orgs/caro-fitness/main/config.ts"; do
   [[ -f "$ROOT/$f" ]] && pass "exists: $f" || fail "missing: $f"
 done
@@ -63,6 +66,10 @@ grep -q "iframe-height" "$LANDING_HTML" && pass "landing posts iframe-height" ||
 grep -q "/api/caro-fitness/ingest" "$LANDING_HTML" && pass "INGEST_PATH same-origin proxy" || fail "INGEST_PATH wrong"
 grep -q "buildIngestPayload" "$LANDING_HTML" && pass "buildIngestPayload with quiz fields" || fail "buildIngestPayload missing"
 grep -q "proteina_meta_g" "$LANDING_HTML" && pass "customFields include protein calc" || fail "proteina_meta_g missing"
+grep -q "PROGRESS_PATH" "$LANDING_HTML" && pass "landing has progress autosave path" || fail "PROGRESS_PATH missing"
+grep -q "scheduleProgressSave" "$LANDING_HTML" && pass "landing schedules progress saves" || fail "scheduleProgressSave missing"
+grep -q "intro-cta-top" "$LANDING_HTML" && pass "CTA moved to top of intro" || fail "intro-cta-top missing"
+grep -q "cta-actions-hidden" "$LANDING_HTML" && pass "webinar/WhatsApp CTAs hidden" || fail "cta-actions-hidden missing"
 
 section "1. Environment"
 [[ -n "${CARO_FITNESS_ORG_ID:-}" ]] && pass "CARO_FITNESS_ORG_ID set" || fail "CARO_FITNESS_ORG_ID missing"
@@ -133,7 +140,9 @@ grep -q "Caro Manrique" /tmp/qa_caro_raw.html && pass "raw HTML brand Caro Manri
 grep -q "submitCaroLead" /tmp/qa_caro_raw.html && pass "raw HTML has submitCaroLead" || fail "submitCaroLead missing"
 grep -q "computeResults" /tmp/qa_caro_raw.html && pass "raw HTML has computeResults" || fail "computeResults missing"
 grep -q "goWebinar" /tmp/qa_caro_raw.html && pass "raw HTML has webinar CTA" || fail "goWebinar missing"
-grep -q "joinWhatsApp" /tmp/qa_caro_raw.html && pass "raw HTML has WhatsApp CTA" || fail "joinWhatsApp missing"
+grep -q "joinWhatsApp" /tmp/qa_caro_raw.html && pass "raw HTML has WhatsApp CTA (hidden)" || fail "joinWhatsApp missing"
+grep -q "cta-actions-hidden" /tmp/qa_caro_raw.html && pass "raw HTML hides webinar/WhatsApp CTAs" || fail "cta-actions-hidden missing in raw"
+grep -q "intro-cta-top" /tmp/qa_caro_raw.html && pass "raw HTML has top intro CTA" || fail "intro-cta-top missing in raw"
 grep -q "data-screen=\"lead\"" /tmp/qa_caro_raw.html && pass "lead capture screen present" || fail "lead screen missing"
 grep -q "data-screen=\"results\"" /tmp/qa_caro_raw.html && pass "results screen present" || fail "results screen missing"
 
@@ -194,6 +203,51 @@ code=$(curl -s -o /tmp/qa_caro_web_bad.json -w "%{http_code}" -X POST "$WEB/api/
   -H "Content-Type: application/json" \
   -d '{"source":"'"$SOURCE"'","firstName":"No Email"}' 2>/dev/null || echo "000")
 [[ "$code" == "400" ]] && pass "web proxy rejects missing email → 400" || fail "should reject missing email → $code"
+
+section "4b. Progress autosave"
+PROGRESS_SESSION="qa-caro-progress-${TS}"
+PROGRESS_PAYLOAD=$(cat <<EOF
+{
+  "sessionId": "$PROGRESS_SESSION",
+  "source": "$SOURCE",
+  "quizStep": "q-sexo",
+  "status": "in_progress",
+  "answers": {"sexo": "mujer", "objetivo": "grasa"},
+  "utmData": {"utm_source": "qa-deep"}
+}
+EOF
+)
+code=$(curl -s -o /tmp/qa_caro_progress_web.json -w "%{http_code}" -X POST "$WEB/api/caro-fitness/progress" \
+  -H "Content-Type: application/json" \
+  -d "$PROGRESS_PAYLOAD" 2>/dev/null || echo "000")
+if [[ "$code" == "201" || "$code" == "200" ]]; then
+  pass "POST /api/caro-fitness/progress → $code"
+  grep -q '"sessionId"' /tmp/qa_caro_progress_web.json && pass "progress response includes sessionId" || warn "progress response shape unexpected"
+else
+  fail "POST /api/caro-fitness/progress → $code: $(cat /tmp/qa_caro_progress_web.json 2>/dev/null | head -c 300)"
+fi
+
+MERGE_PAYLOAD=$(cat <<EOF
+{
+  "sessionId": "$PROGRESS_SESSION",
+  "source": "$SOURCE",
+  "email": "qa-caro-partial-${TS}@afluence-test.invalid",
+  "firstName": "Partial QA",
+  "quizStep": "lead",
+  "status": "in_progress",
+  "answers": {"sexo": "mujer", "objetivo": "grasa", "edad": "25-35"}
+}
+EOF
+)
+code=$(curl -s -o /tmp/qa_caro_progress_merge.json -w "%{http_code}" -X POST "$WEB/api/caro-fitness/progress" \
+  -H "Content-Type: application/json" \
+  -d "$MERGE_PAYLOAD" 2>/dev/null || echo "000")
+[[ "$code" == "201" || "$code" == "200" ]] && pass "progress upsert merges answers by sessionId" || fail "progress merge → $code"
+
+code=$(curl -s -o /tmp/qa_caro_progress_bad.json -w "%{http_code}" -X POST "$WEB/api/caro-fitness/progress" \
+  -H "Content-Type: application/json" \
+  -d '{"source":"'"$SOURCE"'","answers":{"sexo":"mujer"}}' 2>/dev/null || echo "000")
+[[ "$code" == "400" ]] && pass "progress rejects missing sessionId → 400" || fail "progress should reject missing sessionId → $code"
 
 section "5. Direct API ingest (dedup update)"
 DEDUP_EMAIL="qa-caro-dedup-${TS}@afluence-test.invalid"
