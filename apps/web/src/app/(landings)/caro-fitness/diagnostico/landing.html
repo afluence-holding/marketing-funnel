@@ -61,18 +61,28 @@ body{
 .topbar.hide{opacity:0;pointer-events:none;height:0;padding:0;overflow:hidden}
 .stage{
   flex:1;display:flex;flex-direction:column;justify-content:flex-start;
-  padding:var(--s-3) 0 var(--s-6);
+  padding:var(--s-4) 0 var(--s-6);
 }
 .screen{display:none;animation:fade .45s ease both}
-.screen.active{display:flex;flex-direction:column;gap:var(--s-4)}
+.screen.active{display:flex;flex-direction:column;gap:var(--s-5)}
+.screen.active[data-screen="intro"]{gap:var(--s-7)}
 @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .eyebrow{
   font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--rust-soft);
   margin:0;
 }
+.intro-eyebrow{text-align:left;flex-shrink:0}
+.intro-topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:var(--s-4);flex-wrap:wrap;width:100%;
+}
+.intro-topbar .meta-row{
+  justify-content:flex-end;flex:1;min-width:0;
+}
+.intro-topbar .meta-row span{font-size:11px;white-space:nowrap}
 h1{
   font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;
-  font-size:clamp(36px,10vw,62px);line-height:.94;letter-spacing:-.5px;
+  font-size:clamp(36px,10vw,62px);line-height:1.08;letter-spacing:-.5px;
   margin:0;
 }
 h1 .o{color:var(--rust)}
@@ -81,12 +91,20 @@ h1 .o{color:var(--rust)}
 .meta-row span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .meta-row b{color:var(--cream);font-weight:600}
 .dot{width:4px;height:4px;border-radius:99px;background:var(--rust);flex:none}
+.intro-body{
+  display:flex;align-items:center;gap:var(--s-6);
+}
+.intro-copy{
+  flex:1;min-width:0;
+  display:flex;flex-direction:column;gap:var(--s-4);
+}
 .intro-visual{
-  width:min(100%,200px);
+  flex:none;
+  width:300px;
   aspect-ratio:4/5;
   border-radius:14px;
   overflow:hidden;
-  margin:0 auto;
+  margin:0;
   border:1px solid var(--line);
   background:var(--surface);
   box-shadow:0 16px 48px rgba(0,0,0,.22);
@@ -99,10 +117,10 @@ h1 .o{color:var(--rust)}
   object-position:center 22%;
 }
 .q-num{font-family:'Anton';font-size:13px;color:var(--rust);letter-spacing:2px;margin:0}
-.q-title{font-family:'Anton';text-transform:uppercase;font-size:clamp(24px,6.5vw,36px);line-height:1.02;letter-spacing:-.5px;margin:0}
+.q-title{font-family:'Anton';text-transform:uppercase;font-size:clamp(24px,6.5vw,36px);line-height:1.12;letter-spacing:-.5px;margin:0}
 .q-sub{color:var(--muted);font-size:14px;margin:0;line-height:1.45}
-.q-block{display:flex;flex-direction:column;gap:var(--s-2)}
-.opts{display:grid;gap:var(--s-3);margin:0}
+.q-block{display:flex;flex-direction:column;gap:var(--s-3)}
+.opts{display:grid;gap:var(--s-4);margin:0}
 .opt{
   background:var(--surface);border:1px solid var(--line);border-radius:14px;
   padding:var(--s-4);cursor:pointer;display:flex;align-items:center;gap:var(--s-4);
@@ -134,9 +152,27 @@ h1 .o{color:var(--rust)}
   padding:14px var(--s-4);color:var(--cream);font-family:inherit;font-size:16px;outline:none;transition:.2s;
 }
 .field input:focus{border-color:var(--rust)}
-.nav{display:flex;align-items:center;gap:var(--s-3);margin:0;margin-top:var(--s-2)}
-.nav.intro-cta-top{margin:0;margin-bottom:calc(var(--s-4) * -1 + var(--s-2))}
-.nav.intro-cta-top .btn{width:100%;justify-content:center}
+.phone-wrap{display:grid;grid-template-columns:118px 1fr;gap:var(--s-3);align-items:stretch}
+.country-select{position:relative}
+.country-select select{
+  width:100%;height:100%;min-height:48px;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:0 28px 0 var(--s-3);color:var(--cream);font-family:inherit;font-size:14px;
+  outline:none;transition:.2s;appearance:none;cursor:pointer;
+}
+.country-select::after{
+  content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  color:var(--muted);pointer-events:none;font-size:11px;
+}
+.country-select select:focus{border-color:var(--rust)}
+.phone-wrap input{
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:14px var(--s-4);color:var(--cream);font-family:inherit;font-size:16px;outline:none;transition:.2s;
+}
+.phone-wrap input:focus{border-color:var(--rust)}
+.nav{display:flex;align-items:center;gap:var(--s-3);margin:0;margin-top:var(--s-3)}
+.nav.intro-cta-bottom{margin:var(--s-2) 0 0}
+.nav.intro-cta-bottom .btn{width:100%;justify-content:center}
 .cta-actions-hidden{display:none!important}
 .btn{
   font-family:'Hanken Grotesk';font-weight:700;font-size:14px;letter-spacing:.4px;
@@ -165,7 +201,7 @@ h1 .o{color:var(--rust)}
 .mini .v small{font-size:14px;color:var(--muted)}
 .sec-label{
   font-family:'Anton';text-transform:uppercase;font-size:14px;letter-spacing:.8px;color:var(--rust);
-  margin:var(--s-2) 0 0;display:flex;align-items:center;gap:var(--s-3);
+  margin:var(--s-4) 0 0;display:flex;align-items:center;gap:var(--s-3);
 }
 .sec-label::after{content:"";flex:1;height:1px;background:var(--line)}
 .flags{display:flex;flex-direction:column;gap:var(--s-3)}
@@ -189,11 +225,12 @@ h1 .o{color:var(--rust)}
 .foot{text-align:center;color:var(--muted);font-size:11px;padding:var(--s-4) 0 var(--s-5)}
 @media(max-width:480px){
   .mini-grid{grid-template-columns:1fr}
-  .intro-visual{width:min(100%,180px)}
+  .intro-visual{width:300px;max-width:100%}
+  .intro-topbar{gap:var(--s-2)}
+  .intro-topbar .meta-row span{font-size:10px;gap:4px}
+  .intro-topbar .meta-row{gap:var(--s-2)}
+  .phone-wrap{grid-template-columns:108px 1fr}
   .wrap{padding:0 var(--s-4)}
-}
-@media(min-width:520px){
-  .intro-visual{width:min(100%,220px)}
 }
 </style>
 </head>
@@ -205,16 +242,22 @@ h1 .o{color:var(--rust)}
   </div>
   <div class="stage">
     <section class="screen active" data-screen="intro">
-      <div class="nav intro-cta-top"><button class="btn" onclick="start()">Empezar diagnóstico <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
-      <div class="eyebrow">Solo para quienes ya entrenan</div>
-      <h1>¿Tu nutrición está a la <span class="o">altura</span> de tu entrenamiento?</h1>
-      <p class="lead">Un diagnóstico rápido que cruza tu objetivo, tu entrenamiento y tu alimentación para detectar exactamente qué te está frenando.</p>
-      <div class="meta-row">
-        <span><i class="dot"></i> <b>2 minutos</b></span>
-        <span><i class="dot"></i> Resultado <b>personalizado</b></span>
-        <span><i class="dot"></i> 100% <b>gratis</b></span>
+      <div class="intro-topbar">
+        <div class="eyebrow intro-eyebrow">Solo para quienes ya entrenan</div>
+        <div class="meta-row">
+          <span><i class="dot"></i> <b>2 minutos</b></span>
+          <span><i class="dot"></i> Resultado <b>personalizado</b></span>
+          <span><i class="dot"></i> 100% <b>gratis</b></span>
+        </div>
       </div>
-      <div class="intro-visual"><img src="/caro-fitness/diagnostico/intro.png" alt="Caro Manrique"></div>
+      <div class="intro-body">
+        <div class="intro-visual"><img src="/caro-fitness/diagnostico/intro.png" alt="Caro Manrique"></div>
+        <div class="intro-copy">
+          <h1>¿Tu nutrición está a la <span class="o">altura</span> de tu entrenamiento?</h1>
+          <p class="lead">Un diagnóstico rápido que cruza tu objetivo, tu entrenamiento y tu alimentación para detectar exactamente qué te está frenando.</p>
+        </div>
+      </div>
+      <div class="nav intro-cta-bottom"><button class="btn" onclick="start()">Empezar diagnóstico <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
     </section>
     <section class="screen" data-screen="q" data-key="objetivo">
       <div class="q-block">
@@ -343,7 +386,35 @@ h1 .o{color:var(--rust)}
       <div class="fields">
         <div class="field"><label>TU NOMBRE</label><input id="nombre" type="text" placeholder="Carolina" autocomplete="given-name"></div>
         <div class="field"><label>TU CORREO</label><input id="email" type="email" placeholder="tucorreo@email.com" autocomplete="email"></div>
-        <div class="field"><label>TU WHATSAPP</label><input id="whatsapp" type="tel" placeholder="+57 300 000 0000" autocomplete="tel" required inputmode="tel"></div>
+        <div class="field">
+          <label>TU WHATSAPP</label>
+          <div class="phone-wrap">
+            <div class="country-select">
+              <select id="country-code" aria-label="Código de país">
+                <option value="+57" data-country="Colombia" selected>🇨🇴 +57</option>
+                <option value="+52" data-country="México">🇲🇽 +52</option>
+                <option value="+54" data-country="Argentina">🇦🇷 +54</option>
+                <option value="+56" data-country="Chile">🇨🇱 +56</option>
+                <option value="+51" data-country="Perú">🇵🇪 +51</option>
+                <option value="+593" data-country="Ecuador">🇪🇨 +593</option>
+                <option value="+58" data-country="Venezuela">🇻🇪 +58</option>
+                <option value="+591" data-country="Bolivia">🇧🇴 +591</option>
+                <option value="+595" data-country="Paraguay">🇵🇾 +595</option>
+                <option value="+598" data-country="Uruguay">🇺🇾 +598</option>
+                <option value="+507" data-country="Panamá">🇵🇦 +507</option>
+                <option value="+506" data-country="Costa Rica">🇨🇷 +506</option>
+                <option value="+502" data-country="Guatemala">🇬🇹 +502</option>
+                <option value="+503" data-country="El Salvador">🇸🇻 +503</option>
+                <option value="+504" data-country="Honduras">🇭🇳 +504</option>
+                <option value="+505" data-country="Nicaragua">🇳🇮 +505</option>
+                <option value="+1" data-country="Estados Unidos">🇺🇸 +1</option>
+                <option value="+34" data-country="España">🇪🇸 +34</option>
+                <option value="+55" data-country="Brasil">🇧🇷 +55</option>
+              </select>
+            </div>
+            <input id="whatsapp" type="tel" placeholder="300 000 0000" autocomplete="tel-national" required inputmode="tel">
+          </div>
+        </div>
       </div>
       <p id="lead-error" class="disclaimer" style="color:var(--rust-soft);opacity:1;display:none"></p>
       <div class="nav"><button class="btn" id="lead-btn" disabled onclick="submitLead()">Ver mi diagnóstico <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
@@ -400,7 +471,7 @@ function getSessionId(){
   }
 }
 const sessionId=getSessionId();
-const data={objetivo:null,sexo:null,edad:null,peso:null,frecuencia:null,tipo:null,proteina:null,sueno:null,frustracion:null,nombre:'',email:'',whatsapp:''};
+const data={objetivo:null,sexo:null,edad:null,peso:null,frecuencia:null,tipo:null,proteina:null,sueno:null,frustracion:null,nombre:'',email:'',whatsapp:'',countryCode:'+57',country:'Colombia'};
 const flow=['intro','q-sexo','q-objetivo','q-edad','q-peso','q-frecuencia','q-tipo','q-proteina','q-sueno','q-frustracion','lead','results'];
 let idx=0;
 const screens={};
@@ -440,13 +511,14 @@ function buildProgressAnswers(){
   return answers;
 }
 function buildProgressPayload(overrides){
+  syncPhoneData();
   const step=flow[idx]||'intro';
   return Object.assign({
     sessionId:sessionId,
     source:FORM_SOURCE,
     email:data.email.trim().toLowerCase(),
     firstName:data.nombre.trim(),
-    phone:data.whatsapp.trim(),
+    phone:getFullPhone(),
     quizStep:step,
     status:step==='results'?'completed':'in_progress',
     answers:buildProgressAnswers(),
@@ -504,16 +576,29 @@ pesoEl.addEventListener('input',()=>{
   scheduleProgressSave();
 });
 pesoEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!document.getElementById('peso-next').disabled)next();});
-const nombreEl=document.getElementById('nombre'),emailEl=document.getElementById('email'),whatsappEl=document.getElementById('whatsapp');
+const nombreEl=document.getElementById('nombre'),emailEl=document.getElementById('email'),whatsappEl=document.getElementById('whatsapp'),countryCodeEl=document.getElementById('country-code');
 const leadErrorEl=document.getElementById('lead-error');
-function isValidPhone(v){return v.replace(/\D/g,'').length>=8;}
+function getPhoneLocal(){return whatsappEl.value.trim();}
+function getFullPhone(){
+  const local=getPhoneLocal().replace(/\D/g,'');
+  if(!local)return '';
+  return countryCodeEl.value.replace(/\s/g,'')+local;
+}
+function syncPhoneData(){
+  data.whatsapp=getPhoneLocal();
+  data.countryCode=countryCodeEl.value;
+  data.country=countryCodeEl.selectedOptions[0]?.dataset.country||'';
+}
+function isValidPhoneLocal(v){return v.replace(/\D/g,'').length>=8;}
 function checkLead(){
-  const ok=nombreEl.value.trim().length>1 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailEl.value.trim()) && isValidPhone(whatsappEl.value.trim());
+  syncPhoneData();
+  const ok=nombreEl.value.trim().length>1 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailEl.value.trim()) && isValidPhoneLocal(getPhoneLocal());
   document.getElementById('lead-btn').disabled=!ok;
 }
 nombreEl.addEventListener('input',()=>{data.nombre=nombreEl.value.trim();checkLead();scheduleProgressSave();});
 emailEl.addEventListener('input',()=>{data.email=emailEl.value.trim();checkLead();scheduleProgressSave();});
-whatsappEl.addEventListener('input',()=>{data.whatsapp=whatsappEl.value.trim();checkLead();scheduleProgressSave();});
+whatsappEl.addEventListener('input',()=>{checkLead();scheduleProgressSave();});
+countryCodeEl.addEventListener('change',()=>{checkLead();scheduleProgressSave();});
 window.addEventListener('beforeunload',()=>{if(idx>0)saveProgressNow({status:'abandoned'});});
 function computeResults(){
   const baseFactor={grasa:2.1,musculo:2.0,rendimiento:1.8,mantener:1.6}[data.objetivo]||1.8;
@@ -593,14 +678,18 @@ function buildResultsDom(results){
   document.getElementById('cta-text').textContent=cta[1];
 }
 function buildIngestPayload(results){
+  syncPhoneData();
   return {
     source:FORM_SOURCE,
     channel:'inbound',
     email:data.email.trim().toLowerCase(),
     firstName:data.nombre.trim(),
-    phone:data.whatsapp.trim(),
+    phone:getFullPhone(),
     customFields:{
       landing:'diagnostico',
+      country_code:toStr(data.countryCode),
+      country:toStr(data.country),
+      whatsapp_local:toStr(data.whatsapp),
       sexo:toStr(data.sexo),
       objetivo:toStr(data.objetivo),
       edad:toStr(data.edad),
@@ -623,7 +712,7 @@ function buildIngestPayload(results){
 async function submitLead(){
   data.nombre=nombreEl.value.trim();
   data.email=emailEl.value.trim();
-  data.whatsapp=whatsappEl.value.trim();
+  syncPhoneData();
   const btn=document.getElementById('lead-btn');
   const defaultHtml=btn.innerHTML;
   leadErrorEl.style.display='none';

@@ -68,7 +68,7 @@ grep -q "buildIngestPayload" "$LANDING_HTML" && pass "buildIngestPayload with qu
 grep -q "proteina_meta_g" "$LANDING_HTML" && pass "customFields include protein calc" || fail "proteina_meta_g missing"
 grep -q "PROGRESS_PATH" "$LANDING_HTML" && pass "landing has progress autosave path" || fail "PROGRESS_PATH missing"
 grep -q "scheduleProgressSave" "$LANDING_HTML" && pass "landing schedules progress saves" || fail "scheduleProgressSave missing"
-grep -q "intro-cta-top" "$LANDING_HTML" && pass "CTA moved to top of intro" || fail "intro-cta-top missing"
+grep -q "intro-cta-bottom" "$LANDING_HTML" && pass "CTA at bottom of intro" || fail "intro-cta-bottom missing"
 grep -q "cta-actions-hidden" "$LANDING_HTML" && pass "webinar/WhatsApp CTAs hidden" || fail "cta-actions-hidden missing"
 
 section "1. Environment"
@@ -142,7 +142,7 @@ grep -q "computeResults" /tmp/qa_caro_raw.html && pass "raw HTML has computeResu
 grep -q "goWebinar" /tmp/qa_caro_raw.html && pass "raw HTML has webinar CTA" || fail "goWebinar missing"
 grep -q "joinWhatsApp" /tmp/qa_caro_raw.html && pass "raw HTML has WhatsApp CTA (hidden)" || fail "joinWhatsApp missing"
 grep -q "cta-actions-hidden" /tmp/qa_caro_raw.html && pass "raw HTML hides webinar/WhatsApp CTAs" || fail "cta-actions-hidden missing in raw"
-grep -q "intro-cta-top" /tmp/qa_caro_raw.html && pass "raw HTML has top intro CTA" || fail "intro-cta-top missing in raw"
+grep -q "intro-cta-bottom" /tmp/qa_caro_raw.html && pass "raw HTML has bottom intro CTA" || fail "intro-cta-bottom missing in raw"
 grep -q "data-screen=\"lead\"" /tmp/qa_caro_raw.html && pass "lead capture screen present" || fail "lead screen missing"
 grep -q "data-screen=\"results\"" /tmp/qa_caro_raw.html && pass "results screen present" || fail "results screen missing"
 
