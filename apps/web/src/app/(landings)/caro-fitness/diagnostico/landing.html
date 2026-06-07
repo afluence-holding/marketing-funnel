@@ -65,19 +65,19 @@ body{
 }
 .screen{display:none;animation:fade .45s ease both}
 .screen.active{display:flex;flex-direction:column;gap:var(--s-5)}
-.screen.active[data-screen="intro"]{gap:var(--s-7)}
+.screen.active[data-screen="intro"]{gap:var(--s-6)}
 @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .eyebrow{
   font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--rust-soft);
   margin:0;
 }
-.intro-eyebrow{text-align:left;flex-shrink:0}
+.intro-eyebrow{text-align:center;flex-shrink:0}
 .intro-topbar{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:var(--s-4);flex-wrap:wrap;width:100%;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  gap:var(--s-3);width:100%;
 }
 .intro-topbar .meta-row{
-  justify-content:flex-end;flex:1;min-width:0;
+  justify-content:center;flex:none;width:100%;gap:var(--s-3);
 }
 .intro-topbar .meta-row span{font-size:11px;white-space:nowrap}
 h1{
@@ -92,15 +92,16 @@ h1 .o{color:var(--rust)}
 .meta-row b{color:var(--cream);font-weight:600}
 .dot{width:4px;height:4px;border-radius:99px;background:var(--rust);flex:none}
 .intro-body{
-  display:flex;align-items:center;gap:var(--s-6);
+  display:flex;flex-direction:column;align-items:center;gap:var(--s-5);width:100%;
 }
 .intro-copy{
-  flex:1;min-width:0;
-  display:flex;flex-direction:column;gap:var(--s-4);
+  flex:none;width:100%;min-width:0;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--s-4);
 }
+.intro-copy .lead{max-width:36ch}
 .intro-visual{
   flex:none;
-  width:300px;
+  width:min(100%,200px);
   aspect-ratio:4/5;
   border-radius:14px;
   overflow:hidden;
@@ -223,14 +224,55 @@ h1 .o{color:var(--rust)}
 .webinar-meta svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
 .disclaimer{color:var(--muted);font-size:11px;line-height:1.45;margin:0;opacity:.65}
 .foot{text-align:center;color:var(--muted);font-size:11px;padding:var(--s-4) 0 var(--s-5)}
-@media(max-width:480px){
+@media(min-width:640px){
+  .intro-topbar{
+    flex-direction:row;align-items:center;justify-content:space-between;
+    text-align:left;gap:var(--s-4);
+  }
+  .intro-eyebrow{text-align:left}
+  .intro-topbar .meta-row{justify-content:flex-end;flex:1;min-width:0}
+  .intro-body{
+    flex-direction:row;align-items:center;gap:var(--s-6);
+  }
+  .intro-copy{
+    flex:1;align-items:flex-start;text-align:left;
+  }
+  .intro-visual{width:260px}
+}
+@media(min-width:720px){
+  .intro-visual{width:300px}
+}
+@media(max-width:639px){
+  .wrap{padding:0 max(var(--s-4),env(safe-area-inset-right)) 0 max(var(--s-4),env(safe-area-inset-left))}
+  .stage{padding:var(--s-3) 0 max(var(--s-5),env(safe-area-inset-bottom))}
+  .screen.active{gap:var(--s-4)}
+  .screen.active[data-screen="intro"]{gap:var(--s-5)}
+  .intro-copy{order:1}
+  .intro-visual{order:2}
+  h1{font-size:clamp(30px,8.8vw,40px);line-height:1.1}
+  .intro-copy h1{font-size:clamp(28px,8.2vw,38px)}
+  .lead{font-size:15px;line-height:1.55}
+  .intro-topbar .meta-row span{font-size:10px}
+  .intro-topbar .meta-row{flex-wrap:wrap;row-gap:var(--s-2)}
+  .q-title{font-size:clamp(22px,6.2vw,28px)}
+  .q-sub{font-size:13px}
+  .opt{padding:var(--s-3) var(--s-4);gap:var(--s-3)}
+  .opt .ic{width:36px;height:36px;border-radius:9px}
+  .opt .tx b{font-size:14px}
+  .opt .tx small{font-size:11px}
+  .btn{padding:15px 24px;font-size:13px}
+  .nav.intro-cta-bottom{margin-top:var(--s-1)}
+  .phone-wrap{grid-template-columns:100px 1fr}
+  .country-select select{font-size:13px;padding:0 24px 0 var(--s-2)}
+  .score-card{padding:var(--s-4)}
+  .score-card .big{font-size:clamp(44px,14vw,64px)}
   .mini-grid{grid-template-columns:1fr}
-  .intro-visual{width:300px;max-width:100%}
-  .intro-topbar{gap:var(--s-2)}
-  .intro-topbar .meta-row span{font-size:10px;gap:4px}
-  .intro-topbar .meta-row{gap:var(--s-2)}
-  .phone-wrap{grid-template-columns:108px 1fr}
-  .wrap{padding:0 var(--s-4)}
+}
+@media(max-width:360px){
+  .intro-visual{width:min(100%,168px)}
+  .intro-topbar .meta-row span{font-size:9px;gap:3px}
+  .intro-topbar .meta-row{gap:var(--s-2);column-gap:var(--s-3)}
+  .phone-wrap{grid-template-columns:92px 1fr;gap:var(--s-2)}
 }
 </style>
 </head>
