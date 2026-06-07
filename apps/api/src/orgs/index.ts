@@ -65,6 +65,12 @@ import { workflows as recetasCamiWorkflows } from './recetas-cami/main/workflows
 import { IDS as recetasCamiIDS } from './recetas-cami/main/config';
 import { routingEngine as recetasCamiRouting } from './recetas-cami/main/routing';
 
+// -- Caro Fitness / Main ------------------------------------------------------
+import { sequences as caroFitnessSequences } from './caro-fitness/main/sequences';
+import { workflows as caroFitnessWorkflows } from './caro-fitness/main/workflows';
+import { IDS as caroFitnessIDS } from './caro-fitness/main/config';
+import { routingEngine as caroFitnessRouting } from './caro-fitness/main/routing';
+
 // -- Add new BUs here ---------------------------------------------------------
 
 export interface BusinessUnitBinding {
@@ -123,6 +129,12 @@ const businessUnits: BusinessUnitBinding[] = [
     organizationId: recetasCamiIDS.organizationId,
     routingEngine: recetasCamiRouting,
   },
+  {
+    orgKey: 'caro-fitness',
+    buKey: 'main',
+    organizationId: caroFitnessIDS.organizationId,
+    routingEngine: caroFitnessRouting,
+  },
 ];
 
 function makeBusinessUnitRegistryKey(orgKey: string, buKey: string) {
@@ -149,6 +161,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
   ...lucasConLucasSequences,
   ...santiInversorResearchSequences,
   ...recetasCamiSequences,
+  ...caroFitnessSequences,
 };
 
 export const workflowRegistry: Record<string, WorkflowDef> = {
@@ -161,6 +174,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...lucasConLucasWorkflows,
   ...santiInversorResearchWorkflows,
   ...recetasCamiWorkflows,
+  ...caroFitnessWorkflows,
 };
 
 export const clickupRegistryByPipelineId: Record<string, ClickUpPipelineConfig> = {
