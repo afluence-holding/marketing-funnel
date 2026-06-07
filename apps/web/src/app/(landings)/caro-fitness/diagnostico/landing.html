@@ -118,6 +118,8 @@ h1 .o{color:var(--rust)}
 }
 .field input:focus{border-color:var(--rust)}
 .nav{display:flex;align-items:center;gap:14px;margin-top:36px}
+.nav.intro-cta-top{margin-top:0;margin-bottom:22px}
+.cta-actions-hidden{display:none!important}
 .btn{
   font-family:'Hanken Grotesk';font-weight:700;font-size:15px;letter-spacing:.4px;
   background:var(--rust);color:#fff;border:none;border-radius:99px;padding:16px 34px;cursor:pointer;
@@ -187,6 +189,7 @@ h1 .o{color:var(--rust)}
   </div>
   <div class="stage">
     <section class="screen active" data-screen="intro">
+      <div class="nav intro-cta-top"><button class="btn" onclick="start()">Empezar diagnóstico <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
       <div class="intro-visual"><img src="/caro-fitness/diagnostico/intro.png" alt="Caro Manrique"></div>
       <div class="eyebrow">Solo para quienes ya entrenan</div>
       <h1>¿Tu nutrición está a la <span class="o">altura</span> de tu entrenamiento?</h1>
@@ -196,7 +199,6 @@ h1 .o{color:var(--rust)}
         <span><i class="dot"></i> Resultado <b>personalizado</b></span>
         <span><i class="dot"></i> 100% <b>gratis</b></span>
       </div>
-      <div class="nav"><button class="btn" onclick="start()">Empezar diagnóstico <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
     </section>
     <section class="screen" data-screen="q" data-key="objetivo">
       <div class="q-num">02 / 09</div>
@@ -332,10 +334,10 @@ h1 .o{color:var(--rust)}
       <div class="cta-card">
         <div class="e">Tu siguiente paso</div>
         <h3 id="cta-title">Te muestro cómo aplicarlo</h3>
-        <div class="webinar-meta"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg> <span id="webinar-date">__WEBINAR_DATE__</span> · Clase en vivo gratis</div>
+        <div class="webinar-meta cta-actions-hidden"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg> <span id="webinar-date">__WEBINAR_DATE__</span> · Clase en vivo gratis</div>
         <p id="cta-text">Reserva tu lugar en mi clase gratuita y entra al grupo de WhatsApp para recibir el enlace, los recordatorios y los recursos.</p>
-        <button class="btn" onclick="goWebinar()">Registrarme al webinar <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-        <button class="btn wa" onclick="joinWhatsApp()"><svg viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-1-.3-1.7-.6-2.9-1.3-4.8-4.3-5-4.5-.1-.2-1.1-1.5-1.1-2.8s.7-2 .9-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.5-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.7-.9c.2-.2.4-.2.6-.1l1.9.9c.2.1.4.2.4.3.1.2.1.7-.1 1.2z"/></svg> Entrar al grupo de WhatsApp</button>
+        <button class="btn cta-actions-hidden" onclick="goWebinar()">Registrarme al webinar <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <button class="btn wa cta-actions-hidden" onclick="joinWhatsApp()"><svg viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-1-.3-1.7-.6-2.9-1.3-4.8-4.3-5-4.5-.1-.2-1.1-1.5-1.1-2.8s.7-2 .9-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.5-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.7-.9c.2-.2.4-.2.6-.1l1.9.9c.2.1.4.2.4.3.1.2.1.7-.1 1.2z"/></svg> Entrar al grupo de WhatsApp</button>
       </div>
       <p class="disclaimer">Este diagnóstico es una guía educativa basada en recomendaciones generales de nutrición deportiva y no sustituye la valoración individual de un profesional de la salud.</p>
     </section>
@@ -344,9 +346,24 @@ h1 .o{color:var(--rust)}
 </div>
 <script>
 const INGEST_PATH = '/api/caro-fitness/ingest';
+const PROGRESS_PATH = '/api/caro-fitness/progress';
 const FORM_SOURCE = 'landing-caro-fitness-diagnostico';
 const WEBINAR_URL = '__WEBINAR_URL__';
 const WHATSAPP_GROUP_URL = '__WHATSAPP_GROUP_URL__';
+const SESSION_KEY = 'caro_fitness_session_id';
+function getSessionId(){
+  try{
+    let id=sessionStorage.getItem(SESSION_KEY);
+    if(!id){
+      id=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():('cf-'+Date.now()+'-'+Math.random().toString(36).slice(2,10));
+      sessionStorage.setItem(SESSION_KEY,id);
+    }
+    return id;
+  }catch(_){
+    return 'cf-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+  }
+}
+const sessionId=getSessionId();
 const data={objetivo:null,sexo:null,edad:null,peso:null,frecuencia:null,tipo:null,proteina:null,sueno:null,frustracion:null,nombre:'',email:'',whatsapp:''};
 const flow=['intro','q-sexo','q-objetivo','q-edad','q-peso','q-frecuencia','q-tipo','q-proteina','q-sueno','q-frustracion','lead','results'];
 let idx=0;
@@ -379,6 +396,43 @@ async function submitCaroLead(payload){
     return false;
   }
 }
+function buildProgressAnswers(){
+  const answers={};
+  ['sexo','objetivo','edad','peso','frecuencia','tipo','proteina','sueno','frustracion'].forEach((key)=>{
+    if(data[key]!=null&&data[key]!=='')answers[key]=toStr(data[key]);
+  });
+  return answers;
+}
+function buildProgressPayload(overrides){
+  const step=flow[idx]||'intro';
+  return Object.assign({
+    sessionId:sessionId,
+    source:FORM_SOURCE,
+    email:data.email.trim().toLowerCase(),
+    firstName:data.nombre.trim(),
+    phone:data.whatsapp.trim(),
+    quizStep:step,
+    status:step==='results'?'completed':'in_progress',
+    answers:buildProgressAnswers(),
+    utmData:getUtmData(),
+  },overrides||{});
+}
+let progressTimer=null;
+function saveProgressNow(overrides){
+  const payload=buildProgressPayload(overrides);
+  const body=JSON.stringify(payload);
+  if(navigator.sendBeacon){
+    try{
+      navigator.sendBeacon(PROGRESS_PATH,new Blob([body],{type:'application/json'}));
+      return;
+    }catch(_){}
+  }
+  fetch(PROGRESS_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}).catch(()=>{});
+}
+function scheduleProgressSave(overrides){
+  clearTimeout(progressTimer);
+  progressTimer=setTimeout(()=>saveProgressNow(overrides),400);
+}
 function show(i){
   idx=i;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -389,8 +443,9 @@ function show(i){
   document.getElementById('step-count').textContent=(flow[i]==='results')?'Resultado':(flow[i]==='lead')?'Casi listo':'Diagnóstico';
   window.scrollTo({top:0,behavior:'smooth'});
   postHeightSoon();
+  if(i>0)scheduleProgressSave();
 }
-function start(){show(1);}
+function start(){show(1);scheduleProgressSave({quizStep:'q-sexo'});}
 function next(){if(idx<flow.length-1)show(idx+1);}
 function prev(){if(idx>0)show(idx-1);}
 document.querySelectorAll('.screen[data-screen="q"]').forEach(sec=>{
@@ -400,6 +455,7 @@ document.querySelectorAll('.screen[data-screen="q"]').forEach(sec=>{
       sec.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));
       o.classList.add('sel');
       data[key]=o.dataset.val;
+      scheduleProgressSave();
       setTimeout(next,260);
     });
   });
@@ -409,6 +465,7 @@ pesoEl.addEventListener('input',()=>{
   const v=parseInt(pesoEl.value,10);
   data.peso=v;
   document.getElementById('peso-next').disabled=!(v>=35&&v<=200);
+  scheduleProgressSave();
 });
 pesoEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!document.getElementById('peso-next').disabled)next();});
 const nombreEl=document.getElementById('nombre'),emailEl=document.getElementById('email');
@@ -417,8 +474,10 @@ function checkLead(){
   const ok=nombreEl.value.trim().length>1 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailEl.value.trim());
   document.getElementById('lead-btn').disabled=!ok;
 }
-nombreEl.addEventListener('input',checkLead);
-emailEl.addEventListener('input',checkLead);
+nombreEl.addEventListener('input',()=>{data.nombre=nombreEl.value.trim();checkLead();scheduleProgressSave();});
+emailEl.addEventListener('input',()=>{data.email=emailEl.value.trim();checkLead();scheduleProgressSave();});
+document.getElementById('whatsapp').addEventListener('input',()=>{data.whatsapp=document.getElementById('whatsapp').value.trim();scheduleProgressSave();});
+window.addEventListener('beforeunload',()=>{if(idx>0)saveProgressNow({status:'abandoned'});});
 function computeResults(){
   const baseFactor={grasa:2.1,musculo:2.0,rendimiento:1.8,mantener:1.6}[data.objetivo]||1.8;
   let extraFactor=0;
@@ -518,6 +577,7 @@ function buildIngestPayload(results){
       proteina_por_comida_g:toStr(results.perMeal),
       hidratacion_l:toStr(results.water),
       factor_proteico:toStr(results.f),
+      session_id:sessionId,
       diagnostico_submitted_at:new Date().toISOString(),
     },
     utmData:getUtmData(),
@@ -543,6 +603,7 @@ async function submitLead(){
     leadErrorEl.style.display='block';
     return;
   }
+  saveProgressNow({status:'completed',quizStep:'results'});
   next();
 }
 function goWebinar(){
