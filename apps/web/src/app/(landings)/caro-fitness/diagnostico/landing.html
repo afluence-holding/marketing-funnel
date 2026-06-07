@@ -18,6 +18,14 @@
   --muted:#9a8d7e;
   --line:rgba(244,236,226,0.12);
   --line-strong:rgba(244,236,226,0.28);
+  /* 8pt spacing scale */
+  --s-1:4px;
+  --s-2:8px;
+  --s-3:12px;
+  --s-4:16px;
+  --s-5:20px;
+  --s-6:24px;
+  --s-7:32px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
@@ -35,12 +43,12 @@ body{
   flex-direction:column;
   max-width:680px;
   margin:0 auto;
-  padding:0 22px;
+  padding:0 var(--s-4);
 }
 .topbar{
   position:sticky;top:0;z-index:10;
-  padding:20px 0 14px;
-  background:linear-gradient(to bottom,var(--bg) 70%,transparent);
+  padding:var(--s-4) 0 var(--s-3);
+  background:linear-gradient(to bottom,var(--bg) 75%,transparent);
 }
 .brand{
   font-family:'Fraunces',serif;font-style:italic;
@@ -48,36 +56,40 @@ body{
   display:flex;justify-content:space-between;align-items:center;
 }
 .brand b{font-style:normal;font-family:'Hanken Grotesk';font-weight:700;color:var(--cream);letter-spacing:1.5px;text-transform:uppercase;font-size:12px}
-.progress{height:3px;background:var(--line);border-radius:99px;margin-top:14px;overflow:hidden}
+.progress{height:3px;background:var(--line);border-radius:99px;margin-top:var(--s-3);overflow:hidden}
 .bar{height:100%;width:0;background:var(--rust);border-radius:99px;transition:width .5s cubic-bezier(.6,.1,.1,1)}
 .topbar.hide{opacity:0;pointer-events:none;height:0;padding:0;overflow:hidden}
-.stage{flex:1;display:flex;flex-direction:column;justify-content:center;padding:14px 0 40px}
-.screen{display:none;animation:fade .5s ease both}
-.screen.active{display:block}
-@keyframes fade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.stage{
+  flex:1;display:flex;flex-direction:column;justify-content:flex-start;
+  padding:var(--s-3) 0 var(--s-6);
+}
+.screen{display:none;animation:fade .45s ease both}
+.screen.active{display:flex;flex-direction:column;gap:var(--s-4)}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .eyebrow{
-  font-family:'Fraunces',serif;font-style:italic;font-size:16px;color:var(--rust-soft);
-  margin-bottom:14px;
+  font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--rust-soft);
+  margin:0;
 }
 h1{
   font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;
-  font-size:clamp(40px,11vw,68px);line-height:.92;letter-spacing:-.5px;
+  font-size:clamp(36px,10vw,62px);line-height:.94;letter-spacing:-.5px;
+  margin:0;
 }
 h1 .o{color:var(--rust)}
-.lead{color:var(--muted);font-size:17px;line-height:1.55;margin-top:20px;max-width:30ch}
-.meta-row{display:flex;gap:22px;margin-top:30px;flex-wrap:wrap}
-.meta-row span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.lead{color:var(--muted);font-size:16px;line-height:1.5;margin:0;max-width:34ch}
+.meta-row{display:flex;gap:var(--s-4);margin:0;flex-wrap:wrap}
+.meta-row span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .meta-row b{color:var(--cream);font-weight:600}
-.dot{width:5px;height:5px;border-radius:99px;background:var(--rust)}
+.dot{width:4px;height:4px;border-radius:99px;background:var(--rust);flex:none}
 .intro-visual{
-  width:min(100%,280px);
-  aspect-ratio:3/4;
-  border-radius:18px;
+  width:min(100%,200px);
+  aspect-ratio:4/5;
+  border-radius:14px;
   overflow:hidden;
-  margin:0 0 22px;
+  margin:0 auto;
   border:1px solid var(--line);
   background:var(--surface);
-  box-shadow:0 24px 70px rgba(0,0,0,.28);
+  box-shadow:0 16px 48px rgba(0,0,0,.22);
 }
 .intro-visual img{
   width:100%;
@@ -86,98 +98,102 @@ h1 .o{color:var(--rust)}
   object-fit:cover;
   object-position:center 22%;
 }
-.q-num{font-family:'Anton';font-size:14px;color:var(--rust);letter-spacing:2px;margin-bottom:12px}
-.q-title{font-family:'Anton';text-transform:uppercase;font-size:clamp(26px,7vw,40px);line-height:1;letter-spacing:-.5px}
-.q-sub{color:var(--muted);font-size:15px;margin-top:12px;line-height:1.5}
-.opts{display:grid;gap:12px;margin-top:30px}
+.q-num{font-family:'Anton';font-size:13px;color:var(--rust);letter-spacing:2px;margin:0}
+.q-title{font-family:'Anton';text-transform:uppercase;font-size:clamp(24px,6.5vw,36px);line-height:1.02;letter-spacing:-.5px;margin:0}
+.q-sub{color:var(--muted);font-size:14px;margin:0;line-height:1.45}
+.q-block{display:flex;flex-direction:column;gap:var(--s-2)}
+.opts{display:grid;gap:var(--s-3);margin:0}
 .opt{
-  background:var(--surface);border:1px solid var(--line);border-radius:16px;
-  padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:16px;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:var(--s-4);cursor:pointer;display:flex;align-items:center;gap:var(--s-4);
   transition:.22s ease;text-align:left;color:var(--cream);font-family:inherit;
 }
-.opt:hover{border-color:var(--line-strong);transform:translateX(4px)}
+.opt:hover{border-color:var(--line-strong);transform:translateX(3px)}
 .opt.sel{border-color:var(--rust);background:var(--surface-2)}
 .opt .ic{
-  width:44px;height:44px;flex:none;border-radius:11px;background:rgba(199,92,52,.13);
+  width:40px;height:40px;flex:none;border-radius:10px;background:rgba(199,92,52,.13);
   display:grid;place-items:center;color:var(--rust-soft);
 }
-.opt .ic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
-.opt .tx b{display:block;font-size:16px;font-weight:600}
-.opt .tx small{color:var(--muted);font-size:13px}
-.num-input{margin-top:30px;display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--line-strong);padding-bottom:10px;max-width:260px}
+.opt .ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6}
+.opt .tx b{display:block;font-size:15px;font-weight:600;line-height:1.25}
+.opt .tx small{color:var(--muted);font-size:12px;line-height:1.35;margin-top:2px;display:block}
+.num-input{
+  margin:0;display:flex;align-items:baseline;gap:var(--s-3);
+  border-bottom:2px solid var(--line-strong);padding-bottom:var(--s-2);max-width:240px;
+}
 .num-input input{
-  background:none;border:none;color:var(--cream);font-family:'Anton';font-size:56px;width:160px;outline:none;
+  background:none;border:none;color:var(--cream);font-family:'Anton';font-size:52px;width:150px;outline:none;
 }
 .num-input input::-webkit-outer-spin-button,.num-input input::-webkit-inner-spin-button{-webkit-appearance:none}
-.num-input span{font-family:'Anton';font-size:24px;color:var(--muted)}
-.field{margin-top:22px}
-.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;letter-spacing:.3px}
+.num-input span{font-family:'Anton';font-size:22px;color:var(--muted)}
+.field{margin:0}
+.fields{display:flex;flex-direction:column;gap:var(--s-3)}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:var(--s-2);letter-spacing:.4px}
 .field input{
-  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:13px;
-  padding:16px 18px;color:var(--cream);font-family:inherit;font-size:16px;outline:none;transition:.2s;
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:14px var(--s-4);color:var(--cream);font-family:inherit;font-size:16px;outline:none;transition:.2s;
 }
 .field input:focus{border-color:var(--rust)}
-.nav{display:flex;align-items:center;gap:14px;margin-top:36px}
-.nav.intro-cta-top{margin-top:0;margin-bottom:22px}
+.nav{display:flex;align-items:center;gap:var(--s-3);margin:0;margin-top:var(--s-2)}
+.nav.intro-cta-top{margin:0;margin-bottom:calc(var(--s-4) * -1 + var(--s-2))}
+.nav.intro-cta-top .btn{width:100%;justify-content:center}
 .cta-actions-hidden{display:none!important}
 .btn{
-  font-family:'Hanken Grotesk';font-weight:700;font-size:15px;letter-spacing:.4px;
-  background:var(--rust);color:#fff;border:none;border-radius:99px;padding:16px 34px;cursor:pointer;
-  display:inline-flex;align-items:center;gap:10px;transition:.2s;text-transform:uppercase;
+  font-family:'Hanken Grotesk';font-weight:700;font-size:14px;letter-spacing:.4px;
+  background:var(--rust);color:#fff;border:none;border-radius:99px;padding:14px 28px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:var(--s-2);transition:.2s;text-transform:uppercase;
 }
-.btn:hover{background:var(--rust-soft);transform:translateY(-2px)}
+.btn:hover{background:var(--rust-soft);transform:translateY(-1px)}
 .btn:disabled{opacity:.35;pointer-events:none}
-.btn.ghost{background:none;color:var(--muted);padding:16px 8px;text-transform:none;letter-spacing:0;font-weight:500}
+.btn.ghost{background:none;color:var(--muted);padding:14px var(--s-2);text-transform:none;letter-spacing:0;font-weight:500}
 .btn.ghost:hover{color:var(--cream);transform:none}
 .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2}
-.r-head{margin-bottom:8px}
+.r-head{display:flex;flex-direction:column;gap:var(--s-2);margin:0}
 .score-card{
   background:linear-gradient(150deg,var(--surface-2),var(--surface));
-  border:1px solid var(--line);border-radius:22px;padding:30px;margin-top:24px;position:relative;overflow:hidden;
+  border:1px solid var(--line);border-radius:18px;padding:var(--s-5);margin:0;position:relative;overflow:hidden;
 }
-.score-card::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:99px;background:radial-gradient(circle,rgba(199,92,52,.22),transparent 70%)}
-.score-card .k{font-size:13px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;position:relative}
-.score-card .big{font-family:'Anton';font-size:clamp(60px,18vw,96px);line-height:.9;margin-top:6px;position:relative}
-.score-card .big small{font-size:26px;color:var(--rust-soft);margin-left:6px}
-.score-card .note{color:var(--muted);font-size:14px;margin-top:14px;line-height:1.5;position:relative;max-width:34ch}
-.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-.mini{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
-.mini .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.mini .v{font-family:'Anton';font-size:30px;margin-top:6px}
-.mini .v small{font-size:15px;color:var(--muted)}
-.sec-label{font-family:'Anton';text-transform:uppercase;font-size:15px;letter-spacing:1px;color:var(--rust);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+.score-card::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:99px;background:radial-gradient(circle,rgba(199,92,52,.22),transparent 70%)}
+.score-card .k{font-size:12px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;position:relative}
+.score-card .big{font-family:'Anton';font-size:clamp(52px,16vw,84px);line-height:.9;margin-top:var(--s-1);position:relative}
+.score-card .big small{font-size:22px;color:var(--rust-soft);margin-left:4px}
+.score-card .note{color:var(--muted);font-size:13px;margin-top:var(--s-3);line-height:1.45;position:relative;max-width:36ch}
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-3);margin:0}
+.mini{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:var(--s-4)}
+.mini .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.mini .v{font-family:'Anton';font-size:26px;margin-top:var(--s-1)}
+.mini .v small{font-size:14px;color:var(--muted)}
+.sec-label{
+  font-family:'Anton';text-transform:uppercase;font-size:14px;letter-spacing:.8px;color:var(--rust);
+  margin:var(--s-2) 0 0;display:flex;align-items:center;gap:var(--s-3);
+}
 .sec-label::after{content:"";flex:1;height:1px;background:var(--line)}
-.flag{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--rust);border-radius:0 14px 14px 0;padding:16px 18px;margin-bottom:10px}
-.flag b{display:block;font-size:15px;margin-bottom:5px}
-.flag p{color:var(--muted);font-size:14px;line-height:1.5}
+.flags{display:flex;flex-direction:column;gap:var(--s-3)}
+.flag{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--rust);border-radius:0 12px 12px 0;padding:var(--s-4);margin:0}
+.flag b{display:block;font-size:14px;margin-bottom:var(--s-1);line-height:1.3}
+.flag p{color:var(--muted);font-size:13px;line-height:1.45;margin:0}
 .cta-card{
-  margin-top:34px;background:var(--rust);border-radius:22px;padding:30px;color:#fff;position:relative;overflow:hidden;
+  margin:0;background:var(--rust);border-radius:18px;padding:var(--s-5);color:#fff;position:relative;overflow:hidden;
 }
-.cta-card .e{font-family:'Fraunces';font-style:italic;font-size:15px;opacity:.85}
-.cta-card h3{font-family:'Anton';text-transform:uppercase;font-size:clamp(26px,7vw,38px);line-height:1;margin-top:8px}
-.cta-card p{font-size:15px;opacity:.92;margin-top:12px;line-height:1.5;max-width:38ch}
-.cta-card .btn{background:#16120f;color:#fff;margin-top:22px}
+.cta-card .e{font-family:'Fraunces';font-style:italic;font-size:14px;opacity:.85}
+.cta-card h3{font-family:'Anton';text-transform:uppercase;font-size:clamp(24px,6.5vw,34px);line-height:1;margin-top:var(--s-2)}
+.cta-card p{font-size:14px;opacity:.92;margin-top:var(--s-3);line-height:1.45;max-width:38ch}
+.cta-card .btn{background:#16120f;color:#fff;margin-top:var(--s-4)}
 .cta-card .btn:hover{background:#000}
-.cta-card .btn.wa{background:rgba(255,255,255,.14);color:#fff;margin-top:12px;display:flex;width:100%;justify-content:center}
+.cta-card .btn.wa{background:rgba(255,255,255,.14);color:#fff;margin-top:var(--s-3);display:flex;width:100%;justify-content:center}
 .cta-card .btn.wa:hover{background:rgba(255,255,255,.24)}
 .cta-card .btn.wa svg{width:19px;height:19px}
-.webinar-meta{display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:rgba(0,0,0,.18);border-radius:99px;padding:7px 14px;font-size:13px;font-weight:600}
-.webinar-meta svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
-.disclaimer{color:var(--muted);font-size:12px;line-height:1.5;margin-top:24px;opacity:.7}
-.foot{text-align:center;color:var(--muted);font-size:12px;padding:24px 0}
+.webinar-meta{display:inline-flex;align-items:center;gap:var(--s-2);margin-top:var(--s-3);background:rgba(0,0,0,.18);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600}
+.webinar-meta svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+.disclaimer{color:var(--muted);font-size:11px;line-height:1.45;margin:0;opacity:.65}
+.foot{text-align:center;color:var(--muted);font-size:11px;padding:var(--s-4) 0 var(--s-5)}
 @media(max-width:480px){
   .mini-grid{grid-template-columns:1fr}
-  .intro-visual{width:min(100%,220px);margin-bottom:18px;border-radius:14px}
-  .lead{font-size:16px;margin-top:14px}
-  .meta-row{margin-top:18px;gap:14px}
-  .nav{margin-top:26px}
+  .intro-visual{width:min(100%,180px)}
+  .wrap{padding:0 var(--s-4)}
 }
-@media(max-height:760px){
-  .stage{justify-content:flex-start;padding-top:18px}
-  .intro-visual{width:min(100%,210px);margin-bottom:16px}
-  .lead{margin-top:14px}
-  .meta-row{margin-top:16px}
-  .nav{margin-top:22px}
+@media(min-width:520px){
+  .intro-visual{width:min(100%,220px)}
 }
 </style>
 </head>
@@ -190,7 +206,6 @@ h1 .o{color:var(--rust)}
   <div class="stage">
     <section class="screen active" data-screen="intro">
       <div class="nav intro-cta-top"><button class="btn" onclick="start()">Empezar diagnóstico <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
-      <div class="intro-visual"><img src="/caro-fitness/diagnostico/intro.png" alt="Caro Manrique"></div>
       <div class="eyebrow">Solo para quienes ya entrenan</div>
       <h1>¿Tu nutrición está a la <span class="o">altura</span> de tu entrenamiento?</h1>
       <p class="lead">Un diagnóstico rápido que cruza tu objetivo, tu entrenamiento y tu alimentación para detectar exactamente qué te está frenando.</p>
@@ -199,11 +214,14 @@ h1 .o{color:var(--rust)}
         <span><i class="dot"></i> Resultado <b>personalizado</b></span>
         <span><i class="dot"></i> 100% <b>gratis</b></span>
       </div>
+      <div class="intro-visual"><img src="/caro-fitness/diagnostico/intro.png" alt="Caro Manrique"></div>
     </section>
     <section class="screen" data-screen="q" data-key="objetivo">
-      <div class="q-num">02 / 09</div>
-      <div class="q-title">¿Cuál es tu objetivo principal hoy?</div>
-      <div class="q-sub">Tu meta cambia por completo cuánta proteína necesitas.</div>
+      <div class="q-block">
+        <div class="q-num">02 / 09</div>
+        <div class="q-title">¿Cuál es tu objetivo principal hoy?</div>
+        <div class="q-sub">Tu meta cambia por completo cuánta proteína necesitas.</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="grasa"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v3M5 10a7 7 0 1014 0c0-4-7-7-7-7s-7 3-7 7z"/></svg></span><span class="tx"><b>Definir / bajar grasa</b><small>Marcar y conservar músculo</small></span></button>
         <button class="opt" data-val="musculo"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 9h2l1-2h10l1 2h2M6 9v6M18 9v6M9 12h6"/></svg></span><span class="tx"><b>Ganar masa muscular</b><small>Construir y crecer</small></span></button>
@@ -213,9 +231,11 @@ h1 .o{color:var(--rust)}
       <div class="nav"><button class="btn ghost" onclick="prev()">Atrás</button></div>
     </section>
     <section class="screen" data-screen="q" data-key="sexo">
-      <div class="q-num">01 / 09</div>
-      <div class="q-title">¿Eres hombre o mujer?</div>
-      <div class="q-sub">Esto nos ayuda a segmentar mejor tu diagnóstico y próximos programas.</div>
+      <div class="q-block">
+        <div class="q-num">01 / 09</div>
+        <div class="q-title">¿Eres hombre o mujer?</div>
+        <div class="q-sub">Esto nos ayuda a segmentar mejor tu diagnóstico y próximos programas.</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="mujer"><span class="tx"><b>Mujer</b><small>Quiero un diagnóstico pensado para mi contexto</small></span></button>
         <button class="opt" data-val="hombre"><span class="tx"><b>Hombre</b><small>Quiero un diagnóstico ajustado a mi perfil</small></span></button>
@@ -223,9 +243,11 @@ h1 .o{color:var(--rust)}
       <div class="nav"><button class="btn ghost" onclick="prev()">Atrás</button></div>
     </section>
     <section class="screen" data-screen="q" data-key="edad">
-      <div class="q-num">03 / 09</div>
-      <div class="q-title">¿Cuántos años tienes?</div>
-      <div class="q-sub">La edad cambia prioridades de fuerza, recuperación y nutrición.</div>
+      <div class="q-block">
+        <div class="q-num">03 / 09</div>
+        <div class="q-title">¿Cuántos años tienes?</div>
+        <div class="q-sub">La edad cambia prioridades de fuerza, recuperación y nutrición.</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="menos-25"><span class="tx"><b>Menos de 25</b></span></button>
         <button class="opt" data-val="25-35"><span class="tx"><b>25 - 35</b></span></button>
@@ -235,9 +257,11 @@ h1 .o{color:var(--rust)}
       <div class="nav"><button class="btn ghost" onclick="prev()">Atrás</button></div>
     </section>
     <section class="screen" data-screen="q" data-key="peso">
-      <div class="q-num">04 / 09</div>
-      <div class="q-title">¿Cuánto pesas?</div>
-      <div class="q-sub">Es la base del cálculo. No te juzgamos — la fórmula sí necesita el dato.</div>
+      <div class="q-block">
+        <div class="q-num">04 / 09</div>
+        <div class="q-title">¿Cuánto pesas?</div>
+        <div class="q-sub">Es la base del cálculo. No te juzgamos — la fórmula sí necesita el dato.</div>
+      </div>
       <div class="num-input"><input id="peso" type="number" inputmode="numeric" placeholder="60" min="35" max="200"><span>kg</span></div>
       <div class="nav">
         <button class="btn" id="peso-next" disabled onclick="next()">Continuar <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -245,8 +269,10 @@ h1 .o{color:var(--rust)}
       </div>
     </section>
     <section class="screen" data-screen="q" data-key="frecuencia">
-      <div class="q-num">05 / 09</div>
-      <div class="q-title">¿Cuántos días entrenas por semana?</div>
+      <div class="q-block">
+        <div class="q-num">05 / 09</div>
+        <div class="q-title">¿Cuántos días entrenas por semana?</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="2"><span class="tx"><b>1 – 2 días</b><small>Empezando o tiempo limitado</small></span></button>
         <button class="opt" data-val="3"><span class="tx"><b>3 – 4 días</b><small>Constante</small></span></button>
@@ -255,8 +281,10 @@ h1 .o{color:var(--rust)}
       <div class="nav"><button class="btn ghost" onclick="prev()">Atrás</button></div>
     </section>
     <section class="screen" data-screen="q" data-key="tipo">
-      <div class="q-num">06 / 09</div>
-      <div class="q-title">¿Qué tipo de entrenamiento haces más?</div>
+      <div class="q-block">
+        <div class="q-num">06 / 09</div>
+        <div class="q-title">¿Qué tipo de entrenamiento haces más?</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="fuerza"><span class="tx"><b>Fuerza / pesas</b><small>Mancuernas, máquinas, peso</small></span></button>
         <button class="opt" data-val="funcional"><span class="tx"><b>Funcional / HIIT</b><small>Circuitos, peso corporal, intervalos</small></span></button>
@@ -266,9 +294,11 @@ h1 .o{color:var(--rust)}
       <div class="nav"><button class="btn ghost" onclick="prev()">Atrás</button></div>
     </section>
     <section class="screen" data-screen="q" data-key="proteina">
-      <div class="q-num">07 / 09</div>
-      <div class="q-title">¿Cómo va tu consumo de proteína?</div>
-      <div class="q-sub">Sé honesta. Aquí es donde el 80% pierde resultados.</div>
+      <div class="q-block">
+        <div class="q-num">07 / 09</div>
+        <div class="q-title">¿Cómo va tu consumo de proteína?</div>
+        <div class="q-sub">Sé honesta. Aquí es donde el 80% pierde resultados.</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="alta"><span class="tx"><b>La cuido en cada comida</b><small>Sé más o menos cuánta como</small></span></button>
         <button class="opt" data-val="media"><span class="tx"><b>Más o menos</b><small>Algunos días sí, otros no</small></span></button>
@@ -278,9 +308,11 @@ h1 .o{color:var(--rust)}
       <div class="nav"><button class="btn ghost" onclick="prev()">Atrás</button></div>
     </section>
     <section class="screen" data-screen="q" data-key="sueno">
-      <div class="q-num">08 / 09</div>
-      <div class="q-title">¿Cuántas horas duermes en promedio?</div>
-      <div class="q-sub">El sueño define cuánto asimilas del entrenamiento y la nutrición.</div>
+      <div class="q-block">
+        <div class="q-num">08 / 09</div>
+        <div class="q-title">¿Cuántas horas duermes en promedio?</div>
+        <div class="q-sub">El sueño define cuánto asimilas del entrenamiento y la nutrición.</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="menos-6"><span class="tx"><b>Menos de 6</b><small>Me levanto cansada la mayoría de días</small></span></button>
         <button class="opt" data-val="6-7"><span class="tx"><b>6 - 7</b><small>A veces recupero bien, a veces no</small></span></button>
@@ -290,9 +322,11 @@ h1 .o{color:var(--rust)}
       <div class="nav"><button class="btn ghost" onclick="prev()">Atrás</button></div>
     </section>
     <section class="screen" data-screen="q" data-key="frustracion">
-      <div class="q-num">09 / 09</div>
-      <div class="q-title">¿Cuál es tu mayor frustración actualmente?</div>
-      <div class="q-sub">Esto nos ayuda a detectar el dolor real detrás de tu objetivo.</div>
+      <div class="q-block">
+        <div class="q-num">09 / 09</div>
+        <div class="q-title">¿Cuál es tu mayor frustración actualmente?</div>
+        <div class="q-sub">Esto nos ayuda a detectar el dolor real detrás de tu objetivo.</div>
+      </div>
       <div class="opts">
         <button class="opt" data-val="no-bajo-grasa"><span class="tx"><b>No logro bajar de grasa</b><small>Siento que hago esfuerzo pero no veo cambios</small></span></button>
         <button class="opt" data-val="no-gano-musculo"><span class="tx"><b>Me cuesta ganar músculo</b><small>Entreno pero no crezco como quiero</small></span></button>
@@ -305,11 +339,13 @@ h1 .o{color:var(--rust)}
     <section class="screen" data-screen="lead">
       <div class="eyebrow">Último paso</div>
       <h1>Tu diagnóstico está <span class="o">listo</span></h1>
-      <p class="lead">Dime a dónde te lo envío y lo desbloqueo al instante. También te mando la guía rápida de proteína de Caro.</p>
-      <div class="field"><label>TU NOMBRE</label><input id="nombre" type="text" placeholder="Carolina" autocomplete="given-name"></div>
-      <div class="field"><label>TU CORREO</label><input id="email" type="email" placeholder="tucorreo@email.com" autocomplete="email"></div>
-      <div class="field"><label>WHATSAPP <span style="color:var(--rust-soft)">(opcional)</span></label><input id="whatsapp" type="tel" placeholder="+57 300 000 0000" autocomplete="tel"></div>
-      <p id="lead-error" class="disclaimer" style="color:var(--rust-soft);opacity:1;display:none;margin-top:14px"></p>
+      <p class="lead">Dime a dónde te lo envío y lo desbloqueo al instante.</p>
+      <div class="fields">
+        <div class="field"><label>TU NOMBRE</label><input id="nombre" type="text" placeholder="Carolina" autocomplete="given-name"></div>
+        <div class="field"><label>TU CORREO</label><input id="email" type="email" placeholder="tucorreo@email.com" autocomplete="email"></div>
+        <div class="field"><label>TU WHATSAPP</label><input id="whatsapp" type="tel" placeholder="+57 300 000 0000" autocomplete="tel" required inputmode="tel"></div>
+      </div>
+      <p id="lead-error" class="disclaimer" style="color:var(--rust-soft);opacity:1;display:none"></p>
       <div class="nav"><button class="btn" id="lead-btn" disabled onclick="submitLead()">Ver mi diagnóstico <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
       <p class="disclaimer">Cero spam. Solo contenido útil para que entrenes con cabeza. Puedes salirte cuando quieras.</p>
     </section>
@@ -328,7 +364,7 @@ h1 .o{color:var(--rust)}
         <div class="mini"><div class="k">Hidratación objetivo</div><div class="v"><span id="r-water">2.2</span><small>L/día</small></div></div>
       </div>
       <div class="sec-label">Tus puntos ciegos</div>
-      <div id="r-flags"></div>
+      <div id="r-flags" class="flags"></div>
       <div class="sec-label">Tu enfoque ideal</div>
       <div class="flag"><b id="r-focus-title"></b><p id="r-focus-text"></p></div>
       <div class="cta-card cta-actions-hidden">
@@ -468,15 +504,16 @@ pesoEl.addEventListener('input',()=>{
   scheduleProgressSave();
 });
 pesoEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!document.getElementById('peso-next').disabled)next();});
-const nombreEl=document.getElementById('nombre'),emailEl=document.getElementById('email');
+const nombreEl=document.getElementById('nombre'),emailEl=document.getElementById('email'),whatsappEl=document.getElementById('whatsapp');
 const leadErrorEl=document.getElementById('lead-error');
+function isValidPhone(v){return v.replace(/\D/g,'').length>=8;}
 function checkLead(){
-  const ok=nombreEl.value.trim().length>1 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailEl.value.trim());
+  const ok=nombreEl.value.trim().length>1 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailEl.value.trim()) && isValidPhone(whatsappEl.value.trim());
   document.getElementById('lead-btn').disabled=!ok;
 }
 nombreEl.addEventListener('input',()=>{data.nombre=nombreEl.value.trim();checkLead();scheduleProgressSave();});
 emailEl.addEventListener('input',()=>{data.email=emailEl.value.trim();checkLead();scheduleProgressSave();});
-document.getElementById('whatsapp').addEventListener('input',()=>{data.whatsapp=document.getElementById('whatsapp').value.trim();scheduleProgressSave();});
+whatsappEl.addEventListener('input',()=>{data.whatsapp=whatsappEl.value.trim();checkLead();scheduleProgressSave();});
 window.addEventListener('beforeunload',()=>{if(idx>0)saveProgressNow({status:'abandoned'});});
 function computeResults(){
   const baseFactor={grasa:2.1,musculo:2.0,rendimiento:1.8,mantener:1.6}[data.objetivo]||1.8;
@@ -586,7 +623,7 @@ function buildIngestPayload(results){
 async function submitLead(){
   data.nombre=nombreEl.value.trim();
   data.email=emailEl.value.trim();
-  data.whatsapp=document.getElementById('whatsapp').value.trim();
+  data.whatsapp=whatsappEl.value.trim();
   const btn=document.getElementById('lead-btn');
   const defaultHtml=btn.innerHTML;
   leadErrorEl.style.display='none';
