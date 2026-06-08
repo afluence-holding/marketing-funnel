@@ -85,6 +85,40 @@ export interface Resource {
   position: number;
 }
 
+export type ContentKind =
+  | 'reel'
+  | 'story'
+  | 'email'
+  | 'message'
+  | 'sequence'
+  | 'matrix_row'
+  | 'milestone';
+
+export interface ContentItem {
+  id: string;
+  kind: ContentKind;
+  channel: string | null;
+  day: string | null;
+  dayLabel: string | null;
+  stageLabel: string | null;
+  title: string;
+  body: string | null;
+  status: string;
+  position: number;
+}
+
+export interface MessageAsset {
+  id: string;
+  key: string;
+  title: string;
+  channel: string | null;
+  status: 'ready' | 'todo';
+  filePath: string | null;
+  summary: string | null;
+  taskRefs: number[];
+  position: number;
+}
+
 export interface Launch {
   id: string;
   code: string;
@@ -111,6 +145,8 @@ export interface LaunchOverview {
   tasks: Task[];
   kpis: Kpi[];
   resources: Resource[];
+  content: ContentItem[];
+  messages: MessageAsset[];
   progress: {
     overallPct: number;
     totalTasks: number;

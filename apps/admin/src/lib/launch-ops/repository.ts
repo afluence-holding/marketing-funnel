@@ -10,9 +10,11 @@
  */
 import { getSupabaseLaunchOps } from '@/lib/supabase/server';
 import type {
+  ContentItem,
   Kpi,
   Launch,
   LaunchOverview,
+  MessageAsset,
   Phase,
   PhaseProgress,
   Resource,
@@ -109,15 +111,17 @@ function computeProgress(tasks: Task[], phases: Phase[]): LaunchOverview['progre
 export async function getLaunchOverview(launchId: string): Promise<LaunchOverview> {
   const db = getSupabaseLaunchOps();
 
-  const [launchRes, phaseRes, taskRes, kpiRes, resRes] = await Promise.all([
+  const [launchRes, phaseRes, taskRes, kpiRes, resRes, contentRes, msgRes] = await Promise.all([
     db.from('launch').select('*').eq('id', launchId).maybeSingle(),
     db.from('phase').select('*').eq('launch_id', launchId).order('position'),
     db.from('task').select('*').eq('launch_id', launchId).order('position'),
     db.from('kpi').select('*').eq('launch_id', launchId).order('position'),
     db.from('resource').select('*').eq('launch_id', launchId).order('position'),
+    db.from('content_item').select('*').eq('launch_id', launchId).order('position'),
+    db.from('message_asset').select('*').eq('launch_id', launchId).order('position'),
   ]);
 
-  for (const r of [launchRes, phaseRes, taskRes, kpiRes, resRes]) {
+  for (const r of [launchRes, phaseRes, taskRes, kpiRes, resRes, contentRes, msgRes]) {
     if (r.error) throw r.error;
   }
   if (!launchRes.data) throw new NotFoundError('Launch not found');
@@ -206,12 +210,39 @@ export async function getLaunchOverview(launchId: string): Promise<LaunchOvervie
     position: r.position ?? 0,
   }));
 
+  const content: ContentItem[] = ((contentRes.data ?? []) as Row[]).map((c) => ({
+    id: c.id,
+    kind: c.kind,
+    channel: c.channel ?? null,
+    day: c.day ?? null,
+    dayLabel: c.day_label ?? null,
+    stageLabel: c.stage_label ?? null,
+    title: c.title,
+    body: c.body ?? null,
+    status: c.status,
+    position: c.position ?? 0,
+  }));
+
+  const messages: MessageAsset[] = ((msgRes.data ?? []) as Row[]).map((m) => ({
+    id: m.id,
+    key: m.key,
+    title: m.title,
+    channel: m.channel ?? null,
+    status: m.status,
+    filePath: m.file_path ?? null,
+    summary: m.summary ?? null,
+    taskRefs: (m.task_refs ?? []) as number[],
+    position: m.position ?? 0,
+  }));
+
   return {
     launch: mapLaunch(launchRes.data as Row),
     phases,
     tasks,
     kpis,
     resources,
+    content,
+    messages,
     progress: computeProgress(tasks, phases),
   };
 }
