@@ -12,9 +12,15 @@ import enrollmentRoutes from './core/routes/enrollment.routes';
 import bukkuLeadsRoutes from './core/routes/bukku-leads.routes';
 import mamaSinCaosLeadsRoutes from './core/routes/mama-sin-caos-leads.routes';
 import caroFitnessProgressRoutes from './core/routes/caro-fitness-progress.routes';
+import germanRozProgressRoutes from './core/routes/german-roz-progress.routes';
+import whatsappGroupsRoutes from './core/routes/whatsapp-groups.routes';
 import { ensureBukkuLeadsTable } from './core/bootstrap/ensure-bukku-leads-table';
 import { ensureMamaSinCaosLeadsTable } from './core/bootstrap/ensure-mama-sin-caos-leads-table';
 import { ensureCaroFitnessProgressTable } from './core/bootstrap/ensure-caro-fitness-progress-table';
+import { ensureGermanRozProgressTable } from './core/bootstrap/ensure-german-roz-progress-table';
+import { ensureWhatsAppGroupTables } from './core/bootstrap/ensure-whatsapp-group-tables';
+import { seedWhatsAppGroupPools } from './core/services/whatsapp-group-rotation.service';
+import { whatsappGroupPoolRegistry } from './orgs';
 
 const app = express();
 
@@ -39,6 +45,8 @@ app.use('/api', enrollmentRoutes);
 app.use('/api', bukkuLeadsRoutes);
 app.use('/api', mamaSinCaosLeadsRoutes);
 app.use('/api', caroFitnessProgressRoutes);
+app.use('/api', germanRozProgressRoutes);
+app.use('/api', whatsappGroupsRoutes);
 app.use('/api/elevenlabs', elevenLabsRoutes);
 
 app.use(errorHandler);
@@ -53,6 +61,14 @@ app.listen(env.PORT, () => {
   void ensureCaroFitnessProgressTable().catch((error) => {
     console.error('[caro-fitness] failed to ensure caro_fitness_progress table', error);
   });
+  void ensureGermanRozProgressTable().catch((error) => {
+    console.error('[german-roz] failed to ensure german_roz_progress table', error);
+  });
+  void ensureWhatsAppGroupTables()
+    .then(() => seedWhatsAppGroupPools(whatsappGroupPoolRegistry))
+    .catch((error) => {
+      console.error('[whatsapp-groups] failed to ensure/seed whatsapp group tables', error);
+    });
   startWorkflowEngine();
   startCron();
   console.log(`API running on http://localhost:${env.PORT}`);

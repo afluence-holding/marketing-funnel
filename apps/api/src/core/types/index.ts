@@ -165,7 +165,8 @@ export type WorkflowEventType =
   | 'sequence_step_completed'
   | 'sequence_completed'
   | 'call_completed'
-  | 'call_failed';
+  | 'call_failed'
+  | 'whatsapp_group_joined';
 
 export interface WorkflowTrigger {
   event: WorkflowEventType;
@@ -246,3 +247,30 @@ export type ActionHandler = (
 ) => Promise<void>;
 
 export type ActionHandlerMap = Record<WorkflowActionType, ActionHandler>;
+
+// ─── WhatsApp group rotation (code-first pool seeds) ─────────────────────────
+
+export type WhatsAppGroupRotationMode = 'manual' | 'auto_count' | 'join_webhook';
+
+export interface WhatsAppGroupSeed {
+  /** Display label, e.g. "Grupo 1". */
+  label: string;
+  /** Invite link (https://chat.whatsapp.com/...). */
+  inviteUrl: string;
+  /** Order of rotation (1-based, ascending). */
+  position: number;
+  /** Group JID (xxxx@g.us) — only needed for join_webhook attribution. */
+  groupJid?: string;
+}
+
+export interface WhatsAppGroupPoolSeed {
+  orgKey: string;
+  buKey: string;
+  /** Unique pool identifier within the org/bu, e.g. "webinar-2026-06-10". */
+  poolKey: string;
+  /** Rotate to the next group once a group hits this many (default 500). */
+  capacity?: number;
+  rotationMode?: WhatsAppGroupRotationMode;
+  /** Initial groups; only seeded on first boot when the pool has none in DB. */
+  groups: WhatsAppGroupSeed[];
+}

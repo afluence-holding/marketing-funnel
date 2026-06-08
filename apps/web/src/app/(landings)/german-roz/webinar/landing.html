@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico de Inflamación · Germán Roz</title>
+<style>
+  :root{
+    --bg:#F6F2EC; --card:#FFFFFF; --ink:#27302a; --muted:#6f776f;
+    --green:#4e5b48; --green2:#69785f; --terra:#b4744f; --terra-soft:#f1e2d8;
+    --line:#e6ddd2; --chip:#eef1ea; --warm:#fbf4ee;
+    --sel:#eef3ea; --selbd:#7d9070;
+    --shadow:0 1px 3px rgba(40,48,42,.07),0 10px 30px rgba(40,48,42,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  .app{max-width:560px;margin:0 auto;padding:20px 18px 60px;min-height:100vh}
+
+  .brandbar{display:flex;align-items:center;gap:10px;justify-content:center;margin:8px 0 6px}
+  .brandbar .b{font-weight:800;font-size:14px;letter-spacing:.02em}
+  .brandbar .d{font-size:12px;color:var(--terra);font-weight:700;text-transform:uppercase;letter-spacing:.12em}
+
+  .scr{display:none;animation:fade .35s ease}
+  .scr.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* INTRO */
+  .qual{display:inline-block;background:var(--terra-soft);color:var(--terra);font-weight:700;
+    font-size:12px;padding:5px 13px;border-radius:999px;margin:14px 0 14px}
+  h1{font-size:30px;line-height:1.16;font-weight:800;margin:0 0 12px;letter-spacing:-.01em}
+  .lead{font-size:16px;color:var(--muted);margin:0 0 22px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+  .badge{background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:9px 12px;font-size:12.5px;color:var(--green);box-shadow:var(--shadow);flex:1;text-align:center;min-width:90px}
+  .badge b{display:block;font-size:15px;color:var(--terra)}
+
+  .btn{display:block;width:100%;border:none;cursor:pointer;border-radius:13px;
+    padding:16px 18px;font-size:16px;font-weight:700;text-align:center;
+    background:var(--green);color:#fff;box-shadow:var(--shadow);transition:transform .1s,filter .15s}
+  .btn:hover{filter:brightness(1.06)} .btn:active{transform:scale(.99)}
+  .btn.ghost{background:transparent;color:var(--green);border:1.5px solid var(--selbd);box-shadow:none}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn.sm{padding:13px;font-size:15px}
+
+  /* PROGRESS */
+  .ptop{display:flex;align-items:center;justify-content:space-between;margin:6px 0 16px}
+  .pnum{font-size:12px;font-weight:800;color:var(--terra);letter-spacing:.06em}
+  .back{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px 2px}
+  .bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin-bottom:22px}
+  .bar > i{display:block;height:100%;background:var(--terra);border-radius:999px;transition:width .35s ease}
+
+  .qtitle{font-size:23px;font-weight:800;line-height:1.22;margin:0 0 6px}
+  .qwhy{font-size:14px;color:var(--muted);margin:0 0 18px}
+
+  .opt{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;cursor:pointer;
+    background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:10px;
+    box-shadow:var(--shadow);transition:border-color .15s,background .15s,transform .1s}
+  .opt:hover{border-color:var(--selbd)} .opt:active{transform:scale(.995)}
+  .opt.sel{border-color:var(--selbd);background:var(--sel)}
+  .opt .ol{font-size:16px;font-weight:700;color:var(--ink)}
+  .opt .os{font-size:13px;color:var(--muted)}
+
+  /* GATE */
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--green2);margin-bottom:6px}
+  .field input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:14px 15px;font-size:16px;background:var(--card);color:var(--ink);font-family:inherit}
+  .field input:focus{outline:none;border-color:var(--selbd)}
+  .phone-wrap{display:grid;grid-template-columns:122px 1fr;gap:10px;align-items:stretch}
+  .phone-wrap .csel{position:relative}
+  .phone-wrap select{width:100%;height:100%;min-height:50px;border:1.5px solid var(--line);border-radius:12px;
+    padding:0 26px 0 12px;font-size:15px;background:var(--card);color:var(--ink);font-family:inherit;
+    outline:none;appearance:none;cursor:pointer}
+  .phone-wrap .csel::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:11px}
+  .phone-wrap select:focus{border-color:var(--selbd)}
+  .fineprint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:14px}
+  .gate-error{font-size:13px;color:var(--terra);text-align:center;margin-top:12px;display:none}
+
+  /* RESULT */
+  .rkicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--terra);font-weight:800;text-align:center}
+  .rtitle{font-size:26px;font-weight:800;text-align:center;margin:6px 0 18px}
+  .gauge{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow);text-align:center;margin-bottom:14px}
+  .glabel{font-size:13px;color:var(--muted);font-weight:600}
+  .glevel{font-size:30px;font-weight:800;margin:4px 0 12px}
+  .gtrack{height:12px;border-radius:999px;background:linear-gradient(90deg,#9bbf8e,#e8c86a,#d98a5f);position:relative}
+  .gtrack > i{position:absolute;top:-5px;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--ink);transform:translateX(-50%);transition:left .6s ease}
+  .gscale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:7px}
+
+  .rcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px 18px;box-shadow:var(--shadow);margin-bottom:13px}
+  .rcard h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--terra);margin:0 0 9px;font-weight:800}
+  .rcard p{margin:0;font-size:15.5px;color:var(--ink)}
+  .blind{margin:0;padding:0;list-style:none}
+  .blind li{display:flex;gap:10px;font-size:15px;margin:9px 0;align-items:flex-start}
+  .blind li::before{content:"●";color:var(--terra);font-size:12px;margin-top:4px}
+
+  .webinar{background:linear-gradient(160deg,#4e5b48,#3c4639);color:#fff;border-radius:18px;padding:22px;box-shadow:var(--shadow);margin:18px 0 14px}
+  .webinar .wk{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--terra-soft);font-weight:700}
+  .webinar h2{font-size:22px;margin:8px 0 8px;line-height:1.25}
+  .webinar .when{display:inline-block;background:rgba(255,255,255,.14);border-radius:9px;padding:7px 12px;font-size:13.5px;font-weight:700;margin-bottom:12px}
+  .webinar p{font-size:14px;color:#e6e9e2;margin:0 0 16px}
+  .webinar .btn{background:#fff;color:var(--green)}
+  .webinar .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.5);margin-top:10px}
+
+  .disc{font-size:11.5px;color:var(--muted);text-align:center;margin:18px 4px 0;line-height:1.55}
+  .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:14px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="brandbar"><span class="b">Germán Roz</span><span class="d">Diagnóstico</span></div>
+
+  <!-- ===== INTRO ===== -->
+  <section class="scr on" id="s-intro">
+    <span class="qual">Para quienes viven cansadas, hinchadas o con antojos</span>
+    <h1>¿Qué está inflamando tu cuerpo?</h1>
+    <p class="lead">Un diagnóstico rápido que cruza tus síntomas, tu energía y tu forma de comer para detectar qué te está inflamando — y qué cambiar primero.</p>
+    <div class="badges">
+      <div class="badge"><b>2 min</b>rápido</div>
+      <div class="badge"><b>100%</b>personalizado</div>
+      <div class="badge"><b>Gratis</b>sin costo</div>
+    </div>
+    <button class="btn" onclick="start()">Empezar diagnóstico</button>
+    <p class="disc">Hecho por Germán Roz, chef y nutricionista. Es una guía educativa y no reemplaza la valoración de un profesional de salud.</p>
+  </section>
+
+  <!-- ===== QUIZ ===== -->
+  <section class="scr" id="s-quiz">
+    <div class="ptop">
+      <button class="back" id="backBtn" onclick="back()">‹ Atrás</button>
+      <span class="pnum" id="pnum">01 / 08</span>
+    </div>
+    <div class="bar"><i id="barfill" style="width:12%"></i></div>
+    <h2 class="qtitle" id="qtitle"></h2>
+    <p class="qwhy" id="qwhy"></p>
+    <div id="opts"></div>
+  </section>
+
+  <!-- ===== GATE ===== -->
+  <section class="scr" id="s-gate">
+    <div class="ptop"><button class="back" onclick="backToQuiz()">‹ Atrás</button><span class="pnum">Último paso</span></div>
+    <div class="bar"><i style="width:100%"></i></div>
+    <h2 class="qtitle">Tu diagnóstico está listo ✓</h2>
+    <p class="qwhy">Dime a dónde te lo envío y te aparto el lugar en la clase en vivo.</p>
+    <div class="field"><label>Tu nombre</label><input id="f-name" type="text" placeholder="¿Cómo te llamas?" autocomplete="given-name" oninput="checkGate()"></div>
+    <div class="field"><label>Tu correo</label><input id="f-mail" type="email" placeholder="tucorreo@ejemplo.com" autocomplete="email" oninput="checkGate()"></div>
+    <div class="field">
+      <label>Tu WhatsApp</label>
+      <div class="phone-wrap">
+        <div class="csel">
+          <select id="f-cc" aria-label="Código de país">
+            <option value="+51" data-country="Perú" selected>🇵🇪 +51</option>
+            <option value="+52" data-country="México">🇲🇽 +52</option>
+            <option value="+57" data-country="Colombia">🇨🇴 +57</option>
+            <option value="+56" data-country="Chile">🇨🇱 +56</option>
+            <option value="+54" data-country="Argentina">🇦🇷 +54</option>
+            <option value="+593" data-country="Ecuador">🇪🇨 +593</option>
+            <option value="+58" data-country="Venezuela">🇻🇪 +58</option>
+            <option value="+591" data-country="Bolivia">🇧🇴 +591</option>
+            <option value="+595" data-country="Paraguay">🇵🇾 +595</option>
+            <option value="+598" data-country="Uruguay">🇺🇾 +598</option>
+            <option value="+507" data-country="Panamá">🇵🇦 +507</option>
+            <option value="+506" data-country="Costa Rica">🇨🇷 +506</option>
+            <option value="+502" data-country="Guatemala">🇬🇹 +502</option>
+            <option value="+503" data-country="El Salvador">🇸🇻 +503</option>
+            <option value="+504" data-country="Honduras">🇭🇳 +504</option>
+            <option value="+505" data-country="Nicaragua">🇳🇮 +505</option>
+            <option value="+1" data-country="Estados Unidos">🇺🇸 +1</option>
+            <option value="+34" data-country="España">🇪🇸 +34</option>
+          </select>
+        </div>
+        <input id="f-wa" type="tel" inputmode="tel" placeholder="999 000 000" autocomplete="tel-national" oninput="checkGate()">
+      </div>
+    </div>
+    <button class="btn" id="gateBtn" disabled onclick="finish()">Ver mi diagnóstico y apuntarme</button>
+    <p class="gate-error" id="gate-error"></p>
+    <p class="fineprint">Cero spam. Te mandamos el enlace de la clase al correo y el recordatorio por WhatsApp. Te puedes salir cuando quieras.</p>
+  </section>
+
+  <!-- ===== RESULT ===== -->
+  <section class="scr" id="s-result">
+    <p class="rkicker">Tu perfil de inflamación</p>
+    <p class="rtitle" id="r-hi">Esto es lo que vimos, <span id="r-name">…</span></p>
+
+    <div class="gauge">
+      <div class="glabel">Tus señales de inflamación</div>
+      <div class="glevel" id="r-level">Moderadas</div>
+      <div class="gtrack"><i id="r-needle" style="left:50%"></i></div>
+      <div class="gscale"><span>Bajas</span><span>Moderadas</span><span>Altas</span></div>
+    </div>
+
+    <div class="rcard"><h3>Lo que más te está afectando</h3><p id="r-main"></p></div>
+    <div class="rcard"><h3>Tus puntos ciegos</h3><ul class="blind" id="r-blind"></ul></div>
+    <div class="rcard"><h3>Tu enfoque ideal</h3><p id="r-focus"></p></div>
+
+    <div class="webinar">
+      <div class="wk">Ya estás dentro ✓</div>
+      <h2>Te muestro cómo desinflamarte, paso a paso</h2>
+      <div class="when" id="r-when">📅 Clase en vivo gratis</div>
+      <p>Te aparté el lugar en mi clase gratuita. Entra al grupo de WhatsApp para recibir el enlace, los recordatorios y, al conectarte, tu <b>recetario antiinflamatorio</b>.</p>
+      <button class="btn" onclick="joinWhatsApp()">Entrar al grupo de WhatsApp</button>
+      <button class="btn ghost" onclick="addToCalendar()">Agregar al calendario</button>
+    </div>
+
+    <p class="disc">Este diagnóstico es una guía educativa basada en recomendaciones generales de nutrición antiinflamatoria y no sustituye la valoración individual de un profesional de la salud.</p>
+    <p class="foot">© Germán Roz · Desinflámate</p>
+  </section>
+
+</div>
+
+<script>
+/* ---------- CONFIG (reemplazado en /raw) ---------- */
+const INGEST_PATH = '/api/german-roz/ingest';
+const PROGRESS_PATH = '/api/german-roz/progress';
+const FORM_SOURCE = 'landing-german-roz-webinar-2026-06-10';
+const WHATSAPP_GROUP_URL = '__WHATSAPP_GROUP_URL__';
+const WA_ASSIGN_PATH = '/api/whatsapp-group/german-roz/main/assign';
+const WA_POOL_KEY = 'webinar-2026-06-10';
+let assignedWhatsAppUrl = '';
+const CALENDAR_URL = '__CALENDAR_URL__';
+const WEBINAR = {
+  dateLabel: '__WEBINAR_DATE__',
+  dateIso: '__WEBINAR_DATE_ISO__',
+  time: '__WEBINAR_TIME__',
+  timezone: '__WEBINAR_TZ__',
+};
+const SESSION_KEY = 'german_roz_session_id';
+
+function getSessionId(){
+  try{
+    let id=sessionStorage.getItem(SESSION_KEY);
+    if(!id){
+      id=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():('gr-'+Date.now()+'-'+Math.random().toString(36).slice(2,10));
+      sessionStorage.setItem(SESSION_KEY,id);
+    }
+    return id;
+  }catch(_){
+    return 'gr-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);
+  }
+}
+const sessionId=getSessionId();
+
+/* ---------- PREGUNTAS ----------
+   score: severidad de inflamación (3 = peor / más inflamado, 0 = mejor).
+   key:   se usa para personalizar el resultado. */
+const QUESTIONS = [
+  { id:"etapa", title:"¿En qué etapa estás hoy?", why:"Tu etapa cambia lo que tu cuerpo necesita para desinflamarse.",
+    options:[
+      {l:"Menopausia o cerca de los 40+", s:"Mi cuerpo cambió y no sé por qué", score:0},
+      {l:"Fui mamá hace poco", s:"Quiero volver a sentirme yo", score:0},
+      {l:"Estoy embarazada", s:"Quiero comer nutritivo sin sufrir", score:0},
+      {l:"Ninguna de estas", s:"Solo quiero sentirme mejor", score:0},
+    ]},
+  { id:"objetivo", title:"¿Qué es lo que más quieres lograr?", why:"Esto define por dónde te conviene empezar.",
+    options:[
+      {l:"Recuperar mi energía", s:"Vivir sin arrastrarme", score:0},
+      {l:"Bajar la hinchazón", s:"Sentirme liviana otra vez", score:0},
+      {l:"Controlar los antojos", s:"Dejar de comer por ansiedad", score:0},
+      {l:"Sentirme bien con mi cuerpo", s:"Volver a estar cómoda", score:0},
+    ]},
+  { id:"energia", title:"¿Cómo está tu energía la mayoría de los días?", why:"La energía es la primera señal de cómo estás por dentro.",
+    options:[
+      {l:"Me arrastro, vivo cansada", s:"", score:3},
+      {l:"Altibajos, con bajones a media tarde", s:"", score:2},
+      {l:"Más o menos estable", s:"", score:1},
+      {l:"Tengo buena energía", s:"", score:0},
+    ]},
+  { id:"hinchazon", title:"¿Te hinchas o sientes pesada la digestión?", why:"La hinchazón frecuente suele ser una señal de inflamación.",
+    options:[
+      {l:"Casi todos los días", s:"", score:3},
+      {l:"Varias veces por semana", s:"", score:2},
+      {l:"De vez en cuando", s:"", score:1},
+      {l:"Casi nunca", s:"", score:0},
+    ]},
+  { id:"antojos", title:"¿Qué tan seguido te ganan los antojos?", why:"Los antojos no son falta de voluntad: son una señal del cuerpo.",
+    options:[
+      {l:"Todo el tiempo, sobre todo dulce", s:"", score:3},
+      {l:"Casi a diario", s:"", score:2},
+      {l:"Algunos días", s:"", score:1},
+      {l:"Los controlo bien", s:"", score:0},
+    ]},
+  { id:"comer", title:"¿Cómo describes tu forma de comer hoy?", why:"Aquí es donde se esconde la mayoría de la inflamación.",
+    options:[
+      {l:"Como lo que puedo, a las apuradas", s:"", score:3},
+      {l:"Intento comer bien pero me cuesta sostenerlo", s:"", score:2},
+      {l:"Como sano, pero igual me siento mal", s:"", score:2},
+      {l:"Tengo bastante orden", s:"", score:0},
+    ]},
+  { id:"dietas", title:"¿Has hecho dietas antes?", why:"El ciclo de dietas restrictivas puede inflamar más de lo que ayuda.",
+    options:[
+      {l:"Muchas, y siempre vuelvo a lo mismo", s:"", score:3},
+      {l:"Algunas, sin resultados que duren", s:"", score:2},
+      {l:"Pocas", s:"", score:1},
+      {l:"Nunca", s:"", score:0},
+    ]},
+  { id:"frustra", title:"¿Cuál es tu mayor frustración hoy?", why:"Esto nos ayuda a entender el dolor real detrás de todo.",
+    options:[
+      {l:"Hago esfuerzo y no veo cambios", s:"", score:2},
+      {l:"Vivo cansada y sin energía", s:"", score:2},
+      {l:"No controlo los antojos ni la ansiedad", s:"", score:2},
+      {l:"Me siento hinchada e incómoda", s:"", score:2},
+      {l:"No sé por dónde empezar", s:"", score:1},
+    ]},
+];
+
+const answers = {};
+let idx = 0;
+let currentStep = 'intro';
+let leadResults = null;
+let completed = false;
+
+function show(id){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+  postHeightSoon();
+}
+function start(){idx=0;render();show('s-quiz');currentStep='q-'+QUESTIONS[0].id;scheduleProgressSave();}
+function render(){
+  const q=QUESTIONS[idx];
+  currentStep='q-'+q.id;
+  document.getElementById('pnum').textContent=String(idx+1).padStart(2,'0')+' / '+String(QUESTIONS.length).padStart(2,'0');
+  document.getElementById('barfill').style.width=((idx+1)/QUESTIONS.length*100)+'%';
+  document.getElementById('qtitle').textContent=q.title;
+  document.getElementById('qwhy').textContent=q.why;
+  document.getElementById('backBtn').style.visibility = idx===0 ? 'hidden':'visible';
+  const wrap=document.getElementById('opts');wrap.innerHTML='';
+  q.options.forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='opt'+(answers[q.id]&&answers[q.id].i===i?' sel':'');
+    b.innerHTML=`<span class="ol">${o.l}</span>`+(o.s?`<span class="os">${o.s}</span>`:'');
+    b.onclick=()=>choose(i);
+    wrap.appendChild(b);
+  });
+  postHeightSoon();
+}
+function choose(i){
+  const q=QUESTIONS[idx];
+  answers[q.id]={i, label:q.options[i].l, score:q.options[i].score};
+  render();
+  scheduleProgressSave();
+  setTimeout(()=>{
+    if(idx<QUESTIONS.length-1){idx++;render();scheduleProgressSave();}
+    else{show('s-gate');currentStep='gate';scheduleProgressSave();}
+  },180);
+}
+function back(){ if(idx>0){idx--;render();currentStep='q-'+QUESTIONS[idx].id;scheduleProgressSave();} }
+function backToQuiz(){ idx=QUESTIONS.length-1; render(); show('s-quiz'); currentStep='q-'+QUESTIONS[idx].id; }
+
+/* ---------- GATE ---------- */
+const nameEl=()=>document.getElementById('f-name');
+const mailEl=()=>document.getElementById('f-mail');
+const waEl=()=>document.getElementById('f-wa');
+const ccEl=()=>document.getElementById('f-cc');
+function phoneLocal(){return waEl().value.trim();}
+function fullPhone(){
+  const local=phoneLocal().replace(/\D/g,'');
+  if(!local)return '';
+  return ccEl().value.replace(/\s/g,'')+local;
+}
+function isValidPhone(){return phoneLocal().replace(/\D/g,'').length>=8;}
+function checkGate(){
+  const ok=nameEl().value.trim().length>1
+    && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mailEl().value.trim())
+    && isValidPhone();
+  document.getElementById('gateBtn').disabled=!ok;
+  scheduleProgressSave();
+}
+
+/* ---------- PROGRESS ---------- */
+function getUtmData(){
+  const params=new URLSearchParams(window.location.search);
+  const utm={};
+  ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach((key)=>{
+    const value=params.get(key);
+    if(value)utm[key]=value;
+  });
+  return utm;
+}
+function buildProgressAnswers(){
+  const out={};
+  QUESTIONS.forEach((q)=>{ if(answers[q.id])out[q.id]=String(answers[q.id].label); });
+  return out;
+}
+function buildProgressPayload(overrides){
+  return Object.assign({
+    sessionId:sessionId,
+    source:FORM_SOURCE,
+    email:(mailEl()?mailEl().value:'').trim().toLowerCase(),
+    firstName:(nameEl()?nameEl().value:'').trim(),
+    phone:fullPhone(),
+    quizStep:currentStep,
+    status:completed?'completed':'in_progress',
+    answers:buildProgressAnswers(),
+    utmData:getUtmData(),
+  },overrides||{});
+}
+let progressTimer=null;
+function saveProgressNow(overrides){
+  const body=JSON.stringify(buildProgressPayload(overrides));
+  if(navigator.sendBeacon){
+    try{navigator.sendBeacon(PROGRESS_PATH,new Blob([body],{type:'application/json'}));return;}catch(_){}
+  }
+  fetch(PROGRESS_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}).catch(()=>{});
+}
+function scheduleProgressSave(overrides){
+  if(currentStep==='intro')return;
+  clearTimeout(progressTimer);
+  progressTimer=setTimeout(()=>saveProgressNow(overrides),400);
+}
+window.addEventListener('beforeunload',()=>{if(currentStep!=='intro'&&!completed)saveProgressNow({status:'abandoned'});});
+
+/* ---------- META TRACKING ---------- */
+function getCookie(name){
+  const m=document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+  return m?m[1]:undefined;
+}
+function buildMetaTracking(){
+  const eventId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():String(Date.now());
+  const t={eventId};
+  const fbp=getCookie('_fbp'); const fbc=getCookie('_fbc');
+  if(fbp)t.fbp=fbp; if(fbc)t.fbc=fbc;
+  return t;
+}
+
+/* ---------- INGEST ---------- */
+function buildIngestPayload(){
+  const meta=buildMetaTracking();
+  const cf={
+    creator:'german-roz',
+    interest:'desinflamate-21',
+    event_type:'webinar',
+    landing:'diagnostico-webinar',
+    webinar_date:WEBINAR.dateIso,
+    webinar_time:WEBINAR.time,
+    webinar_timezone:WEBINAR.timezone,
+    country_code:ccEl().value,
+    country:ccEl().selectedOptions[0]?ccEl().selectedOptions[0].dataset.country:'',
+    whatsapp_local:phoneLocal(),
+    nivel_inflamacion:leadResults?leadResults.level:'',
+    inflamacion_score:leadResults?String(leadResults.total):'',
+    session_id:sessionId,
+    diagnostico_submitted_at:new Date().toISOString(),
+  };
+  QUESTIONS.forEach((q)=>{ if(answers[q.id])cf[q.id]=String(answers[q.id].label); });
+  const payload={
+    source:FORM_SOURCE,
+    channel:'inbound',
+    email:mailEl().value.trim().toLowerCase(),
+    firstName:nameEl().value.trim(),
+    phone:fullPhone(),
+    customFields:cf,
+    tracking:{meta},
+  };
+  const utm=getUtmData();
+  if(Object.keys(utm).length>0)payload.utmData=utm;
+  return payload;
+}
+async function submitIngest(payload){
+  try{
+    const res=await fetch(INGEST_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!res.ok){console.error('[german-roz] ingest failed',res.status,await res.text());return null;}
+    try{return await res.json();}catch(_){return {};}
+  }catch(err){console.error('[german-roz] ingest error',err);return null;}
+}
+/* Pide un grupo de WhatsApp rotado (capacidad/rotación gestionada en backend). */
+async function assignWhatsAppGroup(leadId){
+  try{
+    const body={poolKey:WA_POOL_KEY,phone:fullPhone()};
+    if(leadId)body.leadId=leadId;
+    const res=await fetch(WA_ASSIGN_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)return;
+    const data=await res.json();
+    if(data&&data.ok&&data.inviteUrl)assignedWhatsAppUrl=data.inviteUrl;
+  }catch(err){console.error('[german-roz] whatsapp assign error',err);}
+}
+
+/* ---------- RESULTADOS ---------- */
+function computeResults(){
+  const sevKeys=['energia','hinchazon','antojos','comer','dietas'];
+  let total=0; sevKeys.forEach(k=>total+=(answers[k]?answers[k].score:0)); // 0..15
+  let level, pos;
+  if(total<=4){level='Bajas';pos=16;}
+  else if(total<=9){level='Moderadas';pos=50;}
+  else {level='Altas';pos=84;}
+  return {total,level,pos};
+}
+function buildResultsDom(r){
+  document.getElementById('r-level').textContent=r.level;
+  document.getElementById('r-needle').style.left=r.pos+'%';
+  document.getElementById('r-name').textContent=nameEl().value.trim().split(' ')[0]||'';
+
+  const sym=[
+    {k:'energia', t:'Tu energía. Vivir cansada todo el día no es tu personalidad — es una de las señales más claras de que tu cuerpo está pidiendo comer distinto.'},
+    {k:'hinchazon',t:'La hinchazón. Sentirte pesada casi a diario es de las señales de inflamación más comunes, y de las que más rápido cambian cuando ajustas cómo comes.'},
+    {k:'antojos', t:'Los antojos. No son falta de voluntad: son una señal de tu cuerpo. Cuando se equilibra lo que comes, bajan casi solos.'},
+  ];
+  sym.sort((a,b)=>(answers[b.k].score)-(answers[a.k].score));
+  document.getElementById('r-main').textContent=sym[0].t;
+
+  const blind=[];
+  if(answers.comer.score>=2) blind.push('Comes a las apuradas o te cuesta sostenerlo → tu cuerpo no recibe con qué desinflamarse.');
+  if(answers.dietas.score>=2) blind.push('El ciclo de dietas restrictivas te ha inflamado más de lo que te ha ayudado.');
+  if(answers.antojos.score>=2) blind.push('Los antojos frecuentes son una señal, no un defecto — hoy te están manejando a ti.');
+  if(answers.hinchazon.score>=2) blind.push('La hinchazón casi diaria ya se volvió tu normal, y no debería serlo.');
+  if(answers.energia.score>=2) blind.push('Tu energía baja es la punta del iceberg: el cuerpo gasta en inflamarse lo que debería darte para el día.');
+  if(blind.length===0) blind.push('Tienes una buena base. El siguiente nivel es afinar qué comes para sostener tu energía sin altibajos.');
+  const ul=document.getElementById('r-blind');ul.innerHTML='';
+  blind.slice(0,3).forEach(b=>{const li=document.createElement('li');li.textContent=b;ul.appendChild(li);});
+
+  const etapaMap={
+    "Menopausia o cerca de los 40+":"En tu etapa, el cuerpo cambia y lo que antes funcionaba ya no alcanza. ",
+    "Fui mamá hace poco":"Después de ser mamá, el cuerpo te pide nutrirte de verdad, no privarte. ",
+    "Estoy embarazada":"Embarazada, la meta es nutrir sin renunciar al placer (siempre con el visto bueno de tu médico). ",
+    "Ninguna de estas":""
+  };
+  const pre=etapaMap[answers.etapa?answers.etapa.label:""]||"";
+  document.getElementById('r-focus').textContent=pre+"No necesitas otra dieta ni pasar hambre: necesitas reaprender a comer para desinflamarte, con recetas ricas que de verdad disfrutes. Eso es exactamente lo que te muestro en la clase.";
+
+  if(WEBINAR.dateLabel && WEBINAR.dateLabel.indexOf('__')===-1){
+    document.getElementById('r-when').textContent='📅 '+WEBINAR.dateLabel+' · Clase en vivo gratis';
+  }
+}
+
+async function finish(){
+  const btn=document.getElementById('gateBtn');
+  const errEl=document.getElementById('gate-error');
+  const defaultHtml=btn.innerHTML;
+  errEl.style.display='none';
+  btn.disabled=true;
+  btn.innerHTML='Guardando...';
+
+  leadResults=computeResults();
+  buildResultsDom(leadResults);
+
+  const ingest=await submitIngest(buildIngestPayload());
+  if(!ingest){
+    btn.disabled=false;
+    btn.innerHTML=defaultHtml;
+    checkGate();
+    errEl.textContent='No pudimos guardar tus datos. Revisa tu conexión e inténtalo de nuevo.';
+    errEl.style.display='block';
+    return;
+  }
+
+  const leadId=ingest&&ingest.lead?ingest.lead.id:undefined;
+  await assignWhatsAppGroup(leadId);
+
+  completed=true;
+  currentStep='results';
+  saveProgressNow({status:'completed',quizStep:'results'});
+  show('s-result');
+}
+
+function joinWhatsApp(){
+  const url=assignedWhatsAppUrl
+    || (WHATSAPP_GROUP_URL && WHATSAPP_GROUP_URL!=='#' && WHATSAPP_GROUP_URL.indexOf('__')===-1 ? WHATSAPP_GROUP_URL : '');
+  if(url)window.open(url,'_blank');
+}
+function addToCalendar(){
+  if(CALENDAR_URL && CALENDAR_URL!=='#' && CALENDAR_URL.indexOf('__')===-1)
+    window.open(CALENDAR_URL,'_blank');
+}
+</script>
+
+<script>
+(function(){
+  function inIframe(){try{return window.parent&&window.parent!==window;}catch(_){return true;}}
+  function postHeight(){
+    if(!inIframe())return;
+    try{
+      var h=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);
+      window.parent.postMessage({type:'iframe-height',height:h},'*');
+    }catch(_){}
+  }
+  window.postHeightSoon=function(){
+    postHeight();
+    setTimeout(postHeight,100);
+    setTimeout(postHeight,400);
+  };
+  if(document.readyState==='complete')postHeight();
+  else window.addEventListener('load',postHeight);
+  window.addEventListener('resize',postHeight);
+  if('ResizeObserver' in window){try{new ResizeObserver(postHeight).observe(document.documentElement);}catch(_){}}
+  setTimeout(postHeight,100);setTimeout(postHeight,600);setTimeout(postHeight,1500);
+})();
+</script>
+</body>
+</html>
