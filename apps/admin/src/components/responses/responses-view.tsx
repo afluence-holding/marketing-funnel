@@ -79,8 +79,14 @@ export function ResponsesView({
     return buildResponseStats(scoped, total, {
       statusColumn: active.source.statusColumn,
       statusValues: active.source.statusValues,
+      // When viewing "all" of a status-less source, break the total down by
+      // landing so single-step forms still get a rich, Caro-like stats panel.
+      facet:
+        sourceFilter === 'all' && sourceOptions.length > 1
+          ? { values: sourceOptions, prefix: sourcePrefix, max: 4 }
+          : undefined,
     });
-  }, [active, scoped, sourceFilter]);
+  }, [active, scoped, sourceFilter, sourceOptions, sourcePrefix]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -68,6 +68,9 @@ export const RESPONSE_SOURCES: Record<string, ResponseSource> = {
     table: 'leads',
     filter: { column: 'organization_id', value: '614e43c9-5f3f-499b-8734-2fa256b3785c' },
     jsonbColumns: [],
+    // German's intake is single-step (status stays 'new'), so its "progress"
+    // view is the breakdown across landings (form / webinar / waitlist).
+    sourceColumn: 'source',
     columns: [
       ...COMMON_LEAD_COLUMNS,
       { key: 'source', label: 'Landing' },

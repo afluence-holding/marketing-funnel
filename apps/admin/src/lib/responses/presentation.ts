@@ -48,7 +48,8 @@ export function commonPrefix(values: string[]): string {
 export function prettyFacet(value: string, prefix: string): string {
   const stripped = (prefix && value.startsWith(prefix) ? value.slice(prefix.length) : value).trim();
   const base = stripped || value;
-  return base.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim() || value;
+  const label = base.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim() || value;
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 /** Serialize a source's records to CSV text (BOM added by the caller). */
