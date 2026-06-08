@@ -246,3 +246,35 @@ touching task `status`/`progress`/`version`.
 **Staff roster** (`backoffice.profile` + `afluence_membership`): Cristóbal (admin),
 Nico J. (admin), Tomás Hanna (organico), Mau A. (paid), Mau S. (support),
 Germán (creator), Elba (comunidad).
+
+---
+
+## 10. UI refactor — sectioned sidebar (DEV-BRIEF §4.A)
+
+Replaced the flat tab strip inside the launch view with a **sectioned sidebar**
+that mirrors the validated reference design (`docs/DI21-C2-Centro-Operaciones.html`)
+using the admin's dark design tokens (no light-theme leakage). Strangler-fig:
+only the launch view's navigation/shell changed; panes, RBAC, repository, page
+props and the BU-level `ModuleTabBar` are untouched.
+
+**New files:**
+- `apps/admin/src/lib/launch-ops/navigation.ts` — `SECTION_ORDER` (6 sections),
+  `MODULE_SECTION`, `MODULE_ICON`, and `groupModulesBySection(visible)` (drops
+  empty sections, preserves `MODULE_IDS` order). Agnostic; no launch-specific copy.
+- `apps/admin/src/components/launch-ops/launch-ops-sidebar.tsx` — sidebar
+  (brand + "Ver como rol" selector + grouped nav items) and the mobile drawer
+  backdrop.
+
+**Sections → modules** (icons): Vista general (resumen 🏠) · Estadísticas
+(kpis 📊) · Project Management (tareas ✅, gantt 📆) · Marketing (calendario 🗓️,
+mensajes 💬) · Operaciones (enlaces 🔗) · Administración (usuarios 👤, config ⚙️).
+
+**Role-aware:** sidebar renders `modulesForRole(effectiveRole, grants)` grouped by
+section; a section appears only if it has visible modules. `active` module falls
+back to the first visible one when the selected one is filtered out (e.g. after a
+preview-role change).
+
+**Responsive:** desktop `grid: 248px | 1fr` sticky sidebar; ≤860px off-canvas
+drawer (`.launch-sidebar.open`) toggled by `☰ Módulos`, with a backdrop that is
+`display:none` by default and shown via `.show` (reference bug fix — never
+occupies a grid column). Styles live in `globals.css` under `.launch-*`.

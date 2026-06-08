@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { LaunchRealtime } from '@/components/launch-ops/realtime';
+import { LaunchSidebar } from '@/components/launch-ops/launch-ops-sidebar';
 import {
   updateKpiAction,
   updateResourceAction,
@@ -34,9 +35,6 @@ import {
   resetGrantsAction,
 } from '@/app/[organizer]/[bu]/launch/rbac-actions';
 
-const ALL_TABS = ['Resumen', 'KPIs', 'Tareas', 'Gantt', 'Calendario', 'Mensajes', 'Enlaces', 'Usuarios', 'Configuración'] as const;
-type Tab = (typeof ALL_TABS)[number];
-
 interface ViewSession {
   opsRole: OpsRole;
   canManage: boolean;
@@ -50,14 +48,6 @@ interface StaffMember {
   handle: string | null;
   staffRole: string;
   opsRole: OpsRole | null;
-}
-
-/** module ids -> ordered tab labels visible to a role given the grant matrix. */
-function tabsForRole(role: OpsRole, grants: Record<string, string[]>): Tab[] {
-  const ids = new Set(modulesForRole(role, grants));
-  return ALL_TABS.filter((t) =>
-    MODULE_IDS.some((m) => MODULE_TAB_LABEL[m] === t && ids.has(m)),
-  );
 }
 
 const WS_COLOR: Record<Workstream, string> = {
@@ -93,76 +83,61 @@ export function LaunchOpsView({
   // "Ver como rol" preview (admins only); never escalates server permissions.
   const [previewRole, setPreviewRole] = useState<OpsRole>(realRole);
   const effectiveRole = canManage ? previewRole : realRole;
-  const tabs = session ? tabsForRole(effectiveRole, grants) : [...ALL_TABS];
+  const visible: ModuleId[] = session ? modulesForRole(effectiveRole, grants) : [...MODULE_IDS];
 
-  const [tab, setTab] = useState<Tab>('Resumen');
-  const activeTab: Tab = tabs.includes(tab) ? tab : tabs[0] ?? 'Resumen';
+  const [selected, setSelected] = useState<ModuleId>('resumen');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const active: ModuleId = visible.includes(selected) ? selected : visible[0] ?? 'resumen';
   const refresh = () => router.refresh();
 
   return (
     <div className="section">
       <LaunchRealtime launchId={overview.launch.id} onChange={refresh} />
 
-      <div className="report-header" style={{ marginBottom: 16 }}>
-        <div>
-          <h1>{overview.launch.name}</h1>
-          <div style={{ marginTop: 4 }}>
-            <span className="date-label">{overview.launch.code}</span>{' '}
-            <span className="badge badge-blue">{overview.launch.status}</span>
-          </div>
-        </div>
-        <OverallProgress pct={overview.progress.overallPct} done={overview.progress.doneTasks} total={overview.progress.totalTasks} />
-      </div>
+      <div className="launch-shell">
+        <LaunchSidebar
+          brand={overview.launch.name}
+          subtitle="Centro de Operaciones"
+          visible={visible}
+          active={active}
+          onSelect={setSelected}
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          roleSelect={canManage && session ? { value: previewRole, realRole, onChange: setPreviewRole } : null}
+        />
 
-      {canManage && session && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Ver como rol
-          </span>
-          <select
-            value={previewRole}
-            onChange={(e) => setPreviewRole(e.target.value as OpsRole)}
-            style={{ fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 8px', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)' }}
-          >
-            {OPS_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-          </select>
-          {previewRole !== realRole && (
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-accent)' }}>(previsualización)</span>
-          )}
-        </div>
-      )}
-
-      <nav style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-        {tabs.map((t) => (
+        <div className="launch-main">
           <button
-            key={t}
             type="button"
-            onClick={() => setTab(t)}
-            style={{
-              padding: '7px 16px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              borderRadius: 8,
-              cursor: 'pointer',
-              border: '1px solid var(--color-border)',
-              background: activeTab === t ? 'var(--color-text-primary)' : 'var(--color-bg-card)',
-              color: activeTab === t ? '#0a0a1a' : 'var(--color-text-secondary)',
-            }}
+            className="launch-sb-toggle"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Abrir módulos"
           >
-            {t}
+            ☰ Módulos
           </button>
-        ))}
-      </nav>
 
-      {activeTab === 'Resumen' && <ResumenPane overview={overview} />}
-      {activeTab === 'Gantt' && <GanttPane overview={overview} />}
-      {activeTab === 'Tareas' && <TareasPane overview={overview} onChanged={refresh} />}
-      {activeTab === 'KPIs' && <KpisPane overview={overview} onChanged={refresh} />}
-      {activeTab === 'Calendario' && <CalendarioPane overview={overview} />}
-      {activeTab === 'Mensajes' && <MensajesPane overview={overview} />}
-      {activeTab === 'Enlaces' && <EnlacesPane overview={overview} onChanged={refresh} />}
-      {activeTab === 'Usuarios' && <UsuariosPane staff={staff} onChanged={refresh} />}
-      {activeTab === 'Configuración' && <ConfiguracionPane grants={grants} onChanged={refresh} />}
+          <div className="report-header" style={{ marginBottom: 16 }}>
+            <div>
+              <h1>{overview.launch.name}</h1>
+              <div style={{ marginTop: 4 }}>
+                <span className="date-label">{overview.launch.code}</span>{' '}
+                <span className="badge badge-blue">{overview.launch.status}</span>
+              </div>
+            </div>
+            <OverallProgress pct={overview.progress.overallPct} done={overview.progress.doneTasks} total={overview.progress.totalTasks} />
+          </div>
+
+          {active === 'resumen' && <ResumenPane overview={overview} />}
+          {active === 'gantt' && <GanttPane overview={overview} />}
+          {active === 'tareas' && <TareasPane overview={overview} onChanged={refresh} />}
+          {active === 'kpis' && <KpisPane overview={overview} onChanged={refresh} />}
+          {active === 'calendario' && <CalendarioPane overview={overview} />}
+          {active === 'mensajes' && <MensajesPane overview={overview} />}
+          {active === 'enlaces' && <EnlacesPane overview={overview} onChanged={refresh} />}
+          {active === 'usuarios' && <UsuariosPane staff={staff} onChanged={refresh} />}
+          {active === 'config' && <ConfiguracionPane grants={grants} onChanged={refresh} />}
+        </div>
+      </div>
     </div>
   );
 }
