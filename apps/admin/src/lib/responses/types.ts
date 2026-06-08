@@ -40,6 +40,11 @@ export interface ResponseSource {
   creatorLabel: string;
   /** Table name within the `marketing` schema. */
   table: string;
+  /**
+   * Optional equality filter, for shared multi-tenant tables (e.g. the CRM
+   * `leads` table holds every org). Dedicated creator tables omit this.
+   */
+  filter?: { column: string; value: string };
   /** jsonb columns to flatten into top-level fields. */
   jsonbColumns: string[];
   /** jsonb column flattened with an `utm_` prefix (optional). */

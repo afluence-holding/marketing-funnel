@@ -57,6 +57,23 @@ export const RESPONSE_SOURCES: Record<string, ResponseSource> = {
     limit: 5000,
   },
 
+  // German Roz — landing form leads. Unlike the creators above, German's intake
+  // lives in the shared CRM `marketing.leads` table, so it's scoped by org id.
+  'german-roz': {
+    id: 'german-roz',
+    label: 'Leads de landings',
+    creatorLabel: 'German Roz',
+    table: 'leads',
+    filter: { column: 'organization_id', value: '614e43c9-5f3f-499b-8734-2fa256b3785c' },
+    jsonbColumns: [],
+    columns: [
+      ...COMMON_LEAD_COLUMNS,
+      { key: 'source', label: 'Landing' },
+      { key: 'status', label: 'Estado' },
+    ],
+    limit: 5000,
+  },
+
   // Caro Fitness — multi-step diagnostic quiz (tracks partial progress).
   'caro-fitness': {
     id: 'caro-fitness',
@@ -85,6 +102,8 @@ export const TENANT_SOURCES: Record<string, string[]> = {
   'bukku/main': ['bukku'],
   'mama-sin-caos/main': ['mama-sin-caos'],
   'caro-fitness/main': ['caro-fitness'],
+  // German lives in the CRM; its responses sit alongside campaigns + launch.
+  'german-roz/di21': ['german-roz'],
 };
 
 /** Resolve the ordered list of sources for a tenant (empty if none configured). */
