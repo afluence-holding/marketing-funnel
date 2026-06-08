@@ -91,9 +91,9 @@ function buildStats(records: ResponseRecord[], total: number, source: ResponseSo
 
 async function loadSource(source: ResponseSource): Promise<ResponseSourceData> {
   const db = getSupabaseMarketing();
-  const { data, error, count } = await db
-    .from(source.table)
-    .select('*', { count: 'exact' })
+  let query = db.from(source.table).select('*', { count: 'exact' });
+  if (source.filter) query = query.eq(source.filter.column, source.filter.value);
+  const { data, error, count } = await query
     .order('created_at', { ascending: false })
     .limit(source.limit ?? 2000);
 
