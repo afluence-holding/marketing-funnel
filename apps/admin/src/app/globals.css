@@ -104,6 +104,9 @@ body {
 .badge-blue     { background: rgba(59,130,246,0.15); color: var(--color-accent);   }
 .badge-orange   { background: rgba(249,115,22,0.15); color: #f97316;               }
 .badge-gray     { background: rgba(148,163,184,0.15); color: #94a3b8;              }
+/* Branded badge: tinted with the org accent (light theme). Prefer this over
+ * .badge-blue inside org-scoped surfaces so it follows the org's color. */
+.badge-accent   { background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-accent-dark, var(--color-accent)); }
 
 /* -------------------------------------------------------------------------
  * Budget bumps direction pill — used by BudgetBumpsTable.
