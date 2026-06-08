@@ -13,6 +13,7 @@
 import Link from 'next/link';
 import { OPS_ROLES, ROLE_LABELS, type ModuleId, type OpsRole } from '@/lib/backoffice/rbac';
 import { groupModulesBySection, type AdminModuleLink } from '@/lib/launch-ops/navigation';
+import type { CreatorResponseLink } from '@/lib/responses/navigation';
 
 interface RoleSelect {
   value: OpsRole;
@@ -30,6 +31,7 @@ export function LaunchSidebar({
   onClose,
   roleSelect,
   moduleLinks = [],
+  creatorLinks = [],
 }: {
   brand: string;
   subtitle: string;
@@ -40,6 +42,7 @@ export function LaunchSidebar({
   onClose: () => void;
   roleSelect?: RoleSelect | null;
   moduleLinks?: AdminModuleLink[];
+  creatorLinks?: CreatorResponseLink[];
 }) {
   const groups = groupModulesBySection(visible);
 
@@ -112,6 +115,25 @@ export function LaunchSidebar({
             ))}
           </div>
         ))}
+
+        {creatorLinks.length > 0 && (
+          <div>
+            <div className="launch-sb-sec">Respuestas</div>
+            {creatorLinks.map((c) => (
+              <Link
+                key={`${c.organizer}/${c.bu}`}
+                href={c.href}
+                className="launch-navitem"
+                onClick={onClose}
+              >
+                <span className="ic" aria-hidden>
+                  {c.icon}
+                </span>
+                {c.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </aside>
 
       <div

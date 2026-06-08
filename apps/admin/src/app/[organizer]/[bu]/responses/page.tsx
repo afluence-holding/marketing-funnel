@@ -37,6 +37,7 @@ export default async function ResponsesPage({
       overview={overview}
       buOptions={buOptions}
       currentPath={`/${organizer}/${bu}/responses`}
+      organizer={organizer}
     />
   );
 }

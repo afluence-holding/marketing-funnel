@@ -2,6 +2,8 @@
 
 import { Fragment, useMemo, useState } from 'react';
 import { BuSelector } from '@/components/bu-selector';
+import { ResponsesSidebar } from '@/components/responses/responses-sidebar';
+import { creatorResponseLinks } from '@/lib/responses/navigation';
 import type { BuOption } from '@/lib/dashboard/bu-options';
 import type { ResponseRecord, ResponseSourceData, ResponsesOverview } from '@/lib/responses/types';
 
@@ -58,10 +60,12 @@ export function ResponsesView({
   overview,
   buOptions,
   currentPath,
+  organizer,
 }: {
   overview: ResponsesOverview;
   buOptions: BuOption[];
   currentPath: string;
+  organizer: string;
 }) {
   const [activeId, setActiveId] = useState(overview.sources[0]?.source.id ?? '');
   const active = overview.sources.find((s) => s.source.id === activeId) ?? overview.sources[0];
@@ -69,6 +73,13 @@ export function ResponsesView({
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const creators = useMemo(() => creatorResponseLinks(), []);
+  const forms = useMemo(
+    () => overview.sources.map((s) => ({ id: s.source.id, label: s.source.label })),
+    [overview.sources],
+  );
 
   const filtered = useMemo(() => {
     if (!active) return [];
@@ -89,47 +100,46 @@ export function ResponsesView({
   const cols = active.source.columns;
 
   return (
-    <div className="section">
-      <div className="report-header" style={{ marginBottom: 16 }}>
-        <div>
-          <h1>Respuestas</h1>
-          <div style={{ marginTop: 4 }}>
-            <span className="date-label">{active.source.creatorLabel}</span>{' '}
-            <span className="badge badge-blue">{active.source.label}</span>
+    <div className="section centro-theme">
+      <div className="launch-shell">
+        <ResponsesSidebar
+          brand={active.source.creatorLabel}
+          subtitle="Respuestas"
+          creators={creators}
+          activeOrganizer={organizer}
+          forms={forms}
+          activeFormId={activeId}
+          onSelectForm={(id) => {
+            setActiveId(id);
+            setExpanded(null);
+            setStatusFilter('all');
+          }}
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+        />
+
+        <div className="launch-main">
+          <button
+            type="button"
+            className="launch-sb-toggle"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Abrir menú de creadores"
+          >
+            ☰ Creadores
+          </button>
+
+          <div className="report-header" style={{ marginBottom: 16 }}>
+            <div>
+              <h1>Respuestas</h1>
+              <div style={{ marginTop: 4 }}>
+                <span className="date-label">{active.source.creatorLabel}</span>{' '}
+                <span className="badge badge-blue">{active.source.label}</span>
+              </div>
+            </div>
+            <BuSelector options={buOptions} currentPath={currentPath} />
           </div>
-        </div>
-        <BuSelector options={buOptions} currentPath={currentPath} />
-      </div>
 
-      {overview.sources.length > 1 && (
-        <nav style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-          {overview.sources.map((s) => (
-            <button
-              key={s.source.id}
-              type="button"
-              onClick={() => {
-                setActiveId(s.source.id);
-                setExpanded(null);
-                setStatusFilter('all');
-              }}
-              style={{
-                padding: '7px 16px',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                borderRadius: 8,
-                cursor: 'pointer',
-                border: `1px solid ${s.source.id === activeId ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                background: s.source.id === activeId ? 'var(--color-accent)' : 'var(--color-bg-card)',
-                color: s.source.id === activeId ? '#fff' : 'var(--color-text-secondary)',
-              }}
-            >
-              {s.source.creatorLabel}
-            </button>
-          ))}
-        </nav>
-      )}
-
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         {active.stats.map((stat) => (
           <div
             key={stat.label}
@@ -314,6 +324,8 @@ export function ResponsesView({
             })}
           </tbody>
         </table>
+          </div>
+        </div>
       </div>
     </div>
   );
