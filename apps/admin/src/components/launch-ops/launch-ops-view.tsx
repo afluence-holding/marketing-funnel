@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LaunchRealtime } from '@/components/launch-ops/realtime';
 import { LaunchSidebar } from '@/components/launch-ops/launch-ops-sidebar';
 import { adminModuleLinks } from '@/lib/launch-ops/navigation';
+import { creatorResponseLinks } from '@/lib/responses/navigation';
 import {
   updateKpiAction,
   updateResourceAction,
@@ -88,6 +89,7 @@ export function LaunchOpsView({
 }) {
   const router = useRouter();
   const moduleLinks = organizer && bu ? adminModuleLinks(organizer, bu, 'launch') : [];
+  const creatorLinks = creatorResponseLinks();
   const realRole: OpsRole = session?.opsRole ?? 'agnostico';
   const grants = session?.grants ?? {};
   const canManage = session?.canManage ?? true; // no session => permissive (pre-onboarding)
@@ -117,6 +119,7 @@ export function LaunchOpsView({
           onClose={() => setDrawerOpen(false)}
           roleSelect={canManage && session ? { value: previewRole, realRole, onChange: setPreviewRole } : null}
           moduleLinks={moduleLinks}
+          creatorLinks={creatorLinks}
         />
 
         <div className="launch-main">
