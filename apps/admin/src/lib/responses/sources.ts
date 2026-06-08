@@ -49,6 +49,8 @@ export const RESPONSE_SOURCES: Record<string, ResponseSource> = {
     table: 'mama_sin_caos_leads',
     jsonbColumns: ['custom_fields'],
     utmColumn: 'utm_data',
+    // Real landing column (not the utm channel) drives the campaign facet.
+    sourceColumn: 'landing',
     columns: [
       ...COMMON_LEAD_COLUMNS,
       { key: 'landing', label: 'Landing' },

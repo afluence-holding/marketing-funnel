@@ -9,6 +9,7 @@ import { ResponsesTable } from '@/components/responses/responses-table';
 import { creatorResponseLinks } from '@/lib/responses/navigation';
 import { adminModuleLinks } from '@/lib/launch-ops/navigation';
 import { commonPrefix, downloadCsv } from '@/lib/responses/presentation';
+import { buildResponseStats } from '@/lib/responses/stats';
 import type { BuOption } from '@/lib/dashboard/bu-options';
 import type { ResponsesOverview } from '@/lib/responses/types';
 
@@ -63,17 +64,28 @@ export function ResponsesView({
   }, [active, sourceKey]);
 
   const sourcePrefix = useMemo(() => commonPrefix(sourceOptions.map(([v]) => v)), [sourceOptions]);
-  const sourceNoun = useMemo(
-    () => active?.source.columns.find((c) => c.key === sourceKey)?.label ?? 'origen',
-    [active, sourceKey],
-  );
+
+  /** Records scoped to the selected campaign/landing (drives stats + table). */
+  const scoped = useMemo(() => {
+    if (!active) return [];
+    if (sourceFilter === 'all') return active.records;
+    return active.records.filter((r) => (r.fields[sourceKey] ?? '').trim() === sourceFilter);
+  }, [active, sourceFilter, sourceKey]);
+
+  /** Stats reflect the current campaign scope (Total + status/lead breakdown). */
+  const stats = useMemo(() => {
+    if (!active) return [];
+    const total = sourceFilter === 'all' ? active.total : scoped.length;
+    return buildResponseStats(scoped, total, {
+      statusColumn: active.source.statusColumn,
+      statusValues: active.source.statusValues,
+    });
+  }, [active, scoped, sourceFilter]);
 
   const filtered = useMemo(() => {
-    if (!active) return [];
     const q = query.trim().toLowerCase();
-    return active.records.filter((r) => {
+    return scoped.filter((r) => {
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
-      if (sourceFilter !== 'all' && (r.fields[sourceKey] ?? '').trim() !== sourceFilter) return false;
       if (!q) return true;
       return (
         r.name.toLowerCase().includes(q) ||
@@ -81,7 +93,7 @@ export function ResponsesView({
         r.phone.toLowerCase().includes(q)
       );
     });
-  }, [active, query, statusFilter, sourceFilter, sourceKey]);
+  }, [scoped, query, statusFilter]);
 
   if (!active) return null;
 
@@ -105,6 +117,11 @@ export function ResponsesView({
             setActiveId(id);
             resetFilters();
           }}
+          campaigns={sourceOptions.map(([value, count]) => ({ value, count }))}
+          campaignPrefix={sourcePrefix}
+          activeCampaign={sourceFilter}
+          onSelectCampaign={setSourceFilter}
+          campaignNoun="Campañas"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         />
@@ -130,7 +147,7 @@ export function ResponsesView({
             <BuSelector options={buOptions} currentPath={currentPath} />
           </div>
 
-          <ResponsesStatsBar stats={active.stats} />
+          <ResponsesStatsBar stats={stats} />
 
           <ResponsesFilterBar
             query={query}
@@ -138,14 +155,9 @@ export function ResponsesView({
             statusValues={active.source.statusValues}
             statusFilter={statusFilter}
             onStatusFilter={setStatusFilter}
-            sourceOptions={sourceOptions}
-            sourcePrefix={sourcePrefix}
-            sourceNoun={sourceNoun}
-            sourceFilter={sourceFilter}
-            onSourceFilter={setSourceFilter}
             onExport={() => downloadCsv(active)}
             filteredCount={filtered.length}
-            total={active.total}
+            total={sourceFilter === 'all' ? active.total : scoped.length}
           />
 
           <ResponsesTable records={filtered} cols={active.source.columns} />
