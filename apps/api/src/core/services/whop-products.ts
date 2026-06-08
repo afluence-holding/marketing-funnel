@@ -32,7 +32,7 @@ const GERMAN_DESINFLAMATE: WhopPurchaseProduct = {
   productKey: 'german-desinflamate',
   orgKey: 'german-roz',
   source: 'landing-german-roz-desinflamate',
-  contentIds: ['di21-desinflamate'],
+  contentIds: ['di21-c2'],
   contentName: 'Reto Desinflámate 21 días',
   contentCategory: 'reto-low-ticket',
   contentType: 'product',

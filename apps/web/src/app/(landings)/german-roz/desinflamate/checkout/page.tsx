@@ -1,13 +1,18 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { LandingConfig } from '@/components/landing-config';
 import {
   formatWhopPrice,
   getWhopProduct,
+  getWhopWindowRedirect,
   resolveWhopTier,
 } from '@/lib/whop/products';
 import { DesinflamateCheckoutEmbedLoader } from './checkout-embed-loader';
+
+// Evaluate the cohort sales window per request (not at build time).
+export const dynamic = 'force-dynamic';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -25,6 +30,9 @@ export const metadata: Metadata = {
 };
 
 export default function DesinflamateCheckoutPage() {
+  const windowRedirect = getWhopWindowRedirect(product);
+  if (windowRedirect) redirect(windowRedirect);
+
   const tier = resolveWhopTier(product);
   const price = formatWhopPrice(product, tier.price);
 

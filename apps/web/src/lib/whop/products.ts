@@ -56,6 +56,17 @@ export type WhopProductConfig = {
   headline: string;
   /** Date-driven price ladder; the last tier should omit `until` (fallback). */
   tiers: WhopTier[];
+  /**
+   * Sales window (ISO 8601 WITH tz offset). Outside this window the checkout +
+   * VSL redirect to the matching path below. Omit either bound to leave that
+   * side open.
+   */
+  opensAt?: string;
+  closesAt?: string;
+  /** Where to send visitors before `opensAt` (e.g. webinar registration). */
+  beforeOpenPath?: string;
+  /** Where to send visitors after `closesAt` (e.g. waitlist for next edition). */
+  afterClosePath?: string;
 };
 
 const GERMAN_PUBLIC_URL = (
@@ -92,6 +103,12 @@ export const WHOP_PRODUCTS: Record<string, WhopProductConfig> = {
       { planId: 'plan_H5qC30Wqrkuac', price: 77, until: '2026-06-23T23:59:59-05:00' },
       { planId: 'plan_wFhRjp54MsvJm', price: 87 },
     ],
+    // C2 sales window (America/Lima): opens when the 10-jun webinar closes,
+    // cart closes 30-jun 23:59. Before → webinar registration; after → waitlist.
+    opensAt: '2026-06-10T21:00:00-05:00',
+    closesAt: '2026-06-30T23:59:59-05:00',
+    beforeOpenPath: '/german-roz/webinar',
+    afterClosePath: '/german-roz/lista-espera',
   },
 };
 
@@ -120,6 +137,39 @@ export function resolveWhopTier(
     if (Number.isFinite(untilMs) && nowMs <= untilMs) return tier;
   }
   return product.tiers[product.tiers.length - 1];
+}
+
+export type WhopWindowState = 'before' | 'open' | 'closed';
+
+/** Resolve whether the cohort sales window is open for `now`. */
+export function getWhopWindowState(
+  product: WhopProductConfig,
+  now: Date = new Date(),
+): WhopWindowState {
+  const t = now.getTime();
+  if (product.opensAt) {
+    const opens = new Date(product.opensAt).getTime();
+    if (Number.isFinite(opens) && t < opens) return 'before';
+  }
+  if (product.closesAt) {
+    const closes = new Date(product.closesAt).getTime();
+    if (Number.isFinite(closes) && t > closes) return 'closed';
+  }
+  return 'open';
+}
+
+/**
+ * Redirect path to use when the cohort window is NOT open (before/after), or
+ * `null` when the window is open (or no redirect is configured for that side).
+ */
+export function getWhopWindowRedirect(
+  product: WhopProductConfig,
+  now: Date = new Date(),
+): string | null {
+  const state = getWhopWindowState(product, now);
+  if (state === 'before') return product.beforeOpenPath ?? null;
+  if (state === 'closed') return product.afterClosePath ?? null;
+  return null;
 }
 
 export function getWhopProductRedirectUrl(product: WhopProductConfig): string {

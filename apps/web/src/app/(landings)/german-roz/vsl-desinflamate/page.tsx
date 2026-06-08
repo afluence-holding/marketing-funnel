@@ -1,20 +1,27 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { LandingConfig } from '@/components/landing-config';
+import { getWhopProduct, getWhopWindowRedirect } from '@/lib/whop/products';
 import { VslAttribution } from './vsl-attribution';
 import { VslTracker } from './vsl-tracker';
 
+// Evaluate the cohort sales window per request (not at build time).
+export const dynamic = 'force-dynamic';
+
 // ---------------------------------------------------------------------------
-// VSL de venta DI21 (Reto Desinflámate) — ACTIVA para el lanzamiento C2.
+// VSL de venta DI21 (Reto Desinflámate) — lanzamiento C2.
 // ---------------------------------------------------------------------------
-// El redirect 308 → /german-roz/lista-espera (edición cerrada) queda apagado:
-// con la escalera $67/$77/$87 y el checkout embebido en marcha, la VSL vuelve
-// a vender. El bundle compilado (`vsl-desinflamate.html`) conserva el countdown
-// y el precio antiguos hardcodeados, pero TODOS sus CTAs se redirigen en runtime
-// al checkout embebido (/german-roz/desinflamate/checkout) — ver vsl-tracker
-// (intercepta el click) y vsl-attribution (reescribe window.open/anchors a
-// Hotmart como defensa en profundidad y setea la cookie _fbc).
+// La VSL sirve SOLO dentro de la ventana de venta del cohort (opensAt/closesAt
+// en lib/whop/products.ts). Fuera de ventana redirige: antes del 10-jun →
+// /german-roz/webinar (registro), tras el 30-jun → /german-roz/lista-espera.
+// Dentro de ventana vende con la escalera $67/$77/$87 vía el checkout embebido.
+// El bundle compilado (`vsl-desinflamate.html`) tiene el countdown (→30-jun) y
+// el precio de lanzamiento ($67) ya ajustados, y TODOS sus CTAs se redirigen en
+// runtime al checkout embebido (/german-roz/desinflamate/checkout) — ver
+// vsl-tracker (intercepta el click) y vsl-attribution (reescribe
+// window.open/anchors a Hotmart como defensa en profundidad y setea _fbc).
 // ---------------------------------------------------------------------------
 
 /** WhatsApp Business del reto (Perú). Solo dígitos, sin +, para wa.me */
@@ -44,6 +51,11 @@ async function loadHtml(): Promise<string> {
 }
 
 export default async function GermanRozVslDesinflamateLanding() {
+  // Cohort sales window: before opensAt → webinar registration; after closesAt
+  // → waitlist; only serves the selling VSL while the window is open.
+  const windowRedirect = getWhopWindowRedirect(getWhopProduct('german-desinflamate')!);
+  if (windowRedirect) redirect(windowRedirect);
+
   const html = await loadHtml();
 
   return (
