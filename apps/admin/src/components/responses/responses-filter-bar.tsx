@@ -1,14 +1,14 @@
 'use client';
 
-import { ADMIN_LOCALE, prettyFacet } from '@/lib/responses/presentation';
+import { ADMIN_LOCALE } from '@/lib/responses/presentation';
 import { RESPONSE_STATUS_LABELS, type ResponseStatus } from '@/lib/responses/types';
 
 export type StatusFilter = 'all' | ResponseStatus;
 
 /**
  * Toolbar: free-text search, status chips (when the source declares statuses),
- * a source/landing facet dropdown, CSV export and a result counter. Chips reuse
- * the shared `.launch-chip` style so they match the rest of the Centro.
+ * CSV export and a result counter. Campaign/landing selection lives in the
+ * sidebar (the modular nav). Chips reuse the shared `.launch-chip` style.
  */
 export function ResponsesFilterBar({
   query,
@@ -16,11 +16,6 @@ export function ResponsesFilterBar({
   statusValues,
   statusFilter,
   onStatusFilter,
-  sourceOptions,
-  sourcePrefix,
-  sourceNoun,
-  sourceFilter,
-  onSourceFilter,
   onExport,
   filteredCount,
   total,
@@ -30,11 +25,6 @@ export function ResponsesFilterBar({
   statusValues?: readonly ResponseStatus[];
   statusFilter: StatusFilter;
   onStatusFilter: (v: StatusFilter) => void;
-  sourceOptions: Array<[string, number]>;
-  sourcePrefix: string;
-  sourceNoun: string;
-  sourceFilter: string;
-  onSourceFilter: (v: string) => void;
   onExport: () => void;
   filteredCount: number;
   total: number;
@@ -70,33 +60,6 @@ export function ResponsesFilterBar({
             </button>
           ))}
         </div>
-      ) : null}
-
-      {sourceOptions.length ? (
-        <select
-          value={sourceFilter}
-          onChange={(e) => onSourceFilter(e.target.value)}
-          aria-label={`Filtrar por ${sourceNoun}`}
-          title={`Filtrar por ${sourceNoun}`}
-          style={{
-            padding: '9px 12px',
-            borderRadius: 8,
-            border: `1px solid ${sourceFilter !== 'all' ? 'var(--color-accent)' : 'var(--color-border)'}`,
-            background: 'var(--color-bg-card)',
-            color: sourceFilter !== 'all' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-            fontWeight: 700,
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            maxWidth: 260,
-          }}
-        >
-          <option value="all">Todas · {sourceNoun}</option>
-          {sourceOptions.map(([value, count]) => (
-            <option key={value} value={value}>
-              {prettyFacet(value, sourcePrefix)} ({count.toLocaleString(ADMIN_LOCALE)})
-            </option>
-          ))}
-        </select>
       ) : null}
 
       <button

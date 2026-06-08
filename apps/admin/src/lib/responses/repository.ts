@@ -9,13 +9,12 @@
 
 import { getSupabaseMarketing } from '@/lib/supabase/server';
 import { sourcesForTenant } from './sources';
-import {
-  RESPONSE_STATUS_STAT_LABELS,
-  type ResponseRecord,
-  type ResponseSource,
-  type ResponseSourceData,
-  type ResponseStat,
-  type ResponsesOverview,
+import { buildResponseStats } from './stats';
+import type {
+  ResponseRecord,
+  ResponseSource,
+  ResponseSourceData,
+  ResponsesOverview,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -76,24 +75,6 @@ function resolveSourceColumn(source: ResponseSource): string {
   return source.sourceColumn ?? (source.utmColumn ? 'utm_source' : 'source');
 }
 
-function buildStats(records: ResponseRecord[], total: number, source: ResponseSource): ResponseStat[] {
-  const stats: ResponseStat[] = [{ label: 'Total', value: total }];
-
-  if (source.statusColumn && source.statusValues?.length) {
-    for (const status of source.statusValues) {
-      stats.push({
-        label: RESPONSE_STATUS_STAT_LABELS[status] ?? status,
-        value: records.filter((r) => r.status === status).length,
-      });
-    }
-  } else {
-    // Lead-style sources: surface how many left a phone / email.
-    stats.push({ label: 'Con email', value: records.filter((r) => r.email).length });
-    stats.push({ label: 'Con WhatsApp', value: records.filter((r) => r.phone).length });
-  }
-  return stats;
-}
-
 async function loadSource(source: ResponseSource): Promise<ResponseSourceData> {
   const db = getSupabaseMarketing();
   let query = db.from(source.table).select('*', { count: 'exact' });
@@ -119,7 +100,10 @@ async function loadSource(source: ResponseSource): Promise<ResponseSourceData> {
     },
     records,
     total,
-    stats: buildStats(records, total, source),
+    stats: buildResponseStats(records, total, {
+      statusColumn: source.statusColumn,
+      statusValues: source.statusValues,
+    }),
   };
 }
 
