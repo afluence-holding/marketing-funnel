@@ -53,6 +53,12 @@ export interface ResponseSource {
   statusColumn?: string;
   /** Known status values, ordered, for filter chips + stats breakdown. */
   statusValues?: string[];
+  /**
+   * Field key (in the flattened `fields` map) that holds the acquisition source
+   * to filter by. Defaults to `utm_source` when `utmColumn` is set, otherwise
+   * `source`. Set explicitly to override (e.g. `landing`).
+   */
+  sourceColumn?: string;
   /** Columns shown in the main table (in order). */
   columns: ResponseColumn[];
   /** Max rows to load (safety cap). */
@@ -66,7 +72,10 @@ export interface ResponseStat {
 
 /** One source loaded with its records + derived stats. */
 export interface ResponseSourceData {
-  source: Pick<ResponseSource, 'id' | 'label' | 'creatorLabel' | 'columns' | 'statusColumn' | 'statusValues'>;
+  source: Pick<
+    ResponseSource,
+    'id' | 'label' | 'creatorLabel' | 'columns' | 'statusColumn' | 'statusValues' | 'sourceColumn'
+  >;
   records: ResponseRecord[];
   total: number;
   stats: ResponseStat[];

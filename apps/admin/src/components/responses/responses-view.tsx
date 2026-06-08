@@ -37,6 +37,26 @@ function cellValue(record: ResponseRecord, key: string): string {
   return raw || '—';
 }
 
+/** Longest common prefix across a list of strings (for facet label cleanup). */
+function commonPrefix(values: string[]): string {
+  if (values.length < 2) return '';
+  let prefix = values[0];
+  for (const v of values.slice(1)) {
+    let i = 0;
+    while (i < prefix.length && i < v.length && prefix[i] === v[i]) i++;
+    prefix = prefix.slice(0, i);
+    if (!prefix) break;
+  }
+  return prefix;
+}
+
+/** Human label for a facet value: drop the shared prefix and de-slug. */
+function prettyFacet(value: string, prefix: string): string {
+  const stripped = (prefix && value.startsWith(prefix) ? value.slice(prefix.length) : value).trim();
+  const base = stripped || value;
+  return base.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim() || value;
+}
+
 function downloadCsv(source: ResponseSourceData) {
   const cols = source.source.columns;
   const header = cols.map((c) => c.label);
@@ -72,8 +92,11 @@ export function ResponsesView({
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const sourceKey = active?.source.sourceColumn ?? '';
 
   const creators = useMemo(() => creatorResponseLinks(), []);
   const forms = useMemo(
@@ -81,11 +104,33 @@ export function ResponsesView({
     [overview.sources],
   );
 
+  /** Distinct acquisition sources present in the loaded records, with counts. */
+  const sourceOptions = useMemo(() => {
+    if (!active || !sourceKey) return [] as Array<[string, number]>;
+    const counts = new Map<string, number>();
+    for (const r of active.records) {
+      const value = (r.fields[sourceKey] ?? '').trim();
+      if (!value) continue;
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [active, sourceKey]);
+
+  /** Shared prefix across facet values, stripped from the dropdown labels. */
+  const sourcePrefix = useMemo(() => commonPrefix(sourceOptions.map(([v]) => v)), [sourceOptions]);
+
+  /** Display noun for the facet, taken from its column label (e.g. "Landing"). */
+  const sourceNoun = useMemo(
+    () => active?.source.columns.find((c) => c.key === sourceKey)?.label ?? 'origen',
+    [active, sourceKey],
+  );
+
   const filtered = useMemo(() => {
     if (!active) return [];
     const q = query.trim().toLowerCase();
     return active.records.filter((r) => {
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+      if (sourceFilter !== 'all' && (r.fields[sourceKey] ?? '').trim() !== sourceFilter) return false;
       if (!q) return true;
       return (
         r.name.toLowerCase().includes(q) ||
@@ -93,7 +138,7 @@ export function ResponsesView({
         r.phone.toLowerCase().includes(q)
       );
     });
-  }, [active, query, statusFilter]);
+  }, [active, query, statusFilter, sourceFilter, sourceKey]);
 
   if (!active) return null;
 
@@ -113,6 +158,7 @@ export function ResponsesView({
             setActiveId(id);
             setExpanded(null);
             setStatusFilter('all');
+            setSourceFilter('all');
           }}
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
@@ -194,6 +240,32 @@ export function ResponsesView({
               </button>
             ))}
           </div>
+        ) : null}
+        {sourceOptions.length ? (
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            aria-label={`Filtrar por ${sourceNoun}`}
+            title={`Filtrar por ${sourceNoun}`}
+            style={{
+              padding: '9px 12px',
+              borderRadius: 8,
+              border: `1px solid ${sourceFilter !== 'all' ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              background: 'var(--color-bg-card)',
+              color: sourceFilter !== 'all' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              maxWidth: 260,
+            }}
+          >
+            <option value="all">Todo: {sourceNoun}</option>
+            {sourceOptions.map(([value, count]) => (
+              <option key={value} value={value}>
+                {prettyFacet(value, sourcePrefix)} ({count.toLocaleString('es-CL')})
+              </option>
+            ))}
+          </select>
         ) : null}
         <button
           type="button"

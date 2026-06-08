@@ -66,6 +66,15 @@ function mapRecord(row: Row, source: ResponseSource): ResponseRecord {
   };
 }
 
+/**
+ * The field key (in the flattened `fields` map) used for the "source" filter.
+ * Explicit `sourceColumn` wins; otherwise `utm_source` when a utm column is
+ * flattened, else the top-level `source` column.
+ */
+function resolveSourceColumn(source: ResponseSource): string {
+  return source.sourceColumn ?? (source.utmColumn ? 'utm_source' : 'source');
+}
+
 function buildStats(records: ResponseRecord[], total: number, source: ResponseSource): ResponseStat[] {
   const stats: ResponseStat[] = [{ label: 'Total', value: total }];
 
@@ -110,6 +119,7 @@ async function loadSource(source: ResponseSource): Promise<ResponseSourceData> {
       columns: source.columns,
       statusColumn: source.statusColumn,
       statusValues: source.statusValues,
+      sourceColumn: resolveSourceColumn(source),
     },
     records,
     total,
