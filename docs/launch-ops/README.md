@@ -26,6 +26,7 @@ touching `apps/web` or `apps/api`.
 5. [`05-agent-api.md`](./05-agent-api.md) — endpoint reference + examples + MCP mapping
 6. [`06-rls-security.md`](./06-rls-security.md) — RLS model, ordering constraint, threat notes
 7. [`07-qa-plan.md`](./07-qa-plan.md) — test matrix + commands + sign-off checklist
+8. [`08-operations.md`](./08-operations.md) — prod runbook: migrations, exposed schemas, token, MCP config, smoke test
 
 ## Apply order
 
@@ -47,8 +48,9 @@ node apps/admin/scripts/validate-launch-ops-seed.mjs
 npm run typecheck -w @marketing-funnel/admin
 
 # 6. (After deploy) smoke-test the agent API
-BASE_URL=https://afluence-admin.up.railway.app \
+BASE_URL=<ADMIN_BASE_URL> \
 LAUNCH_OPS_AGENT_TOKEN=*** node apps/admin/scripts/smoke-agent-api.mjs
+# See 08-operations.md for the full runbook (exposed schemas, token, env).
 ```
 
 ## Guardrails honored

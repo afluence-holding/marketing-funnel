@@ -15,7 +15,7 @@ npm run build -w @marketing-funnel/admin                 # next build (needs env
 #   paste docs/launch-ops/validation-queries.sql, compare to EXPECT comments
 
 # Gate 3 — runtime (deployed admin)
-BASE_URL=https://afluence-admin.up.railway.app \
+BASE_URL=<ADMIN_BASE_URL> \
 LAUNCH_OPS_AGENT_TOKEN=*** \
 node apps/admin/scripts/smoke-agent-api.mjs
 ```
