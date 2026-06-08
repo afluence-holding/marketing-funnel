@@ -1,11 +1,13 @@
 import { supabaseAdminForSchema } from '@marketing-funnel/db';
+import { primaryPath } from '@/lib/modules/registry';
+import { responsesTenants } from '@/lib/responses/sources';
 
 export interface BuOption {
   organizer_slug: string;
   organizer_name: string;
   bu_slug: string;
   bu_name: string;
-  path: string; // `/${organizer_slug}/${bu_slug}`
+  path: string; // canonical landing path (first enabled module)
 }
 
 /**
@@ -34,7 +36,7 @@ export async function listBuOptions(): Promise<BuOption[]> {
     (orgs ?? []).map((o) => [o.id as string, o as { id: string; slug: string; name: string }]),
   );
 
-  return (bus ?? [])
+  const metaOptions = (bus ?? [])
     .map((bu) => {
       const org = orgById.get(bu.organizer_id as string);
       if (!org) return null;
@@ -43,8 +45,23 @@ export async function listBuOptions(): Promise<BuOption[]> {
         organizer_name: org.name,
         bu_slug: bu.slug as string,
         bu_name: bu.name as string,
-        path: `/${org.slug}/${bu.slug}`,
+        path: primaryPath(org.slug as string, bu.slug as string),
       } satisfies BuOption;
     })
     .filter((x): x is BuOption => x !== null);
+
+  // Merge in responses-only tenants (creators with no Meta campaigns dashboard)
+  // so they are reachable from the BU switcher. Dedup against meta_ops tenants.
+  const seen = new Set(metaOptions.map((o) => `${o.organizer_slug}/${o.bu_slug}`));
+  const extra: BuOption[] = responsesTenants()
+    .filter((t) => !seen.has(`${t.organizer}/${t.bu}`))
+    .map((t) => ({
+      organizer_slug: t.organizer,
+      organizer_name: t.creatorLabel,
+      bu_slug: t.bu,
+      bu_name: 'Respuestas',
+      path: primaryPath(t.organizer, t.bu),
+    }));
+
+  return [...metaOptions, ...extra];
 }
