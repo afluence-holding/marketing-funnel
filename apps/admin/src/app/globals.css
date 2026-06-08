@@ -278,46 +278,74 @@ th {
 }
 
 /* -------------------------------------------------------------------------
- * Launch Ops — Centro de Operaciones sectioned sidebar
+ * Centro de Operaciones — light theme, branded per org
  * -------------------------------------------------------------------------
- * Sectioned module navigation replacing the old flat tab strip. Structure
- * mirrors the validated reference design (docs/DI21-C2-Centro-Operaciones.html)
- * but uses the admin's dark design tokens for consistency with the rest of the
- * app. Desktop: sticky sidebar | content grid. Mobile (<=860px): off-canvas
- * drawer toggled by `.open`, with a backdrop that is `display:none` by default
- * and only shown via `.show` (so it never occupies a grid column).
+ * The Centro adopts the validated reference design
+ * (docs/DI21-C2-Centro-Operaciones.html): a light, card-based SaaS surface
+ * with a dark module sidebar. The accent color is BRANDED PER ORG — injected
+ * at runtime via the `--color-accent` / `--centro-accent-*` custom properties
+ * set inline on `.centro-theme` (see lib/branding/org-brand.ts).
+ *
+ * `.centro-theme` re-maps the admin's `--color-*` design tokens to a light
+ * palette but is SCOPED: only content inside it (the Launch Ops view) becomes
+ * light. Campaigns / Responses and the rest of the admin stay on the global
+ * dark theme. All admin primitives (.card, .badge, tables…) consume the
+ * tokens, so they re-theme automatically inside this scope.
  * ------------------------------------------------------------------------- */
+.centro-theme {
+  /* Light palette mapped from the reference design tokens */
+  --color-bg: #f4f4f5;
+  --color-bg-card: #ffffff;
+  --color-bg-hover: #f1f1f2;
+  --color-border: #e8e8ea;
+  --color-text-primary: #18181b;
+  --color-text-secondary: #71717a;
+  --color-success: #1f9d55;
+  --color-warning: #d9a200;
+  --color-critical: #e8410f;
+  /* Accent defaults; overridden inline per org (org-brand.ts) */
+  --color-accent: #3b82f6;
+  --centro-accent-dark: #2563eb;
+  --centro-accent-soft: #dbeafe;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border-radius: 16px;
+  padding: 20px;
+}
+
 .launch-shell {
   display: grid;
   grid-template-columns: 248px 1fr;
   gap: 22px;
   align-items: start;
 }
+/* Sidebar keeps a fixed dark surface (HTML reference) regardless of the light
+ * content scope; `.launch-*` selectors are used only inside the Centro view. */
 .launch-sidebar {
   position: sticky;
   top: 16px;
   align-self: start;
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 56px);
   overflow-y: auto;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   padding: 14px 10px;
 }
 .launch-sb-brand {
   font-size: 0.86rem;
   font-weight: 800;
   line-height: 1.25;
-  color: var(--color-text-primary);
+  color: #ffffff;
   padding: 2px 8px 11px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 8px;
 }
 .launch-sb-brand small {
   display: block;
   font-size: 0.66rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: #a1a1aa;
   margin-top: 3px;
 }
 .launch-sb-role { margin: 6px 4px 10px; }
@@ -327,14 +355,14 @@ th {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 800;
-  color: var(--color-text-secondary);
+  color: #a1a1aa;
   margin-bottom: 4px;
 }
 .launch-sb-role select {
   width: 100%;
-  background: var(--color-bg);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+  background: #27272a;
+  color: #ffffff;
+  border: 1px solid #3f3f46;
   border-radius: 8px;
   padding: 7px 9px;
   font-family: inherit;
@@ -354,7 +382,7 @@ th {
   letter-spacing: 0.13em;
   text-transform: uppercase;
   font-weight: 800;
-  color: var(--color-text-secondary);
+  color: #a1a1aa;
 }
 .launch-navitem {
   display: flex;
@@ -364,7 +392,7 @@ th {
   text-align: left;
   background: transparent;
   border: none;
-  color: var(--color-text-secondary);
+  color: #e4e4e7;
   border-radius: 9px;
   padding: 9px 10px;
   font-family: inherit;
@@ -374,12 +402,12 @@ th {
   text-decoration: none;
 }
 .launch-navitem:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 .launch-navitem.active {
-  background: var(--color-text-primary);
-  color: #0a0a1a;
+  background: var(--color-accent);
+  color: #ffffff;
   font-weight: 800;
 }
 .launch-navitem .ic {
@@ -389,6 +417,25 @@ th {
   flex: 0 0 auto;
 }
 .launch-main { min-width: 0; }
+
+/* Branded filter chips (light content). Active = org accent. */
+.launch-chip {
+  padding: 5px 11px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+}
+.launch-chip:hover { color: var(--color-text-primary); }
+.launch-chip.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #ffffff;
+}
+
 .launch-sb-toggle { display: none; }
 .launch-sb-backdrop {
   display: none;
@@ -400,6 +447,7 @@ th {
 .launch-sb-backdrop.show { display: block; }
 
 @media (max-width: 860px) {
+  .centro-theme { padding: 14px; }
   .launch-shell { grid-template-columns: 1fr; gap: 0; }
   .launch-sidebar {
     position: fixed;
