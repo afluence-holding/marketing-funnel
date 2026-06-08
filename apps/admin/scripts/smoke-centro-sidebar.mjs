@@ -42,6 +42,9 @@ let fail = 0;
 const ok = (label, cond) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${label}`); if (!cond) fail++; };
 
 ok(`HTTP 200 (got ${res.status})`, res.status === 200);
+// branded light theme scope (org colors injected inline)
+ok('centro-theme scope present', /centro-theme/.test(html));
+ok('org accent injected (german-roz orange)', /--color-accent:\s*#ff5e2b/i.test(html));
 // shell + sidebar containers
 ok('launch-shell grid present', /launch-shell/.test(html));
 ok('launch-sidebar present', /launch-sidebar/.test(html));

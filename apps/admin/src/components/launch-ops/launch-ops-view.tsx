@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { LaunchRealtime } from '@/components/launch-ops/realtime';
 import { LaunchSidebar } from '@/components/launch-ops/launch-ops-sidebar';
 import { adminModuleLinks } from '@/lib/launch-ops/navigation';
+import { brandCssVars } from '@/lib/branding/org-brand';
 import {
   updateKpiAction,
   updateResourceAction,
@@ -95,9 +96,10 @@ export function LaunchOpsView({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const active: ModuleId = visible.includes(selected) ? selected : visible[0] ?? 'resumen';
   const refresh = () => router.refresh();
+  const themeVars = brandCssVars(organizer) as CSSProperties;
 
   return (
-    <div className="section">
+    <div className="section centro-theme" style={themeVars}>
       <LaunchRealtime launchId={overview.launch.id} onChange={refresh} />
 
       <div className="launch-shell">
@@ -380,16 +382,7 @@ function FilterPills({ value, onChange, options }: { value: string; onChange: (v
             key={o.v}
             type="button"
             onClick={() => onChange(o.v)}
-            style={{
-              padding: '5px 11px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              borderRadius: 999,
-              cursor: 'pointer',
-              border: '1px solid var(--color-border)',
-              background: active ? 'var(--color-text-primary)' : 'var(--color-bg-card)',
-              color: active ? '#0a0a1a' : 'var(--color-text-secondary)',
-            }}
+            className={`launch-chip${active ? ' active' : ''}`}
           >
             {o.label}
           </button>
