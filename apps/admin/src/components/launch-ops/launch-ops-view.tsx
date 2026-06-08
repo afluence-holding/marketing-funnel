@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { LaunchRealtime } from '@/components/launch-ops/realtime';
 import { LaunchSidebar } from '@/components/launch-ops/launch-ops-sidebar';
+import { adminModuleLinks } from '@/lib/launch-ops/navigation';
 import {
   updateKpiAction,
   updateResourceAction,
@@ -70,12 +71,17 @@ export function LaunchOpsView({
   overview,
   session,
   staff = [],
+  organizer,
+  bu,
 }: {
   overview: LaunchOverview;
   session?: ViewSession | null;
   staff?: StaffMember[];
+  organizer?: string;
+  bu?: string;
 }) {
   const router = useRouter();
+  const moduleLinks = organizer && bu ? adminModuleLinks(organizer, bu, 'launch') : [];
   const realRole: OpsRole = session?.opsRole ?? 'agnostico';
   const grants = session?.grants ?? {};
   const canManage = session?.canManage ?? true; // no session => permissive (pre-onboarding)
@@ -104,6 +110,7 @@ export function LaunchOpsView({
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           roleSelect={canManage && session ? { value: previewRole, realRole, onChange: setPreviewRole } : null}
+          moduleLinks={moduleLinks}
         />
 
         <div className="launch-main">

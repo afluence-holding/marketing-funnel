@@ -56,6 +56,10 @@ for (const sec of ['Vista general', 'Estadísticas', 'Project Management', 'Mark
 for (const label of ['Resumen', 'KPIs', 'Tareas', 'Gantt', 'Calendario', 'Mensajes', 'Enlaces', 'Usuarios', 'Configuración']) {
   ok(`nav item "${label}"`, html.includes(label));
 }
+// BU admin modules surfaced in the sidebar (Campañas as a module link)
+ok('Módulos section present', html.includes('Módulos'));
+ok('Campañas module link', html.includes('Campañas'));
+ok('Campañas links to campaigns route', /href="\/german-roz\/main"/.test(html));
 // role selector moved into sidebar
 ok('Ver como rol selector in sidebar', /launch-sb-role/.test(html) && /Ver como rol/.test(html));
 // active item synced (resumen default)

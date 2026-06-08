@@ -8,6 +8,7 @@
  * launch-specific strings here.
  */
 import { MODULE_TAB_LABEL, type ModuleId } from '@/lib/backoffice/rbac';
+import { enabledModules, type AdminModuleId } from '@/lib/modules/registry';
 
 export const SECTION_ORDER = [
   'Vista general',
@@ -68,4 +69,43 @@ export function groupModulesBySection(visible: ModuleId[]): SidebarSection[] {
       .filter((id) => set.has(id) && MODULE_SECTION[id] === section)
       .map((id) => ({ id, label: MODULE_TAB_LABEL[id], icon: MODULE_ICON[id] })),
   })).filter((g) => g.items.length > 0);
+}
+
+/* -------------------------------------------------------------------------
+ * BU-level admin modules surfaced in the sidebar (cross-route links).
+ * The Centro de Operaciones is the `launch` admin module; this exposes the
+ * BU's *other* enabled modules (e.g. Campañas, Respuestas) as nav links so
+ * the sidebar is the unified module hub. Data-driven via the registry —
+ * agnostic per tenant, no hardcoded BU strings.
+ * ----------------------------------------------------------------------- */
+export const ADMIN_MODULE_ICON: Record<AdminModuleId, string> = {
+  campaigns: '📈',
+  responses: '📥',
+  launch: '🚀',
+};
+
+export interface AdminModuleLink {
+  id: AdminModuleId;
+  label: string;
+  href: string;
+  icon: string;
+}
+
+/**
+ * Links to the BU's other enabled admin modules (everything except `exclude`,
+ * the current module). For german-roz this yields the "Campañas" link.
+ */
+export function adminModuleLinks(
+  organizer: string,
+  bu: string,
+  exclude: AdminModuleId,
+): AdminModuleLink[] {
+  return enabledModules(organizer, bu)
+    .filter((m) => m.id !== exclude)
+    .map((m) => ({
+      id: m.id,
+      label: m.label,
+      href: `/${organizer}/${bu}${m.pathSuffix}`,
+      icon: ADMIN_MODULE_ICON[m.id],
+    }));
 }

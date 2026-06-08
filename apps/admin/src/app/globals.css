@@ -371,6 +371,7 @@ th {
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
+  text-decoration: none;
 }
 .launch-navitem:hover {
   background: var(--color-bg-hover);

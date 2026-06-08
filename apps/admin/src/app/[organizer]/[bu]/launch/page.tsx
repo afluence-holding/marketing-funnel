@@ -50,6 +50,8 @@ export default async function LaunchOpsPage({
           : null
       }
       staff={staff}
+      organizer={organizer}
+      bu={bu}
     />
   );
 }
