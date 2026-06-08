@@ -57,3 +57,8 @@ export function getSupabaseLaunchOps() {
 export function getSupabaseBackoffice() {
   return supabaseAdminForSchema('backoffice');
 }
+
+/** Service-role client scoped to marketing (leads + landing response tables). */
+export function getSupabaseMarketing() {
+  return supabaseAdminForSchema('marketing');
+}

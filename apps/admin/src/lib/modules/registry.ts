@@ -34,6 +34,11 @@ const ENABLED: Record<string, AdminModuleId[]> = {
   '*': ['campaigns'],
   'german-roz/main': ['campaigns', 'launch'],
   'german-roz/di21': ['campaigns', 'launch'],
+  // Creators whose landing intake lives outside the CRM (dedicated marketing
+  // tables). Responses-only back office — no Meta campaigns dashboard.
+  'bukku/main': ['responses'],
+  'mama-sin-caos/main': ['responses'],
+  'caro-fitness/main': ['responses'],
 };
 
 export function enabledModules(organizer: string, bu: string): AdminModule[] {
@@ -44,6 +49,13 @@ export function enabledModules(organizer: string, bu: string): AdminModule[] {
 
 export function isModuleEnabled(organizer: string, bu: string, id: AdminModuleId): boolean {
   return enabledModules(organizer, bu).some((m) => m.id === id);
+}
+
+/** Canonical landing path for a tenant: its first enabled module's route. */
+export function primaryPath(organizer: string, bu: string): string {
+  const base = `/${organizer}/${bu}`;
+  const first = enabledModules(organizer, bu)[0];
+  return `${base}${first?.pathSuffix ?? ''}`;
 }
 
 export interface ModuleTab {
