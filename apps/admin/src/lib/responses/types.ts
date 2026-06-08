@@ -58,7 +58,36 @@ export interface ResponseColumn {
   label: string;
 }
 
-/** Static description of one landing data source. */
+/**
+ * ─── Capability contract ─────────────────────────────────────────────────
+ * A source varies along three orthogonal axes we discovered in the data model.
+ * Each is modelled as an explicit, exhaustive descriptor instead of loose
+ * optional flags, so the engine (repository · stats · view) switches on `kind`
+ * and the compiler enforces every case. Adding a creator = a pure declaration.
+ */
+
+/** WHERE the rows live. */
+export type ResponseStorage =
+  | { kind: 'crm'; table: string; orgId: string } // shared marketing.leads, scoped by org
+  | { kind: 'dedicated'; table: string }; //          creator-owned table
+
+/** WHAT "progress" means for this source (drives stat cards + filter chips). */
+export type ResponseProgress =
+  | { kind: 'status'; column: string; values: readonly ResponseStatus[] } // lifecycle (Caro)
+  | { kind: 'landing'; column: string; labels?: Record<string, string> } // breakdown by landing
+  | { kind: 'none' }; //                                                    no breakdown
+
+/** HOW the row is flattened + which columns to surface. */
+export interface ResponseShape {
+  /** jsonb columns to spread into top-level fields. */
+  jsonbColumns: string[];
+  /** jsonb column flattened with an `utm_` prefix (optional). */
+  utmColumn?: string;
+  /** Columns shown in the main table (in order). */
+  columns: ResponseColumn[];
+}
+
+/** Static description of one landing data source (capability-driven). */
 export interface ResponseSource {
   /** Stable id, also used as the URL/tab key. */
   id: string;
@@ -66,29 +95,9 @@ export interface ResponseSource {
   label: string;
   /** Creator/brand label (e.g. "Bukku Education"). */
   creatorLabel: string;
-  /** Table name within the `marketing` schema. */
-  table: string;
-  /**
-   * Optional equality filter, for shared multi-tenant tables (e.g. the CRM
-   * `leads` table holds every org). Dedicated creator tables omit this.
-   */
-  filter?: { column: string; value: string };
-  /** jsonb columns to flatten into top-level fields. */
-  jsonbColumns: string[];
-  /** jsonb column flattened with an `utm_` prefix (optional). */
-  utmColumn?: string;
-  /** Column that holds a lifecycle status, if any (enables status filter/stats). */
-  statusColumn?: string;
-  /** Known status values, ordered, for filter chips + stats breakdown. */
-  statusValues?: readonly ResponseStatus[];
-  /**
-   * Field key (in the flattened `fields` map) that holds the acquisition source
-   * to filter by. Defaults to `utm_source` when `utmColumn` is set, otherwise
-   * `source`. Set explicitly to override (e.g. `landing`).
-   */
-  sourceColumn?: string;
-  /** Columns shown in the main table (in order). */
-  columns: ResponseColumn[];
+  storage: ResponseStorage;
+  progress: ResponseProgress;
+  shape: ResponseShape;
   /** Max rows to load (safety cap). */
   limit?: number;
 }
@@ -98,12 +107,23 @@ export interface ResponseStat {
   value: number;
 }
 
+/**
+ * Client-safe projection of a source. `progress` is plain data (no functions)
+ * so the client can switch on `progress.kind` for chips/breakdown; `sourceColumn`
+ * is the resolved facet key used for the campaign/landing selector.
+ */
+export interface ResponseSourceView {
+  id: string;
+  label: string;
+  creatorLabel: string;
+  columns: ResponseColumn[];
+  progress: ResponseProgress;
+  sourceColumn: string;
+}
+
 /** One source loaded with its records + derived stats. */
 export interface ResponseSourceData {
-  source: Pick<
-    ResponseSource,
-    'id' | 'label' | 'creatorLabel' | 'columns' | 'statusColumn' | 'statusValues' | 'sourceColumn'
-  >;
+  source: ResponseSourceView;
   records: ResponseRecord[];
   total: number;
   stats: ResponseStat[];

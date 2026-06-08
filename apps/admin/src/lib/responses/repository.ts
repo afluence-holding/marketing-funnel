@@ -34,16 +34,16 @@ function toStringValue(value: unknown): string {
  * Flatten a DB row into a flat string map: top-level scalars + spread jsonb
  * columns + utm_-prefixed utm column. Fully generic — no per-source logic.
  */
-function flattenRow(row: Row, source: ResponseSource): Record<string, string> {
+function flattenRow(row: Row, shape: ResponseSource['shape']): Record<string, string> {
   const fields: Record<string, string> = {};
-  const jsonb = new Set(source.jsonbColumns);
+  const jsonb = new Set(shape.jsonbColumns);
 
   for (const [key, value] of Object.entries(row)) {
     if (jsonb.has(key) && value && typeof value === 'object' && !Array.isArray(value)) {
       for (const [k, v] of Object.entries(value as Row)) fields[k] = toStringValue(v);
       continue;
     }
-    if (source.utmColumn && key === source.utmColumn && value && typeof value === 'object') {
+    if (shape.utmColumn && key === shape.utmColumn && value && typeof value === 'object') {
       for (const [k, v] of Object.entries(value as Row)) fields[`utm_${k}`] = toStringValue(v);
       continue;
     }
@@ -53,7 +53,8 @@ function flattenRow(row: Row, source: ResponseSource): Record<string, string> {
 }
 
 function mapRecord(row: Row, source: ResponseSource): ResponseRecord {
-  const fields = flattenRow(row, source);
+  const fields = flattenRow(row, source.shape);
+  const statusKey = source.progress.kind === 'status' ? source.progress.column : null;
   return {
     id: toStringValue(row.id) || `${source.id}-${toStringValue(row.created_at)}`,
     sourceId: source.id,
@@ -61,18 +62,29 @@ function mapRecord(row: Row, source: ResponseSource): ResponseRecord {
     name: toStringValue(row.first_name),
     email: toStringValue(row.email),
     phone: toStringValue(row.phone),
-    status: source.statusColumn ? toStringValue(row[source.statusColumn]) || null : null,
+    status: statusKey ? toStringValue(fields[statusKey]) || null : null,
     fields,
   };
 }
 
 /**
- * The field key (in the flattened `fields` map) used for the "source" filter.
- * Explicit `sourceColumn` wins; otherwise `utm_source` when a utm column is
- * flattened, else the top-level `source` column.
+ * Field key (in the flattened `fields` map) used for the campaign/landing
+ * facet. The `landing` progress capability names it explicitly; otherwise we
+ * default to `utm_source` (when a utm column is flattened) or `source`.
  */
 function resolveSourceColumn(source: ResponseSource): string {
-  return source.sourceColumn ?? (source.utmColumn ? 'utm_source' : 'source');
+  if (source.progress.kind === 'landing') return source.progress.column;
+  return source.shape.utmColumn ? 'utm_source' : 'source';
+}
+
+/** Distinct facet values + counts for the landing breakdown, server-side. */
+function buildFacet(records: ResponseRecord[], key: string): Array<[string, number]> {
+  const counts = new Map<string, number>();
+  for (const r of records) {
+    const value = (r.fields[key] ?? '').trim();
+    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
 /** PostgREST caps each response at ~1000 rows, so we page through with range(). */
@@ -86,8 +98,8 @@ async function loadSource(source: ResponseSource): Promise<ResponseSourceData> {
 
   for (let from = 0; from < cap; from += PAGE_SIZE) {
     const to = Math.min(from + PAGE_SIZE, cap) - 1;
-    let query = db.from(source.table).select('*', { count: 'exact' });
-    if (source.filter) query = query.eq(source.filter.column, source.filter.value);
+    let query = db.from(source.storage.table).select('*', { count: 'exact' });
+    if (source.storage.kind === 'crm') query = query.eq('organization_id', source.storage.orgId);
     const { data, error, count } = await query
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -100,23 +112,29 @@ async function loadSource(source: ResponseSource): Promise<ResponseSourceData> {
 
   const records = rows.map((r) => mapRecord(r, source));
   total = total || records.length;
+  const sourceColumn = resolveSourceColumn(source);
+
+  const facet =
+    source.progress.kind === 'landing'
+      ? {
+          values: buildFacet(records, sourceColumn),
+          prefix: '',
+          labels: source.progress.labels,
+        }
+      : undefined;
 
   return {
     source: {
       id: source.id,
       label: source.label,
       creatorLabel: source.creatorLabel,
-      columns: source.columns,
-      statusColumn: source.statusColumn,
-      statusValues: source.statusValues,
-      sourceColumn: resolveSourceColumn(source),
+      columns: source.shape.columns,
+      progress: source.progress,
+      sourceColumn,
     },
     records,
     total,
-    stats: buildResponseStats(records, total, {
-      statusColumn: source.statusColumn,
-      statusValues: source.statusValues,
-    }),
+    stats: buildResponseStats(records, total, source.progress, facet),
   };
 }
 
