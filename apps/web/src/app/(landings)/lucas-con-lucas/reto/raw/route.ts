@@ -1,3 +1,5 @@
+import { landingHtmlResponse } from '@/lib/tracking/landing-html';
+
 const LANDING_HTML = `<!DOCTYPE html>
 <html lang="es-CL">
 <head>
@@ -2148,11 +2150,5 @@ const LANDING_HTML = `<!DOCTYPE html>
 `;
 
 export async function GET() {
-  return new Response(LANDING_HTML, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
-    },
-  });
+  return landingHtmlResponse(LANDING_HTML);
 }

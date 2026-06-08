@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
+import { withLandingTracking } from '@/lib/tracking/landing-html';
 
 const CALCULATOR_URL = 'https://frabjous-treacle-316d4f.netlify.app/';
 const COMMUNITY_URL = 'https://t2m.io/tnbLP79';
@@ -55,7 +56,7 @@ async function loadCalculatorHtml(): Promise<string | null> {
     const response = await fetch(CALCULATOR_URL, { cache: 'no-store' });
     if (!response.ok) return null;
     const rawHtml = await response.text();
-    return patchCalculatorCtas(rawHtml);
+    return withLandingTracking(patchCalculatorCtas(rawHtml));
   } catch {
     return null;
   }

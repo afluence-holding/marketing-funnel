@@ -43,6 +43,30 @@ export const pixelConfig: Record<string, Record<string, BuPixels>> = {
 export const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
 export const clarityId = process.env.NEXT_PUBLIC_CLARITY_ID;
 
+/** Hyros universal script — all landing pages. */
+export const hyrosPh =
+  process.env.NEXT_PUBLIC_HYROS_PH ?? process.env.NEXT_PUBLIC_HYROS_AFLUENCE_PH;
+
+const HYROS_ACCOUNT = '216612';
+
+/** Inline JS that loads the Hyros universal script (for Next.js Script or raw HTML). */
+export function getHyrosScriptInline(ph: string): string {
+  return `var head = document.head;
+var script = document.createElement('script');
+script.type = 'text/javascript';
+script.src = "https://${HYROS_ACCOUNT}.t.hyros.com/v1/lst/universal-script?ph=${ph}&tag=!clicked&ref_url=" + encodeURI(document.URL);
+head.appendChild(script);`;
+}
+
+/** Inject Hyros before </head> in static HTML landings served via route handlers. */
+export function injectHyrosIntoHtml(html: string, ph: string | undefined): string {
+  if (!ph) return html;
+  const snippet = `<script>${getHyrosScriptInline(ph)}</script>\n`;
+  const withHead = html.replace(/<\/head>/i, `${snippet}</head>`);
+  if (withHead !== html) return withHead;
+  return html.replace(/<\/body>/i, `${snippet}</body>`);
+}
+
 /**
  * Look up pixel IDs for a given org + BU.
  * Returns undefined values if not configured — tracking components gracefully skip when undefined.
