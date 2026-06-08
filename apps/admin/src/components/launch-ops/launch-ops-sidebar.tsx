@@ -10,8 +10,9 @@
  * The backdrop is `display:none` by default and only shown via `.show` (mobile
  * drawer fix from the reference design — never occupies a grid column).
  */
+import Link from 'next/link';
 import { OPS_ROLES, ROLE_LABELS, type ModuleId, type OpsRole } from '@/lib/backoffice/rbac';
-import { groupModulesBySection } from '@/lib/launch-ops/navigation';
+import { groupModulesBySection, type AdminModuleLink } from '@/lib/launch-ops/navigation';
 
 interface RoleSelect {
   value: OpsRole;
@@ -28,6 +29,7 @@ export function LaunchSidebar({
   open,
   onClose,
   roleSelect,
+  moduleLinks = [],
 }: {
   brand: string;
   subtitle: string;
@@ -37,6 +39,7 @@ export function LaunchSidebar({
   open: boolean;
   onClose: () => void;
   roleSelect?: RoleSelect | null;
+  moduleLinks?: AdminModuleLink[];
 }) {
   const groups = groupModulesBySection(visible);
 
@@ -47,6 +50,25 @@ export function LaunchSidebar({
           {brand}
           <small>{subtitle}</small>
         </div>
+
+        {moduleLinks.length > 0 && (
+          <div>
+            <div className="launch-sb-sec">Módulos</div>
+            {moduleLinks.map((m) => (
+              <Link
+                key={m.id}
+                href={m.href}
+                className="launch-navitem"
+                onClick={onClose}
+              >
+                <span className="ic" aria-hidden>
+                  {m.icon}
+                </span>
+                {m.label}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {roleSelect && (
           <div className="launch-sb-role">
