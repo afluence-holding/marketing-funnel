@@ -157,10 +157,11 @@ export interface LaunchOverview {
 
 /** Owner display registry — agnostic fallback if no profile linked. */
 export const OWNER_LABELS: Record<string, string> = {
-  nico: 'Nico',
-  mau: 'Mau',
+  nico: 'Nico J.',
   german: 'Germán',
-  tomas: 'Tomás',
+  tomas: 'Tomás H.',
+  maua: 'Mau A.',
+  maus: 'Mau S.',
   elba: 'Elba',
 };
 

@@ -16,9 +16,10 @@
  *   - launch/phases     : upsert (ON CONFLICT)
  *   - tasks             : upsert by (launch_id, source_index); only STATIC fields
  *                         are refreshed — status/progress/version are NEVER
- *                         clobbered. Steps/owners are inserted only for newly
- *                         created tasks (xmax=0 trick), so re-runs add #59..73
- *                         without duplicating children or resetting live work.
+ *                         clobbered. Steps are inserted only for newly created
+ *                         tasks (xmax=0 trick). Owners are seed-derived metadata
+ *                         and are ALWAYS rebuilt (delete+reinsert) so the doc's
+ *                         owner reassignments propagate to existing tasks too.
  *   - dependencies      : inserted only for newly created tasks.
  *   - kpis/resources    : ON CONFLICT DO NOTHING.
  *   - content_item      : seed-owned + read-first -> delete+reinsert per launch.
@@ -154,12 +155,12 @@ const WS = { 'Orgánico': 'organico', 'Inorgánico': 'inorganico', 'Infra': 'inf
 // ---- static catalogs (Enlaces / KPIs / config) ----------------------------
 const RESOURCES = [
   ['landings', 'l_reg', 'Landing registro + diagnóstico', 'nico'],
-  ['landings', 'l_vsl', 'VSL / página de venta', 'mau'],
+  ['landings', 'l_vsl', 'VSL / página de venta', 'nico'],
   ['landings', 'l_ty', 'Thank-you page', 'nico'],
-  ['landings', 'l_checkout', 'Checkout Whop (producto $87)', 'mau'],
-  ['landings', 'l_coupons', 'Cupones de precio ($67 / $77)', 'mau'],
-  ['comms', 'l_wa1', 'Grupo WhatsApp — activo', 'mau'],
-  ['comms', 'l_wa2', 'Grupo WhatsApp — reserva', 'mau'],
+  ['landings', 'l_checkout', 'Checkout Whop (producto $87)', 'maus'],
+  ['landings', 'l_coupons', 'Cupones de precio ($67 / $77)', 'maus'],
+  ['comms', 'l_wa1', 'Grupo WhatsApp — activo', 'elba'],
+  ['comms', 'l_wa2', 'Grupo WhatsApp — reserva', 'elba'],
   ['comms', 'l_bot', 'Bot WhatsApp (panel/challenges)', 'nico'],
   ['comms', 'l_manychat', 'ManyChat (flow RETO)', 'nico'],
   ['comms', 'l_webinar', 'Sala del webinar (link en vivo)', 'nico'],
@@ -167,7 +168,7 @@ const RESOURCES = [
   ['tracking', 'l_hyros', 'Hyros (dashboard)', 'nico'],
   ['tracking', 'l_meta', 'Meta Ads Manager', 'tomas'],
   ['tracking', 'l_ml', 'MailerLite', 'tomas'],
-  ['tracking', 'l_whop', 'Whop (dashboard)', 'mau'],
+  ['tracking', 'l_whop', 'Whop (dashboard)', 'maus'],
   ['tracking', 'l_ig', 'Instagram de Germán', 'german'],
   ['assets', 'l_drive', 'Drive de creativos', 'tomas'],
   ['assets', 'l_recetario', 'Recetario (entrega)', 'german'],
@@ -358,10 +359,14 @@ T.forEach((tk, i) => {
   (tk.steps || []).forEach((st, si) => {
     lines.push(`    INSERT INTO launch_ops.task_step (task_id, position, body) VALUES (v_id, ${si}, ${sql(st)});`);
   });
-  (tk.o || []).forEach((o) => {
-    lines.push(`    INSERT INTO launch_ops.task_owner (task_id, owner_key) VALUES (v_id, ${sql(o)}) ON CONFLICT DO NOTHING;`);
-  });
   lines.push(`  END IF;`);
+  // Owners are seed-derived metadata (not runtime state): always rebuild so the
+  // doc's owner reassignments propagate to existing tasks without clobbering
+  // status/progress/version.
+  lines.push(`  DELETE FROM launch_ops.task_owner WHERE task_id = v_id;`);
+  (tk.o || []).forEach((o) => {
+    lines.push(`  INSERT INTO launch_ops.task_owner (task_id, owner_key) VALUES (v_id, ${sql(o)}) ON CONFLICT DO NOTHING;`);
+  });
   lines.push('');
 });
 
@@ -388,7 +393,7 @@ lines.push('');
 lines.push('  -- resources ------------------------------------------------------------------');
 RESOURCES.forEach((r, idx) => {
   const [category, key, label, owner] = r;
-  lines.push(`  INSERT INTO launch_ops.resource (launch_id, category, key, label, owner_key, position) VALUES (v_launch, ${sql(category)}, ${sql(key)}, ${sql(label)}, ${owner ? sql(owner) : 'NULL'}, ${idx}) ON CONFLICT (launch_id, key) DO NOTHING;`);
+  lines.push(`  INSERT INTO launch_ops.resource (launch_id, category, key, label, owner_key, position) VALUES (v_launch, ${sql(category)}, ${sql(key)}, ${sql(label)}, ${owner ? sql(owner) : 'NULL'}, ${idx}) ON CONFLICT (launch_id, key) DO UPDATE SET category = EXCLUDED.category, label = EXCLUDED.label, owner_key = EXCLUDED.owner_key, position = EXCLUDED.position;`);
 });
 lines.push('');
 lines.push('  -- content_item (Calendario): seed-owned, read-first -> delete + reinsert ----');

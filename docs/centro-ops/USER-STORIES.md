@@ -10,7 +10,7 @@ Acceptance criteria use Given/When/Then.
 
 **US-01 — Role-scoped sidebar** · *As any staff member, I see only the modules my
 role allows.*
-- Given I am logged in with `ops_role = marketing`,
+- Given I am logged in with `ops_role = organico` (or `paid`),
 - When I open `/german-roz/main/launch`,
 - Then the sidebar shows Resumen, KPIs, Tareas, Gantt, Calendario, Mensajes (per
   `role_module_grant`) and hides Enlaces, Usuarios, Configuración.
@@ -28,14 +28,14 @@ role allows.*
 **US-04 — Assign roles (Usuarios)** · *As an admin, I assign an ops_role to each
 team member.*
 - Given the Usuarios module,
-- When I change Tomás to `marketing`,
+- When I change Tomás to `organico`,
 - Then `afluence_membership.ops_role` persists and Tomás's next session reflects it.
 
 **US-05 — Edit permission matrix (Configuración)** · *As an admin, I toggle which
 modules a role sees.*
 - Given the matrix role×module,
-- When I uncheck Calendario for `operaciones`,
-- Then `role_module_grant` updates and operaciones users lose the Calendario tab;
+- When I uncheck Calendario for `comunidad`,
+- Then `role_module_grant` updates and comunidad users lose the Calendario tab;
   "Restablecer" restores defaults.
 
 **US-06 — No regression for un-onboarded staff** · *As an existing logged-in user
