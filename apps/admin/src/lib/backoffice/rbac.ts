@@ -5,15 +5,35 @@
  * tokens stored in backoffice.role_module_grant.module_id ('*' = all).
  */
 
-export type OpsRole = 'agnostico' | 'admin' | 'marketing' | 'operaciones' | 'viewer';
+export type OpsRole =
+  | 'agnostico'
+  | 'admin'
+  | 'organico'
+  | 'paid'
+  | 'support'
+  | 'comunidad'
+  | 'creator'
+  | 'viewer';
 
-export const OPS_ROLES: OpsRole[] = ['agnostico', 'admin', 'marketing', 'operaciones', 'viewer'];
+export const OPS_ROLES: OpsRole[] = [
+  'agnostico',
+  'admin',
+  'organico',
+  'paid',
+  'support',
+  'comunidad',
+  'creator',
+  'viewer',
+];
 
 export const ROLE_LABELS: Record<OpsRole, string> = {
   agnostico: 'Agnóstico (todo)',
-  admin: 'Admin',
-  marketing: 'Marketing',
-  operaciones: 'Operaciones',
+  admin: 'Admin / PM',
+  organico: 'Orgánico',
+  paid: 'Paid / Trafficker',
+  support: 'Support / OB / Config',
+  comunidad: 'Comunidad / WhatsApp',
+  creator: 'Creator',
   viewer: 'Viewer',
 };
 

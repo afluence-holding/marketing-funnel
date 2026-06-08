@@ -19,7 +19,16 @@ export interface OpsSession {
   grants: Record<string, string[]>;
 }
 
-const VALID_ROLES = new Set<OpsRole>(['agnostico', 'admin', 'marketing', 'operaciones', 'viewer']);
+const VALID_ROLES = new Set<OpsRole>([
+  'agnostico',
+  'admin',
+  'organico',
+  'paid',
+  'support',
+  'comunidad',
+  'creator',
+  'viewer',
+]);
 
 function deriveRole(row: { role?: string | null; ops_role?: string | null } | null): OpsRole {
   if (row?.ops_role && VALID_ROLES.has(row.ops_role as OpsRole)) return row.ops_role as OpsRole;

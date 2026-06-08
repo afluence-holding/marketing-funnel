@@ -105,7 +105,7 @@ RLS via launch helpers.
 
 - `backoffice.afluence_membership` → add column `ops_role text` (nullable;
   fallback derived: admin/director→`admin`, member→`viewer`). CHECK in
-  (`agnostico`,`admin`,`marketing`,`operaciones`,`viewer`).
+  (`agnostico`,`admin`,`organico`,`paid`,`support`,`comunidad`,`creator`,`viewer`).
 - `backoffice.role_module_grant(role text, module_id text, primary key(role,module_id))`
   — which modules each ops role can view. Seeded from the HTML `ROLES` map.
 - `backoffice.tenant` → add column `enabled_modules jsonb default '["campaigns"]'`
@@ -124,7 +124,7 @@ Replaces the HTML's localStorage role logic with a backoffice-backed model.
 
 ```
 auth.users → backoffice.profile (user_kind=afluence)
-                 └─ afluence_membership.ops_role ∈ {agnostico,admin,marketing,operaciones,viewer}
+                 └─ afluence_membership.ops_role ∈ {agnostico,admin,organico,paid,support,comunidad,creator,viewer}
 backoffice.role_module_grant(role, module_id)  → which modules a role sees
 backoffice.tenant.enabled_modules              → which modules exist for a tenant
 ```
@@ -196,8 +196,10 @@ prod read validation, then commit/PR/merge to main.
 **Runtime gates:**
 - Authenticated SSR 200 for `/german-roz/main/launch` with all modules.
 - Calendario renders the day-by-day plan; Mensajes renders 12 assets with status.
-- Role preview: `marketing` hides Usuarios/Configuración/Enlaces per matrix;
-  `viewer` sees only Resumen/KPIs; `agnostico`/`admin` see all.
+- Role preview: `organico`/`paid` hide Usuarios/Configuración/Enlaces but see
+  Calendario+Mensajes; `support` swaps Calendario for Enlaces; `comunidad`/`creator`
+  see Resumen/Tareas/Calendario/Mensajes; `viewer` sees only Resumen/KPIs;
+  `agnostico`/`admin` see all.
 - Regression: `/german-roz/di21` campaigns + `/bukku/main/responses` still 200.
 
 **Non-goals (for now):** editing calendar/messages from the UI (read-first;
@@ -215,3 +217,32 @@ mutations can come later), creator self-signup, full audit UI.
 | Reseed can be additive without clobbering live status | ✅ via upsert-by-source_index |
 | `marketing` schema already exposed to PostgREST; `launch_ops`/`backoffice` too | ✅ (done earlier) |
 | Sidebar can replace ModuleTabBar inside the launch view without touching campaigns/responses | ✅ scoped to launch view |
+
+---
+
+## 9. Taxonomy refresh — DI21-C2 v2 (owners + roles)
+
+The DI21-C2 doc evolved the team model from a generic split into launch-specific
+roles. Applied additively (`20260609000200_centro_ops_roles.sql`) + re-seed.
+
+**Ops roles** (`afluence_membership.ops_role` + `role_module_grant`):
+
+| Role | Modules (besides Resumen) |
+|------|---------------------------|
+| `agnostico` / `admin` | all (`*`) |
+| `organico` | KPIs, Tareas, Gantt, Calendario, Mensajes |
+| `paid` | KPIs, Tareas, Gantt, Calendario, Mensajes |
+| `support` | Tareas, Gantt, Enlaces, Mensajes |
+| `comunidad` | Tareas, Calendario, Mensajes |
+| `creator` | Tareas, Calendario, Mensajes |
+| `viewer` | KPIs |
+
+**Owner keys** (`task_owner.owner_key`, `OWNER_LABELS`): the old `mau` split into
+`maua` (Mau A. · Paid) and `maus` (Mau S. · Support); `nico→Nico J.`,
+`tomas→Tomás H.`; `german`/`elba` unchanged. Owners are seed-derived metadata and
+are rebuilt on every re-seed (delete+reinsert) so reassignments propagate without
+touching task `status`/`progress`/`version`.
+
+**Staff roster** (`backoffice.profile` + `afluence_membership`): Cristóbal (admin),
+Nico J. (admin), Tomás Hanna (organico), Mau A. (paid), Mau S. (support),
+Germán (creator), Elba (comunidad).

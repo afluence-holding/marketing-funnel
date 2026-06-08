@@ -55,16 +55,21 @@ export async function setGrant(role: OpsRole, moduleId: ModuleId, enabled: boole
 
 const DEFAULT_GRANTS: Array<[OpsRole, string]> = [
   ['agnostico', '*'], ['admin', '*'],
-  ['marketing', 'resumen'], ['marketing', 'kpis'], ['marketing', 'tareas'],
-  ['marketing', 'gantt'], ['marketing', 'calendario'], ['marketing', 'mensajes'],
-  ['operaciones', 'resumen'], ['operaciones', 'tareas'], ['operaciones', 'gantt'], ['operaciones', 'enlaces'],
+  ['organico', 'resumen'], ['organico', 'kpis'], ['organico', 'tareas'],
+  ['organico', 'gantt'], ['organico', 'calendario'], ['organico', 'mensajes'],
+  ['paid', 'resumen'], ['paid', 'kpis'], ['paid', 'tareas'],
+  ['paid', 'gantt'], ['paid', 'calendario'], ['paid', 'mensajes'],
+  ['support', 'resumen'], ['support', 'tareas'], ['support', 'gantt'],
+  ['support', 'enlaces'], ['support', 'mensajes'],
+  ['comunidad', 'resumen'], ['comunidad', 'tareas'], ['comunidad', 'calendario'], ['comunidad', 'mensajes'],
+  ['creator', 'resumen'], ['creator', 'tareas'], ['creator', 'calendario'], ['creator', 'mensajes'],
   ['viewer', 'resumen'], ['viewer', 'kpis'],
 ];
 
 /** Reset the permission matrix to documented defaults. */
 export async function resetGrants(): Promise<void> {
   const bo = getSupabaseBackoffice();
-  const editable: OpsRole[] = ['marketing', 'operaciones', 'viewer'];
+  const editable: OpsRole[] = ['organico', 'paid', 'support', 'comunidad', 'creator', 'viewer'];
   // never wipe the super-role '*' rows
   const { error: delErr } = await bo.from('role_module_grant').delete().in('role', editable);
   if (delErr) throw delErr;

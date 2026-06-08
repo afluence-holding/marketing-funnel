@@ -785,7 +785,7 @@ function StaffRow({ member, onChanged }: { member: StaffMember; onChanged: () =>
 // ---------- Configuración ----------
 function ConfiguracionPane({ grants, onChanged }: { grants: Record<string, string[]>; onChanged: () => void }) {
   const [pending, start] = useTransition();
-  const editable: OpsRole[] = ['marketing', 'operaciones', 'viewer'];
+  const editable: OpsRole[] = ['organico', 'paid', 'support', 'comunidad', 'creator', 'viewer'];
 
   function toggle(role: OpsRole, moduleId: ModuleId, enabled: boolean) {
     start(async () => {

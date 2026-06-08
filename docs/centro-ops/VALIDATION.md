@@ -13,7 +13,7 @@ green against the **live Supabase** + **authenticated dev render**.
 | `content_item` = 44 (7 matrix_row, 25 reel, 6 sequence, 6 message) | ✅ |
 | `message_asset` = 12 (status + file_path + task_refs) | ✅ |
 | dependencies = 50, steps = 241 | ✅ |
-| `role_module_grant` seeded; `can_see_module` matches doc matrix | ✅ marketing/calendario=t, marketing/enlaces=f, viewer/tareas=f |
+| `role_module_grant` seeded; `can_see_module` matches doc matrix | ✅ organico/mensajes=t, support/calendario=f, viewer/tareas=f |
 | Team directory seeded (6 staff w/ ops_role) | ✅ |
 
 ## P2 — Centro UI (Calendario, Mensajes, matrix)
