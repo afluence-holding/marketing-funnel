@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { getLaunchByBu, getLaunchOverview } from '@/lib/launch-ops/repository';
 import { LaunchOpsView } from '@/components/launch-ops/launch-ops-view';
+import { getOpsSession } from '@/lib/backoffice/session';
+import { listStaff, type StaffMember } from '@/lib/backoffice/repository';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,5 +35,21 @@ export default async function LaunchOpsPage({
     notFound();
   }
 
-  return <LaunchOpsView overview={overview} />;
+  const session = await getOpsSession().catch(() => null);
+  let staff: StaffMember[] = [];
+  if (session?.canManage) {
+    staff = await listStaff().catch(() => []);
+  }
+
+  return (
+    <LaunchOpsView
+      overview={overview}
+      session={
+        session
+          ? { opsRole: session.opsRole, canManage: session.canManage, grants: session.grants }
+          : null
+      }
+      staff={staff}
+    />
+  );
 }
