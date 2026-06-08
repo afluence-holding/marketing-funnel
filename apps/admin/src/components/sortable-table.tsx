@@ -185,7 +185,7 @@ export function FilterGroup<T extends string>({
               cursor: 'pointer',
               border: '1px solid var(--color-border)',
               background: active ? 'var(--color-accent)' : 'var(--color-bg-hover)',
-              color: active ? '#0a0a1a' : 'var(--color-text-primary)',
+              color: active ? '#fff' : 'var(--color-text-primary)',
               fontWeight: active ? 700 : 400,
             }}
           >

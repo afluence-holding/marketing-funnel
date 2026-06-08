@@ -32,7 +32,9 @@ export const ADMIN_MODULES: Record<AdminModuleId, AdminModule> = {
  */
 const ENABLED: Record<string, AdminModuleId[]> = {
   '*': ['campaigns'],
-  'german-roz/main': ['campaigns', 'launch'],
+  // german-roz is unified on the `di21` BU: that's where the Meta campaigns
+  // data lives (meta_ops) AND the Centro/launch. The legacy `/german-roz/main`
+  // URL is 308-redirected to `di21` in middleware.
   'german-roz/di21': ['campaigns', 'launch'],
   // Creators whose landing intake lives outside the CRM (dedicated marketing
   // tables). Responses-only back office — no Meta campaigns dashboard.

@@ -37,6 +37,16 @@ export const ROLE_LABELS: Record<OpsRole, string> = {
   viewer: 'Viewer',
 };
 
+/** Internal staff role (backoffice.afluence_membership.role). Client-safe. */
+export const STAFF_ROLES = ['admin', 'director', 'member'] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
+  admin: 'Admin',
+  director: 'Director',
+  member: 'Miembro',
+};
+
 /** All Centro de Operaciones module ids, in sidebar order. */
 export const MODULE_IDS = [
   'resumen',

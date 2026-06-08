@@ -35,9 +35,9 @@ export function ModuleTabBar({ organizer, bu }: { organizer: string; bu: string 
             fontWeight: 700,
             borderRadius: 8,
             textDecoration: 'none',
-            border: '1px solid var(--color-border)',
+            border: `1px solid ${t.active ? 'var(--color-accent)' : 'var(--color-border)'}`,
             background: t.active ? 'var(--color-accent)' : 'var(--color-bg-card)',
-            color: t.active ? '#0a0a1a' : 'var(--color-text-secondary)',
+            color: t.active ? '#fff' : 'var(--color-text-secondary)',
           }}
         >
           {t.label}

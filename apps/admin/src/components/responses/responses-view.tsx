@@ -118,9 +118,9 @@ export function ResponsesView({
                 fontWeight: 700,
                 borderRadius: 8,
                 cursor: 'pointer',
-                border: '1px solid var(--color-border)',
-                background: s.source.id === activeId ? 'var(--color-text-primary)' : 'var(--color-bg-card)',
-                color: s.source.id === activeId ? '#0a0a1a' : 'var(--color-text-secondary)',
+                border: `1px solid ${s.source.id === activeId ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                background: s.source.id === activeId ? 'var(--color-accent)' : 'var(--color-bg-card)',
+                color: s.source.id === activeId ? '#fff' : 'var(--color-text-secondary)',
               }}
             >
               {s.source.creatorLabel}
@@ -175,9 +175,9 @@ export function ResponsesView({
                   fontWeight: 700,
                   borderRadius: 8,
                   cursor: 'pointer',
-                  border: '1px solid var(--color-border)',
+                  border: `1px solid ${statusFilter === sv ? 'var(--color-accent)' : 'var(--color-border)'}`,
                   background: statusFilter === sv ? 'var(--color-accent)' : 'var(--color-bg-card)',
-                  color: statusFilter === sv ? '#0a0a1a' : 'var(--color-text-secondary)',
+                  color: statusFilter === sv ? '#fff' : 'var(--color-text-secondary)',
                 }}
               >
                 {sv === 'all' ? 'Todos' : STATUS_LABEL[sv] ?? sv}

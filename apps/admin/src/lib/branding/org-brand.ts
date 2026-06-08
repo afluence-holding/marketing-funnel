@@ -38,12 +38,12 @@ export function orgBrand(organizer?: string | null): OrgBrand {
   return ORG_BRANDS[organizer] ?? DEFAULT_BRAND;
 }
 
-/** CSS custom properties to spread into `.centro-theme`'s inline style. */
+/** CSS custom properties to spread into a wrapper's inline style (BU layout). */
 export function brandCssVars(organizer?: string | null): Record<string, string> {
   const brand = orgBrand(organizer);
   return {
     '--color-accent': brand.accent,
-    '--centro-accent-dark': brand.accentDark,
-    '--centro-accent-soft': brand.accentSoft,
+    '--color-accent-dark': brand.accentDark,
+    '--color-accent-soft': brand.accentSoft,
   };
 }

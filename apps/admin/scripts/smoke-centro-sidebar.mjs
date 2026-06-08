@@ -12,7 +12,7 @@ import { createServerClient } from '@supabase/ssr';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const BASE = process.argv[2] || 'http://localhost:3010';
-const PATHN = process.argv[3] || '/german-roz/main/launch';
+const PATHN = process.argv[3] || '/german-roz/di21/launch';
 const EMAIL = process.env.SMOKE_EMAIL || 'nicolas@byafluence.com';
 const PASSWORD = process.env.SMOKE_PASSWORD || 'adm123';
 
@@ -62,7 +62,7 @@ for (const label of ['Resumen', 'KPIs', 'Tareas', 'Gantt', 'Calendario', 'Mensaj
 // BU admin modules surfaced in the sidebar (Campañas as a module link)
 ok('Módulos section present', html.includes('Módulos'));
 ok('Campañas module link', html.includes('Campañas'));
-ok('Campañas links to campaigns route', /href="\/german-roz\/main"/.test(html));
+ok('Campañas links to campaigns route', /href="\/german-roz\/di21"/.test(html));
 // role selector moved into sidebar
 ok('Ver como rol selector in sidebar', /launch-sb-role/.test(html) && /Ver como rol/.test(html));
 // active item synced (resumen default)

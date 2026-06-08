@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 
 export function LoginForm({ nextPath }: { nextPath: string }) {
@@ -31,39 +31,71 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     }
   }
 
+  const labelStyle: CSSProperties = {
+    fontSize: '0.66rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    fontWeight: 700,
+    color: 'var(--color-text-secondary)',
+  };
+  const inputStyle: CSSProperties = {
+    marginTop: 5,
+    width: '100%',
+    boxSizing: 'border-box',
+    borderRadius: 8,
+    border: '1px solid var(--color-border)',
+    background: 'var(--color-bg-card)',
+    color: 'var(--color-text-primary)',
+    padding: '9px 12px',
+    fontSize: '0.88rem',
+    fontFamily: 'inherit',
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <label className="block">
-        <span className="text-xs uppercase tracking-wider text-zinc-500">Email</span>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <label style={{ display: 'block' }}>
+        <span style={labelStyle}>Email</span>
         <input
           type="email"
           autoComplete="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+          style={inputStyle}
         />
       </label>
-      <label className="block">
-        <span className="text-xs uppercase tracking-wider text-zinc-500">Password</span>
+      <label style={{ display: 'block' }}>
+        <span style={labelStyle}>Password</span>
         <input
           type="password"
           autoComplete="current-password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
+          style={inputStyle}
         />
       </label>
       {error && (
-        <p role="alert" className="text-sm text-red-400">
+        <p role="alert" style={{ fontSize: '0.82rem', color: 'var(--color-critical)', margin: 0 }}>
           {error}
         </p>
       )}
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+        style={{
+          width: '100%',
+          borderRadius: 8,
+          border: 'none',
+          background: 'var(--color-accent)',
+          color: '#fff',
+          padding: '11px 16px',
+          fontSize: '0.88rem',
+          fontWeight: 700,
+          fontFamily: 'inherit',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          opacity: loading ? 0.6 : 1,
+        }}
       >
         {loading ? 'Entrando…' : 'Entrar'}
       </button>

@@ -1,16 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg:               #0a0a1a;
-  --color-bg-card:          #0f172a;
-  --color-bg-hover:         #1e293b;
-  --color-border:           #1e293b;
-  --color-text-primary:     #f1f5f9;
-  --color-text-secondary:   #94a3b8;
+  /* Light, premium palette — the whole admin adopts the validated reference
+   * design (docs/DI21-C2-Centro-Operaciones.html). The accent is BRANDED PER
+   * ORG: the BU layout injects `--color-accent` / `--color-accent-*` per
+   * organizer (lib/branding/org-brand.ts). Login / home / 404 use the default
+   * accent below (no org context). */
+  --color-bg:               #f4f4f5;
+  --color-bg-card:          #ffffff;
+  --color-bg-hover:         #f1f1f2;
+  --color-border:           #e4e4e7;
+  --color-text-primary:     #18181b;
+  --color-text-secondary:   #71717a;
   --color-accent:           #3b82f6;
-  --color-success:          #22c55e;
-  --color-warning:          #eab308;
-  --color-critical:         #ef4444;
+  --color-accent-dark:      #2563eb;
+  --color-accent-soft:      #dbeafe;
+  --color-success:          #1f9d55;
+  --color-warning:          #d9a200;
+  --color-critical:         #e8410f;
 }
 
 html, body {
@@ -57,8 +64,9 @@ body {
 .card {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 18px;
+  box-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 1px 3px rgba(24, 24, 27, 0.06);
 }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -278,37 +286,17 @@ th {
 }
 
 /* -------------------------------------------------------------------------
- * Centro de Operaciones — light theme, branded per org
+ * Centro de Operaciones — signature surface
  * -------------------------------------------------------------------------
- * The Centro adopts the validated reference design
- * (docs/DI21-C2-Centro-Operaciones.html): a light, card-based SaaS surface
- * with a dark module sidebar. The accent color is BRANDED PER ORG — injected
- * at runtime via the `--color-accent` / `--centro-accent-*` custom properties
- * set inline on `.centro-theme` (see lib/branding/org-brand.ts).
- *
- * `.centro-theme` re-maps the admin's `--color-*` design tokens to a light
- * palette but is SCOPED: only content inside it (the Launch Ops view) becomes
- * light. Campaigns / Responses and the rest of the admin stay on the global
- * dark theme. All admin primitives (.card, .badge, tables…) consume the
- * tokens, so they re-theme automatically inside this scope.
+ * The whole admin is now light + branded per org (see :root + the BU layout's
+ * accent injection). The Centro keeps a distinct rounded surface to read as an
+ * "app within the app", with a dark module sidebar (`.launch-*`). Palette &
+ * accent come from the cascade — no per-scope overrides needed here.
  * ------------------------------------------------------------------------- */
 .centro-theme {
-  /* Light palette mapped from the reference design tokens */
-  --color-bg: #f4f4f5;
-  --color-bg-card: #ffffff;
-  --color-bg-hover: #f1f1f2;
-  --color-border: #e8e8ea;
-  --color-text-primary: #18181b;
-  --color-text-secondary: #71717a;
-  --color-success: #1f9d55;
-  --color-warning: #d9a200;
-  --color-critical: #e8410f;
-  /* Accent defaults; overridden inline per org (org-brand.ts) */
-  --color-accent: #3b82f6;
-  --centro-accent-dark: #2563eb;
-  --centro-accent-soft: #dbeafe;
   background: var(--color-bg);
   color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 20px;
 }

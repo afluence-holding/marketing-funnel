@@ -31,8 +31,8 @@ ChartJS.register(
   Legend
 );
 
-ChartJS.defaults.color = '#94a3b8';
-ChartJS.defaults.borderColor = '#1e293b';
+ChartJS.defaults.color = '#71717a';
+ChartJS.defaults.borderColor = '#e4e4e7';
 ChartJS.defaults.font.family = 'system-ui, -apple-system, sans-serif';
 
 interface TrendsChartProps {
@@ -80,7 +80,7 @@ export function SpendPurchasesChart({ trend }: TrendsChartProps) {
     scales: {
       y: {
         position: 'left',
-        grid: { color: '#1e293b' },
+        grid: { color: '#e4e4e7' },
         title: { display: true, text: 'Spend ($)' },
       },
       y1: {
@@ -135,7 +135,7 @@ export function CtrCpmChart({ trend }: TrendsChartProps) {
     scales: {
       y: {
         position: 'left',
-        grid: { color: '#1e293b' },
+        grid: { color: '#e4e4e7' },
         title: { display: true, text: 'CTR (%)' },
       },
       y1: {

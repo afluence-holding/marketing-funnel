@@ -10,8 +10,32 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p));
 }
 
+// Legacy BU slug aliases: `/<from>` (and sub-paths) → `/<to>`. german-roz was
+// split across `main` (launch) and `di21` (campaigns); it's now unified on
+// `di21`, so old `/german-roz/main*` bookmarks redirect to keep working.
+const LEGACY_BU_REDIRECTS: Array<{ from: string; to: string }> = [
+  { from: '/german-roz/main', to: '/german-roz/di21' },
+];
+
+function legacyRedirect(pathname: string): string | null {
+  for (const { from, to } of LEGACY_BU_REDIRECTS) {
+    if (pathname === from || pathname.startsWith(from + '/')) {
+      return to + pathname.slice(from.length);
+    }
+  }
+  return null;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const aliased = legacyRedirect(pathname);
+  if (aliased) {
+    const redirect = request.nextUrl.clone();
+    redirect.pathname = aliased;
+    return NextResponse.redirect(redirect, 308);
+  }
+
   if (isPublic(pathname)) return NextResponse.next();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

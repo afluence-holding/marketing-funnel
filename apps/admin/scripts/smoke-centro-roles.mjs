@@ -11,7 +11,7 @@ import { createServerClient } from '@supabase/ssr';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const BASE = process.argv[2] || 'http://localhost:3010';
-const PATHN = process.argv[3] || '/german-roz/main/launch';
+const PATHN = process.argv[3] || '/german-roz/di21/launch';
 const EMAIL = process.env.SMOKE_EMAIL || 'nicolas@byafluence.com';
 const PASSWORD = process.env.SMOKE_PASSWORD || 'adm123';
 
