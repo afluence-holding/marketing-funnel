@@ -75,18 +75,31 @@ function resolveSourceColumn(source: ResponseSource): string {
   return source.sourceColumn ?? (source.utmColumn ? 'utm_source' : 'source');
 }
 
+/** PostgREST caps each response at ~1000 rows, so we page through with range(). */
+const PAGE_SIZE = 1000;
+
 async function loadSource(source: ResponseSource): Promise<ResponseSourceData> {
   const db = getSupabaseMarketing();
-  let query = db.from(source.table).select('*', { count: 'exact' });
-  if (source.filter) query = query.eq(source.filter.column, source.filter.value);
-  const { data, error, count } = await query
-    .order('created_at', { ascending: false })
-    .limit(source.limit ?? 2000);
+  const cap = source.limit ?? 2000;
+  const rows: Row[] = [];
+  let total = 0;
 
-  if (error) throw error;
-  const rows = (data ?? []) as Row[];
+  for (let from = 0; from < cap; from += PAGE_SIZE) {
+    const to = Math.min(from + PAGE_SIZE, cap) - 1;
+    let query = db.from(source.table).select('*', { count: 'exact' });
+    if (source.filter) query = query.eq(source.filter.column, source.filter.value);
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (error) throw error;
+    if (count != null) total = count;
+    const page = (data ?? []) as Row[];
+    rows.push(...page);
+    if (page.length < to - from + 1) break;
+  }
+
   const records = rows.map((r) => mapRecord(r, source));
-  const total = count ?? records.length;
+  total = total || records.length;
 
   return {
     source: {

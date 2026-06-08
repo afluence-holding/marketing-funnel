@@ -66,7 +66,11 @@ for (const t of TENANTS) {
   ok('branded accent badge (no badge-blue)', /badge-accent/.test(html) && !/badge-blue/.test(html));
   ok('no --color-surface leak', !/--color-surface/.test(html));
   if (t.status) ok('status chips (launch-chip)', /launch-chip/.test(html) && /Completados|En progreso/.test(html));
-  if (t.facet) ok('Campañas section + landing in sidebar', /Campa(ñ|&ntilde;|&#241;)as/.test(html) && /landing-german-roz/.test(html));
+  if (t.facet) {
+    ok('Campañas section + landing in sidebar', /Campa(ñ|&ntilde;|&#241;)as/.test(html) && /landing-german-roz/.test(html));
+    // status-less source: stat cards break the total down by landing
+    ok('landing breakdown stat cards', /Form/.test(html) && /Webinar/.test(html));
+  }
   // small delay to avoid auth rate limits between fetches
   await new Promise((r) => setTimeout(r, 200));
 }
