@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { trackCustomEvent, trackEvent } from '@/lib/tracking/events';
 import { buildMetaTrackingPayload, createMetaEventId } from '@/lib/tracking/meta-capi';
+import { buildDesinflamateCheckoutUrl } from './checkout-link';
 
 const MILESTONES = [25, 50, 75, 100] as const;
 const HOTMART_PATTERN = /hotmart/i;
@@ -13,15 +14,16 @@ const ORG_KEY = 'german-roz';
 const BU_KEY = 'main';
 const CONTENT_NAME = 'german-roz-vsl-desinflamate';
 const SOURCE = 'landing-german-roz-vsl-desinflamate';
-const HOTMART_CHECKOUT_URL = 'https://pay.hotmart.com/I105257258C?off=5zf6yl6a';
 
 /**
  * Listens for postMessage events from the srcDoc iframe:
  * - `vsl-milestone`: fires custom VSL_25/50/75/100 events
  *
- * Also intercepts CTA clicks inside the iframe to fire InitiateCheckout
- * before navigating to Hotmart. srcDoc iframes are same-origin so we
- * can attach listeners directly to the iframe's document.
+ * Also intercepts CTA clicks inside the iframe to fire InitiateCheckout and
+ * send the buyer to the embedded Whop checkout (/german-roz/desinflamate/checkout)
+ * instead of the legacy Hotmart link baked into the compiled bundle. srcDoc
+ * iframes are same-origin so we can attach listeners directly to the iframe's
+ * document.
  */
 export function VslTracker() {
   useEffect(() => {
@@ -94,21 +96,16 @@ export function VslTracker() {
           text.includes('reserv') ||
           text.includes('compr') ||
           text.includes('inscrib');
-        const className = (btn as HTMLElement).className || '';
-        const isStickyBottomButton =
-          typeof className === 'string' &&
-          className.includes('animate-pulse');
 
         if (isCTA) {
           if (!ctaFired) {
             ctaFired = true;
             trackEvent('InitiateCheckout', { content_name: CONTENT_NAME });
           }
-          if (isStickyBottomButton) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.open(HOTMART_CHECKOUT_URL, '_top');
-          }
+          // Every CTA now drives to the embedded Whop checkout (not Hotmart).
+          e.preventDefault();
+          e.stopPropagation();
+          window.open(buildDesinflamateCheckoutUrl(), '_top');
         }
       }, true);
     }

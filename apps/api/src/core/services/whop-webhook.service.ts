@@ -5,6 +5,11 @@ import {
   sendLucasRetoPurchaseCapi,
 } from './lucas-reto-purchase.service';
 import { LUCAS_CAPI } from '../../orgs/lucas-con-lucas/main/tracking';
+import { resolveWhopPurchaseProduct } from './whop-products';
+import {
+  resolveWhopPurchaseValue,
+  sendWhopPurchaseCapi,
+} from './whop-purchase.service';
 
 const LUCAS_RETO_SOURCE = 'landing-lucas-con-lucas-reto';
 const DEFAULT_LUCAS_RETO_PLAN_ID = 'plan_aKOjfecUWLzFo';
@@ -211,8 +216,11 @@ export async function handleWhopWebhookEvent(
 
   const planId = extractPlanId(payment);
   const lucasPlans = getLucasRetoPlanIds();
-  if (!planId || !lucasPlans.has(planId)) {
-    console.info('[whop-webhook] payment.succeeded ignored (plan not Lucas reto)', {
+  const isLucasPlan = Boolean(planId && lucasPlans.has(planId));
+  const genericProduct = isLucasPlan ? null : resolveWhopPurchaseProduct(planId);
+
+  if (!isLucasPlan && !genericProduct) {
+    console.info('[whop-webhook] payment.succeeded ignored (plan not tracked)', {
       paymentId: payment.id,
       planId,
     });
@@ -230,14 +238,48 @@ export async function handleWhopWebhookEvent(
   const metaEventId = readString(metadata.meta_event_id);
   const metaFbp = readString(metadata.fbp);
   const metaFbc = readString(metadata.fbc);
-
-  const eventId = metaEventId ?? `lucas-reto-purchase.${payment.id}`;
-  const currency = (payment.currency ?? LUCAS_CAPI.currency).toUpperCase();
-  const value = resolveLucasRetoPurchaseValue(extractAmount(payment), currency);
   const email = extractEmail(payment);
   const { firstName, lastName } = splitName(extractName(payment));
 
-  await sendLucasRetoPurchaseCapi({
+  // ── Lucas reto: dedicated path (unchanged) ──────────────────────────────
+  if (isLucasPlan) {
+    const eventId = metaEventId ?? `lucas-reto-purchase.${payment.id}`;
+    const currency = (payment.currency ?? LUCAS_CAPI.currency).toUpperCase();
+    const value = resolveLucasRetoPurchaseValue(extractAmount(payment), currency);
+
+    await sendLucasRetoPurchaseCapi({
+      eventId,
+      orderId: payment.id,
+      email,
+      firstName,
+      lastName,
+      value,
+      currency,
+      fbp: metaFbp,
+      fbc: metaFbc,
+      source: `${LUCAS_RETO_SOURCE}-whop-webhook`,
+    });
+
+    console.info('[whop-webhook] Lucas reto Purchase CAPI sent', {
+      paymentId: payment.id,
+      planId,
+      eventId,
+      value,
+      currency,
+      hasEmail: Boolean(email),
+    });
+
+    return { handled: true, type: envelope.type, paymentId: payment.id };
+  }
+
+  // ── Generic registry products (German DI21, etc.) ───────────────────────
+  const { product, price } = genericProduct!;
+  const eventId = metaEventId ?? `${product.productKey}-purchase.${payment.id}`;
+  const currency = (payment.currency ?? product.currency).toUpperCase();
+  const value = resolveWhopPurchaseValue(extractAmount(payment), price);
+
+  await sendWhopPurchaseCapi({
+    product,
     eventId,
     orderId: payment.id,
     email,
@@ -247,11 +289,11 @@ export async function handleWhopWebhookEvent(
     currency,
     fbp: metaFbp,
     fbc: metaFbc,
-    source: `${LUCAS_RETO_SOURCE}-whop-webhook`,
   });
 
-  console.info('[whop-webhook] Lucas reto Purchase CAPI sent', {
+  console.info('[whop-webhook] Purchase CAPI sent', {
     paymentId: payment.id,
+    productKey: product.productKey,
     planId,
     eventId,
     value,
