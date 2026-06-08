@@ -72,21 +72,22 @@ export function ResponsesView({
     return active.records.filter((r) => (r.fields[sourceKey] ?? '').trim() === sourceFilter);
   }, [active, sourceFilter, sourceKey]);
 
-  /** Stats reflect the current campaign scope (Total + status/lead breakdown). */
+  const progress = active?.source.progress;
+  const statusValues = progress?.kind === 'status' ? progress.values : undefined;
+  const campaignLabels = progress?.kind === 'landing' ? progress.labels : undefined;
+
+  /** Stats reflect the current campaign scope (driven by the progress capability). */
   const stats = useMemo(() => {
-    if (!active) return [];
+    if (!active || !progress) return [];
     const total = sourceFilter === 'all' ? active.total : scoped.length;
-    return buildResponseStats(scoped, total, {
-      statusColumn: active.source.statusColumn,
-      statusValues: active.source.statusValues,
-      // When viewing "all" of a status-less source, break the total down by
-      // landing so single-step forms still get a rich, Caro-like stats panel.
-      facet:
-        sourceFilter === 'all' && sourceOptions.length > 1
-          ? { values: sourceOptions, prefix: sourcePrefix, max: 4 }
-          : undefined,
-    });
-  }, [active, scoped, sourceFilter, sourceOptions, sourcePrefix]);
+    // When viewing "all" of a landing source, break the total down by landing
+    // so single-step forms still get a rich, Caro-like stats panel.
+    const facet =
+      sourceFilter === 'all' && sourceOptions.length > 1
+        ? { values: sourceOptions, prefix: sourcePrefix, labels: campaignLabels, max: 4 }
+        : undefined;
+    return buildResponseStats(scoped, total, progress, facet);
+  }, [active, progress, scoped, sourceFilter, sourceOptions, sourcePrefix, campaignLabels]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -125,6 +126,7 @@ export function ResponsesView({
           }}
           campaigns={sourceOptions.map(([value, count]) => ({ value, count }))}
           campaignPrefix={sourcePrefix}
+          campaignLabels={campaignLabels}
           activeCampaign={sourceFilter}
           onSelectCampaign={setSourceFilter}
           campaignNoun="Campañas"
@@ -158,7 +160,7 @@ export function ResponsesView({
           <ResponsesFilterBar
             query={query}
             onQuery={setQuery}
-            statusValues={active.source.statusValues}
+            statusValues={statusValues}
             statusFilter={statusFilter}
             onStatusFilter={setStatusFilter}
             onExport={() => downloadCsv(active)}

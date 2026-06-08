@@ -36,6 +36,7 @@ export function ResponsesSidebar({
   onSelectForm,
   campaigns = [],
   campaignPrefix = '',
+  campaignLabels,
   activeCampaign = 'all',
   onSelectCampaign,
   campaignNoun = 'Campañas',
@@ -52,6 +53,7 @@ export function ResponsesSidebar({
   onSelectForm: (id: string) => void;
   campaigns?: CampaignItem[];
   campaignPrefix?: string;
+  campaignLabels?: Record<string, string>;
   activeCampaign?: string;
   onSelectCampaign?: (value: string) => void;
   campaignNoun?: string;
@@ -154,7 +156,7 @@ export function ResponsesSidebar({
                   🎯
                 </span>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {prettyFacet(c.value, campaignPrefix)}
+                  {campaignLabels?.[c.value] ?? prettyFacet(c.value, campaignPrefix)}
                 </span>
                 <span style={{ opacity: 0.6, fontSize: '0.72rem' }}>{c.count}</span>
               </button>

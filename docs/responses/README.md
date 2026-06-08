@@ -44,27 +44,44 @@ never touches `apps/web` or `apps/api`, and adds **no migrations**.
 These creators are **not** in `meta_ops` (no Meta campaigns dashboard); the
 module resolves sources from its own config, independent of `meta_ops`.
 
-## How the generic flatten works
+## Capability contract (how a source varies)
+
+A creator varies along three orthogonal axes, each an explicit descriptor on
+`ResponseSource` (no loose optional flags). The engine switches on `kind` and
+the compiler enforces every case.
+
+| Axis | Type | Variants |
+|------|------|----------|
+| `storage` | where rows live | `{ kind: 'crm', table, orgId }` (shared `leads`, org-scoped) · `{ kind: 'dedicated', table }` |
+| `progress` | what "progress" means | `{ kind: 'status', column, values }` (lifecycle, e.g. Caro) · `{ kind: 'landing', column, labels? }` (breakdown by landing) · `{ kind: 'none' }` |
+| `shape` | how the row flattens | `{ jsonbColumns, utmColumn?, columns }` |
+
+`progress` drives the stat cards (`buildResponseStats` is an exhaustive switch)
+and the filter chips; `landing` also powers the sidebar "Campañas" selector.
+
+## How the generic flatten works (`shape`)
 
 Every row is normalized into `ResponseRecord`:
 - top-level scalar columns → `fields[key]`
-- declared `jsonbColumns` (e.g. `custom_fields`, `answers`) → spread into `fields`
-- `utmColumn` (`utm_data`) → spread with `utm_` prefix
-- `name`/`email`/`phone`/`status` lifted to first-class fields
+- `shape.jsonbColumns` (e.g. `custom_fields`, `answers`) → spread into `fields`
+- `shape.utmColumn` (`utm_data`) → spread with `utm_` prefix
+- `name`/`email`/`phone` lifted to first-class fields; `status` comes from
+  `progress.column` when `progress.kind === 'status'`
 
-The view shows `source.columns` (ordered, labelled) and exposes every remaining
-field in the per-row "Ver más" detail. No per-source mapping code.
+The view shows `shape.columns` (ordered, labelled) and exposes every remaining
+field in the per-row "Ver más" detail. No per-source mapping code. The
+repository pages through with `range()` (PostgREST caps each response at ~1000
+rows) so landing breakdowns reflect the full set, not just the latest 1000.
 
 ## Onboarding a new creator
 
-1. Add a `ResponseSource` to `RESPONSE_SOURCES` in `lib/responses/sources.ts`
-   (table name + jsonb columns + display columns; `statusColumn`/`statusValues`
-   if it has a lifecycle).
+1. Add a `ResponseSource` to `RESPONSE_SOURCES` in `lib/responses/sources.ts` —
+   a pure declaration of `storage` + `progress` + `shape`.
 2. Map its tenant in `TENANT_SOURCES`.
 3. Enable `responses` for that tenant in `lib/modules/registry.ts` (`ENABLED`).
 
-No migration, no DB change, no web/api change. The tenant then appears in the BU
-switcher and `/[organizer]/[bu]/responses` renders.
+No migration, no DB change, no web/api change, no engine change. The tenant then
+appears in the BU switcher and `/[organizer]/[bu]/responses` renders.
 
 ## Access / security
 

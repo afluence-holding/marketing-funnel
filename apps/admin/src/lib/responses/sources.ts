@@ -20,84 +20,103 @@ const COMMON_LEAD_COLUMNS = [
   { key: 'phone', label: 'WhatsApp' },
 ] as const;
 
+const GERMAN_ORG_ID = '614e43c9-5f3f-499b-8734-2fa256b3785c';
+
 export const RESPONSE_SOURCES: Record<string, ResponseSource> = {
   // Bukku — English test survey + interactive level test + guide download.
+  // Dedicated table, no lifecycle → progress is the landing breakdown.
   bukku: {
     id: 'bukku',
     label: 'Test de inglés',
     creatorLabel: 'Bukku Education',
-    table: 'bukku_leads',
-    jsonbColumns: ['custom_fields'],
-    utmColumn: 'utm_data',
-    columns: [
-      ...COMMON_LEAD_COLUMNS,
-      { key: 'nivel_ingles_autorreportado', label: 'Nivel (autorreportado)' },
-      { key: 'test_level', label: 'Nivel test' },
-      { key: 'test_cefr', label: 'CEFR' },
-      { key: 'test_total', label: 'Puntaje' },
-      { key: 'aviso_lanzamiento', label: 'Quiere aviso' },
-      { key: 'guide_level', label: 'Guía descargada' },
-    ],
+    storage: { kind: 'dedicated', table: 'bukku_leads' },
+    progress: { kind: 'landing', column: 'utm_source' },
+    shape: {
+      jsonbColumns: ['custom_fields'],
+      utmColumn: 'utm_data',
+      columns: [
+        ...COMMON_LEAD_COLUMNS,
+        { key: 'nivel_ingles_autorreportado', label: 'Nivel (autorreportado)' },
+        { key: 'test_level', label: 'Nivel test' },
+        { key: 'test_cefr', label: 'CEFR' },
+        { key: 'test_total', label: 'Puntaje' },
+        { key: 'aviso_lanzamiento', label: 'Quiere aviso' },
+        { key: 'guide_level', label: 'Guía descargada' },
+      ],
+    },
     limit: 5000,
   },
 
-  // Mamá Sin Caos — "lista secreta" waitlist.
+  // Mamá Sin Caos — "lista secreta" waitlist. The real landing lives inside
+  // custom_fields.landing, so the breakdown facet points there.
   'mama-sin-caos': {
     id: 'mama-sin-caos',
     label: 'Lista secreta',
     creatorLabel: 'Mamá Sin Caos',
-    table: 'mama_sin_caos_leads',
-    jsonbColumns: ['custom_fields'],
-    utmColumn: 'utm_data',
-    // Real landing column (not the utm channel) drives the campaign facet.
-    sourceColumn: 'landing',
-    columns: [
-      ...COMMON_LEAD_COLUMNS,
-      { key: 'landing', label: 'Landing' },
-      { key: 'subscribed_at', label: 'Suscripción' },
-    ],
+    storage: { kind: 'dedicated', table: 'mama_sin_caos_leads' },
+    progress: { kind: 'landing', column: 'landing' },
+    shape: {
+      jsonbColumns: ['custom_fields'],
+      utmColumn: 'utm_data',
+      columns: [
+        ...COMMON_LEAD_COLUMNS,
+        { key: 'landing', label: 'Landing' },
+        { key: 'subscribed_at', label: 'Suscripción' },
+      ],
+    },
     limit: 5000,
   },
 
-  // German Roz — landing form leads. Unlike the creators above, German's intake
-  // lives in the shared CRM `marketing.leads` table, so it's scoped by org id.
+  // German Roz — intake lives in the shared CRM `marketing.leads` (scoped by
+  // org). Single-step forms (status stays 'new'), so progress = landing
+  // breakdown. Labels map the raw slugs to friendly campaign names.
   'german-roz': {
     id: 'german-roz',
     label: 'Leads de landings',
     creatorLabel: 'German Roz',
-    table: 'leads',
-    filter: { column: 'organization_id', value: '614e43c9-5f3f-499b-8734-2fa256b3785c' },
-    jsonbColumns: [],
-    // German's intake is single-step (status stays 'new'), so its "progress"
-    // view is the breakdown across landings (form / webinar / waitlist).
-    sourceColumn: 'source',
-    columns: [
-      ...COMMON_LEAD_COLUMNS,
-      { key: 'source', label: 'Landing' },
-      { key: 'status', label: 'Estado' },
-    ],
+    storage: { kind: 'crm', table: 'leads', orgId: GERMAN_ORG_ID },
+    progress: {
+      kind: 'landing',
+      column: 'source',
+      labels: {
+        'landing-german-roz-form': 'Form',
+        'landing-german-roz-webinar-2026-06-10': 'Webinar 10-jun',
+        'landing-german-roz-waitlist-di21': 'Waitlist DI21',
+        'landing-german-roz-vsl-desinflamate': 'VSL Desinflámate',
+      },
+    },
+    shape: {
+      jsonbColumns: [],
+      columns: [
+        ...COMMON_LEAD_COLUMNS,
+        { key: 'source', label: 'Landing' },
+        { key: 'status', label: 'Estado' },
+      ],
+    },
     limit: 5000,
   },
 
-  // Caro Fitness — multi-step diagnostic quiz (tracks partial progress).
+  // Caro Fitness — multi-step diagnostic quiz: the only source with a real
+  // lifecycle (completed / in_progress / abandoned).
   'caro-fitness': {
     id: 'caro-fitness',
     label: 'Diagnóstico',
     creatorLabel: 'Caro Fitness',
-    table: 'caro_fitness_progress',
-    jsonbColumns: ['answers'],
-    utmColumn: 'utm_data',
-    statusColumn: 'status',
-    statusValues: ['completed', 'in_progress', 'abandoned'],
-    columns: [
-      ...COMMON_LEAD_COLUMNS,
-      { key: 'status', label: 'Estado' },
-      { key: 'quiz_step', label: 'Paso' },
-      { key: 'objetivo', label: 'Objetivo' },
-      { key: 'sexo', label: 'Sexo' },
-      { key: 'edad', label: 'Edad' },
-      { key: 'frecuencia', label: 'Frecuencia' },
-    ],
+    storage: { kind: 'dedicated', table: 'caro_fitness_progress' },
+    progress: { kind: 'status', column: 'status', values: ['completed', 'in_progress', 'abandoned'] },
+    shape: {
+      jsonbColumns: ['answers'],
+      utmColumn: 'utm_data',
+      columns: [
+        ...COMMON_LEAD_COLUMNS,
+        { key: 'status', label: 'Estado' },
+        { key: 'quiz_step', label: 'Paso' },
+        { key: 'objetivo', label: 'Objetivo' },
+        { key: 'sexo', label: 'Sexo' },
+        { key: 'edad', label: 'Edad' },
+        { key: 'frecuencia', label: 'Frecuencia' },
+      ],
+    },
     limit: 5000,
   },
 };
