@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * smoke-centro-isolation.mjs — confirms the light `.centro-theme` scope does
- * NOT leak into other admin modules. The launch view must carry centro-theme;
- * the responses module must stay on the global dark theme (no centro-theme).
+ * smoke-centro-isolation.mjs — admin-wide branding + Centro surface checks.
+ * The whole admin is light + branded per org: every module under a BU carries
+ * the org accent. The Centro keeps its distinct `.centro-theme` surface; the
+ * Campañas dashboard renders (no more 404) and does NOT carry centro-theme.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -42,13 +43,22 @@ async function get(p) {
 let fail = 0;
 const ok = (label, cond) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${label}`); if (!cond) fail++; };
 
-const launch = await get('/german-roz/main/launch');
-ok(`launch 200 (got ${launch.status})`, launch.status === 200);
-ok('launch carries centro-theme', /centro-theme/.test(launch.html));
+const ACCENT = /--color-accent:\s*#ff5e2b/i; // german-roz brand orange
 
-const responses = await get('/german-roz/main/responses');
-ok(`responses 200 (got ${responses.status})`, responses.status === 200);
-ok('responses stays dark (no centro-theme leak)', !/centro-theme/.test(responses.html));
+const launch = await get('/german-roz/di21/launch');
+ok(`launch 200 (got ${launch.status})`, launch.status === 200);
+ok('launch carries centro-theme surface', /centro-theme/.test(launch.html));
+ok('launch is org-branded (accent injected)', ACCENT.test(launch.html));
+
+// The 404 fix: the Campañas dashboard now resolves on the unified `di21` BU.
+const campaigns = await get('/german-roz/di21');
+ok(`campaigns 200 (got ${campaigns.status})`, campaigns.status === 200);
+ok('campaigns is org-branded (accent injected)', ACCENT.test(campaigns.html));
+ok('campaigns has no centro-theme surface', !/centro-theme/.test(campaigns.html));
+
+// Legacy /main path 308-redirects to the unified di21 path.
+const legacy = await get('/german-roz/main/launch');
+ok(`legacy /main/launch redirects (got ${legacy.status})`, legacy.status === 307 || legacy.status === 308);
 
 console.log(fail === 0 ? '\nALL PASS' : `\n${fail} FAILED`);
 process.exit(fail === 0 ? 0 : 1);

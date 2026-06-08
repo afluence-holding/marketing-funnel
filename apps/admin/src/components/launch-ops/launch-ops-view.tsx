@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { LaunchRealtime } from '@/components/launch-ops/realtime';
 import { LaunchSidebar } from '@/components/launch-ops/launch-ops-sidebar';
 import { adminModuleLinks } from '@/lib/launch-ops/navigation';
-import { brandCssVars } from '@/lib/branding/org-brand';
 import {
   updateKpiAction,
   updateResourceAction,
@@ -27,14 +26,20 @@ import {
   MODULE_TAB_LABEL,
   OPS_ROLES,
   ROLE_LABELS,
+  STAFF_ROLES,
+  STAFF_ROLE_LABELS,
   modulesForRole,
   type ModuleId,
   type OpsRole,
+  type StaffRole,
 } from '@/lib/backoffice/rbac';
 import {
   setOpsRoleAction,
   setGrantAction,
   resetGrantsAction,
+  createStaffAction,
+  updateStaffAction,
+  deleteStaffAction,
 } from '@/app/[organizer]/[bu]/launch/rbac-actions';
 
 interface ViewSession {
@@ -96,10 +101,9 @@ export function LaunchOpsView({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const active: ModuleId = visible.includes(selected) ? selected : visible[0] ?? 'resumen';
   const refresh = () => router.refresh();
-  const themeVars = brandCssVars(organizer) as CSSProperties;
 
   return (
-    <div className="section centro-theme" style={themeVars}>
+    <div className="section centro-theme">
       <LaunchRealtime launchId={overview.launch.id} onChange={refresh} />
 
       <div className="launch-shell">
@@ -691,67 +695,227 @@ function MensajesPane({ overview }: { overview: LaunchOverview }) {
 }
 
 // ---------- Usuarios ----------
+const STAFF_ERR_LABELS: Record<string, string> = {
+  invalid_email: 'Email inválido.',
+  weak_password: 'La contraseña debe tener al menos 6 caracteres.',
+  missing_name: 'El nombre es obligatorio.',
+  duplicate: 'Ese email o handle ya existe.',
+  cannot_delete_self: 'No podés eliminar tu propio usuario.',
+  forbidden: 'No tenés permisos.',
+  unauthenticated: 'Sesión expirada.',
+  save_failed: 'No se pudo guardar.',
+};
+const staffErr = (code: string) => STAFF_ERR_LABELS[code] ?? STAFF_ERR_LABELS.save_failed;
+
+const fieldStyle: CSSProperties = {
+  fontSize: '0.78rem', border: '1px solid var(--color-border)', borderRadius: 6,
+  padding: '6px 8px', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)',
+  fontFamily: 'inherit', width: '100%',
+};
+const selStyle: CSSProperties = {
+  fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--color-border)', borderRadius: 6,
+  padding: '4px 8px', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)',
+};
+
 function UsuariosPane({ staff, onChanged }: { staff: StaffMember[]; onChanged: () => void }) {
-  if (!staff.length) {
-    return (
-      <div className="card">
-        <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
-          No hay miembros de equipo registrados en <code>backoffice.afluence_membership</code>.
-        </p>
-      </div>
-    );
-  }
+  const [creating, setCreating] = useState(false);
+
   return (
     <>
-      <div className="card" style={{ marginBottom: 12 }}>
+      <div className="card" style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
-          Asigná un rol de operaciones a cada persona. El rol define qué módulos ve (se editan en <b>Configuración</b>).
+          Gestioná los usuarios del equipo. El <b>rol de ops</b> define qué módulos ve (se editan en <b>Configuración</b>).
         </p>
+        <button
+          type="button"
+          onClick={() => setCreating((v) => !v)}
+          style={{ padding: '7px 13px', fontSize: '0.78rem', fontWeight: 700, borderRadius: 8, cursor: 'pointer', border: 'none', background: 'var(--color-accent)', color: '#fff', whiteSpace: 'nowrap' }}
+        >
+          {creating ? '× Cancelar' : '+ Nuevo usuario'}
+        </button>
       </div>
-      <div className="card">
-        <table>
-          <thead>
-            <tr><th>Persona</th><th>Email</th><th>Rol asignado</th></tr>
-          </thead>
-          <tbody>
-            {staff.map((s) => <StaffRow key={s.userId} member={s} onChanged={onChanged} />)}
-          </tbody>
-        </table>
-      </div>
+
+      {creating && <CreateStaffForm onDone={() => { setCreating(false); onChanged(); }} />}
+
+      {staff.length === 0 ? (
+        <div className="card">
+          <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
+            No hay miembros registrados. Creá el primero con <b>+ Nuevo usuario</b>.
+          </p>
+        </div>
+      ) : (
+        <div className="card">
+          <table>
+            <thead>
+              <tr><th>Persona</th><th>Email</th><th>Rol staff</th><th>Rol de ops</th><th style={{ textAlign: 'right' }}>Acciones</th></tr>
+            </thead>
+            <tbody>
+              {staff.map((s) => <StaffRow key={s.userId} member={s} onChanged={onChanged} />)}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }
 
-function StaffRow({ member, onChanged }: { member: StaffMember; onChanged: () => void }) {
-  const current: OpsRole = member.opsRole ?? (member.staffRole === 'admin' || member.staffRole === 'director' ? 'admin' : 'viewer');
-  const [role, setRole] = useState<OpsRole>(current);
+function CreateStaffForm({ onDone }: { onDone: () => void }) {
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [handle, setHandle] = useState('');
+  const [password, setPassword] = useState('');
+  const [staffRole, setStaffRole] = useState<StaffRole>('member');
+  const [opsRole, setOpsRole] = useState<OpsRole>('viewer');
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
 
-  function change(next: OpsRole) {
+  function submit() {
     setErr(null);
-    setRole(next);
     start(async () => {
-      const res = await setOpsRoleAction({ userId: member.userId, opsRole: next });
-      if (!res.ok) { setErr('No se pudo guardar.'); setRole(current); }
-      onChanged();
+      const res = await createStaffAction({ email, password, displayName: name, handle: handle || null, staffRole, opsRole });
+      if (!res.ok) { setErr(staffErr(res.error)); return; }
+      onDone();
     });
   }
 
   return (
+    <div className="card" style={{ marginBottom: 12, borderLeft: '4px solid var(--color-accent)' }}>
+      <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: 12 }}>Nuevo usuario</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Nombre
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tomás Hanna" style={fieldStyle} />
+        </label>
+        <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Email
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="persona@byafluence.com" style={fieldStyle} />
+        </label>
+        <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Handle (opcional)
+          <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="tomas" style={fieldStyle} />
+        </label>
+        <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Contraseña
+          <input value={password} onChange={(e) => setPassword(e.target.value)} type="text" placeholder="mín. 6 caracteres" style={fieldStyle} />
+        </label>
+        <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Rol staff
+          <select value={staffRole} onChange={(e) => setStaffRole(e.target.value as StaffRole)} style={{ ...selStyle, width: '100%' }}>
+            {STAFF_ROLES.map((r) => <option key={r} value={r}>{STAFF_ROLE_LABELS[r]}</option>)}
+          </select>
+        </label>
+        <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Rol de ops
+          <select value={opsRole} onChange={(e) => setOpsRole(e.target.value as OpsRole)} style={{ ...selStyle, width: '100%' }}>
+            {OPS_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          </select>
+        </label>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
+        <button type="button" disabled={pending} onClick={submit}
+          style={{ padding: '8px 16px', fontSize: '0.8rem', fontWeight: 700, borderRadius: 8, cursor: 'pointer', border: 'none', background: 'var(--color-accent)', color: '#fff', opacity: pending ? 0.6 : 1 }}>
+          {pending ? 'Creando…' : 'Crear usuario'}
+        </button>
+        {err && <span style={{ color: 'var(--color-critical)', fontSize: '0.76rem' }}>{err}</span>}
+      </div>
+    </div>
+  );
+}
+
+function StaffRow({ member, onChanged }: { member: StaffMember; onChanged: () => void }) {
+  const derivedOps: OpsRole = member.opsRole ?? (member.staffRole === 'admin' || member.staffRole === 'director' ? 'admin' : 'viewer');
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(member.displayName ?? '');
+  const [email, setEmail] = useState(member.email ?? '');
+  const [handle, setHandle] = useState(member.handle ?? '');
+  const [staffRole, setStaffRole] = useState<StaffRole>((member.staffRole as StaffRole) ?? 'member');
+  const [opsRole, setOpsRole] = useState<OpsRole>(derivedOps);
+  const [password, setPassword] = useState('');
+  const [pending, start] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+
+  // Inline ops-role change when NOT in full-edit mode (fast path, like before).
+  function quickRole(next: OpsRole) {
+    setErr(null);
+    setOpsRole(next);
+    start(async () => {
+      const res = await setOpsRoleAction({ userId: member.userId, opsRole: next });
+      if (!res.ok) { setErr(staffErr(res.error)); setOpsRole(derivedOps); }
+      onChanged();
+    });
+  }
+
+  function save() {
+    setErr(null);
+    start(async () => {
+      const res = await updateStaffAction({
+        userId: member.userId,
+        displayName: name,
+        email,
+        handle: handle || null,
+        staffRole,
+        opsRole,
+        password: password || null,
+      });
+      if (!res.ok) { setErr(staffErr(res.error)); return; }
+      setPassword('');
+      setEditing(false);
+      onChanged();
+    });
+  }
+
+  function remove() {
+    if (!confirm(`¿Eliminar a ${member.displayName ?? member.email}? Esta acción no se puede deshacer.`)) return;
+    setErr(null);
+    start(async () => {
+      const res = await deleteStaffAction({ userId: member.userId });
+      if (!res.ok) { setErr(staffErr(res.error)); return; }
+      onChanged();
+    });
+  }
+
+  if (editing) {
+    return (
+      <tr style={{ opacity: pending ? 0.6 : 1 }}>
+        <td><input value={name} onChange={(e) => setName(e.target.value)} style={fieldStyle} /></td>
+        <td>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} style={fieldStyle} />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="nueva contraseña (opcional)" style={{ ...fieldStyle, marginTop: 5, fontSize: '0.72rem' }} />
+        </td>
+        <td>
+          <select value={staffRole} onChange={(e) => setStaffRole(e.target.value as StaffRole)} style={selStyle}>
+            {STAFF_ROLES.map((r) => <option key={r} value={r}>{STAFF_ROLE_LABELS[r]}</option>)}
+          </select>
+        </td>
+        <td>
+          <select value={opsRole} onChange={(e) => setOpsRole(e.target.value as OpsRole)} style={selStyle}>
+            {OPS_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          </select>
+        </td>
+        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+          <button type="button" disabled={pending} onClick={save}
+            style={{ padding: '5px 11px', fontSize: '0.72rem', fontWeight: 700, borderRadius: 6, cursor: 'pointer', border: 'none', background: 'var(--color-accent)', color: '#fff', marginRight: 6 }}>Guardar</button>
+          <button type="button" disabled={pending} onClick={() => { setEditing(false); setErr(null); }}
+            style={{ padding: '5px 11px', fontSize: '0.72rem', fontWeight: 700, borderRadius: 6, cursor: 'pointer', border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-secondary)' }}>Cancelar</button>
+          {err && <div style={{ color: 'var(--color-critical)', fontSize: '0.7rem', marginTop: 4 }}>{err}</div>}
+        </td>
+      </tr>
+    );
+  }
+
+  return (
     <tr style={{ opacity: pending ? 0.6 : 1 }}>
-      <td><b>{member.displayName ?? member.handle ?? '—'}</b></td>
-      <td style={{ color: 'var(--color-text-secondary)' }}>{member.email ?? '—'}</td>
       <td>
-        <select
-          value={role}
-          disabled={pending}
-          onChange={(e) => change(e.target.value as OpsRole)}
-          style={{ fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 8px', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)' }}
-        >
+        <b>{member.displayName ?? member.handle ?? '—'}</b>
+        {member.handle && <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.72rem', marginLeft: 6 }}>@{member.handle}</span>}
+      </td>
+      <td style={{ color: 'var(--color-text-secondary)' }}>{member.email ?? '—'}</td>
+      <td><span className="badge badge-gray">{STAFF_ROLE_LABELS[(member.staffRole as StaffRole)] ?? member.staffRole}</span></td>
+      <td>
+        <select value={opsRole} disabled={pending} onChange={(e) => quickRole(e.target.value as OpsRole)} style={selStyle}>
           {OPS_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
-        {err && <span style={{ color: 'var(--color-critical)', fontSize: '0.7rem', marginLeft: 6 }}>{err}</span>}
+      </td>
+      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+        <button type="button" onClick={() => setEditing(true)}
+          style={{ padding: '5px 11px', fontSize: '0.72rem', fontWeight: 700, borderRadius: 6, cursor: 'pointer', border: '1px solid var(--color-border)', background: 'var(--color-bg-card)', color: 'var(--color-text-primary)', marginRight: 6 }}>Editar</button>
+        <button type="button" onClick={remove}
+          style={{ padding: '5px 11px', fontSize: '0.72rem', fontWeight: 700, borderRadius: 6, cursor: 'pointer', border: '1px solid var(--color-critical)', background: 'var(--color-bg-card)', color: 'var(--color-critical)' }}>Eliminar</button>
+        {err && <div style={{ color: 'var(--color-critical)', fontSize: '0.7rem', marginTop: 4 }}>{err}</div>}
       </td>
     </tr>
   );

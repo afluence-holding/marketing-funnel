@@ -1263,7 +1263,7 @@ function FrequencyBar({ scope }: { scope: FrequencyScope }) {
           height: 26,
           borderRadius: 4,
           overflow: 'hidden',
-          background: '#1e293b',
+          background: 'var(--color-bg-hover)',
         }}
       >
         {segments

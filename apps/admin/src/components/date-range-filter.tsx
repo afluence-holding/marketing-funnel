@@ -141,7 +141,7 @@ export function DateRangeFilter({
                     border: 'none',
                     cursor: 'pointer',
                     background: active ? 'var(--color-accent)' : 'transparent',
-                    color: active ? '#0a0a1a' : 'var(--color-text-primary)',
+                    color: active ? '#fff' : 'var(--color-text-primary)',
                     fontWeight: active ? 700 : 400,
                     fontSize: '0.8rem',
                   }}
@@ -212,7 +212,7 @@ export function DateRangeFilter({
                 padding: '6px 10px',
                 borderRadius: 6,
                 background: 'var(--color-accent)',
-                color: '#0a0a1a',
+                color: '#fff',
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: '0.75rem',

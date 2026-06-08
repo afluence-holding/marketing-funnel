@@ -17,15 +17,37 @@ export default async function LoginPage({
   const nextPath = params.next && params.next.startsWith('/') ? params.next : '/';
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-sm space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Afluence Admin</h1>
-          <p className="mt-2 text-sm text-zinc-400">Backoffice operativo</p>
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div className="card" style={{ width: '100%', maxWidth: 380, padding: 28 }}>
+        <div style={{ marginBottom: 22 }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.01em' }}>
+            Afluence Admin
+          </h1>
+          <p style={{ marginTop: 6, fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+            Backoffice operativo
+          </p>
         </div>
 
         {isMisconfig && (
-          <div className="border border-red-500/40 bg-red-500/10 text-red-200 text-sm rounded-md p-3">
+          <div
+            style={{
+              marginBottom: 16,
+              border: '1px solid rgba(232, 65, 15, 0.4)',
+              background: 'rgba(232, 65, 15, 0.08)',
+              color: 'var(--color-critical)',
+              fontSize: '0.82rem',
+              borderRadius: 8,
+              padding: 12,
+            }}
+          >
             Configuración incompleta. Verificá <code>NEXT_PUBLIC_SUPABASE_URL</code> y{' '}
             <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> en el entorno.
           </div>
