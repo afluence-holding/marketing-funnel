@@ -1,3 +1,5 @@
+import { landingHtmlResponse } from '@/lib/tracking/landing-html';
+
 const LANDING_HTML = `<!DOCTYPE html>
 <html lang="es">
     <head>
@@ -2746,11 +2748,5 @@ const LANDING_HTML = `<!DOCTYPE html>
 export async function GET() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
   const html = LANDING_HTML.replace(/__API_URL__/g, apiUrl);
-  return new Response(html, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
-    },
-  });
+  return landingHtmlResponse(html);
 }

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
+import { withLandingTracking } from '@/lib/tracking/landing-html';
 import { LUCAS } from '../lucas-config';
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ async function loadHtml(): Promise<string> {
 }
 
 export default async function LucasConLucasCalculadoraRentabilidadLanding() {
-  const html = await loadHtml();
+  const html = withLandingTracking(await loadHtml());
 
   return (
     <>

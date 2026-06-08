@@ -1,3 +1,5 @@
+import { landingHtmlResponse } from '@/lib/tracking/landing-html';
+
 const CHECKOUT_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1016,10 +1018,8 @@ footer.foot {
 </html>`;
 
 export async function GET() {
-  return new Response(CHECKOUT_HTML, {
-    status: 200,
+  return landingHtmlResponse(CHECKOUT_HTML, {
     headers: {
-      'Content-Type': 'text/html; charset=utf-8',
       // No cache: the dLocal checkout URL is generated per request and we
       // never want to hand out stale country state.
       'Cache-Control': 'no-store, max-age=0',

@@ -1,4 +1,5 @@
 import { GoogleTagManager } from '@/components/tracking/gtm';
+import { HyrosScript } from '@/components/tracking/hyros';
 import { MetaPixel } from '@/components/tracking/meta-pixel';
 import { GoogleAnalytics } from '@/components/tracking/google-analytics';
 import { Clarity } from '@/components/tracking/clarity';
@@ -14,12 +15,14 @@ import { gtmId, clarityId } from '@/lib/config/pixels';
  * - Default Meta Pixel — org-wide pixel (if configured)
  * - Default GA4 — org-wide analytics (if configured)
  * - Default TikTok Pixel — org-wide TikTok tracking (if configured)
+ * - Hyros — attribution tracking (if configured)
  *
  * Individual landings add BU-specific pixels via <MetaPixelInit>, <GoogleAnalytics>, etc.
  */
 export default function LandingsLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <HyrosScript />
       <GoogleTagManager id={gtmId} />
       <Clarity id={clarityId} />
       <MetaPixel id={process.env.NEXT_PUBLIC_META_PIXEL_DEFAULT} />

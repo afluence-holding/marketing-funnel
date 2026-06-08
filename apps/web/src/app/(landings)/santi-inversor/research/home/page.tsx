@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Metadata } from 'next';
 import { LandingConfig } from '@/components/landing-config';
+import { withLandingTracking } from '@/lib/tracking/landing-html';
 
 export const metadata: Metadata = {
   title: 'Santi Inversor — Research Offer',
@@ -23,7 +24,7 @@ async function loadHtml(): Promise<string> {
 }
 
 export default async function SantiInversorResearchHomeLanding() {
-  const html = await loadHtml();
+  const html = withLandingTracking(await loadHtml());
 
   return (
     <>

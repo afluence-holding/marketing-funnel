@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { landingHtmlResponse } from '@/lib/tracking/landing-html';
 
 async function loadHtml(): Promise<string> {
   const filePath = path.join(
@@ -11,12 +12,5 @@ async function loadHtml(): Promise<string> {
 
 export async function GET() {
   const html = await loadHtml();
-
-  return new Response(html, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=120, stale-while-revalidate=300',
-    },
-  });
+  return landingHtmlResponse(html);
 }
