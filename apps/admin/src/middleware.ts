@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 type CookieSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_PATHS = ['/login', '/api/cron', '/_next', '/favicon'];
+// '/api/agent' authenticates with its own Bearer token (NOT the session).
+const PUBLIC_PATHS = ['/login', '/api/cron', '/api/agent', '/_next', '/favicon'];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p));

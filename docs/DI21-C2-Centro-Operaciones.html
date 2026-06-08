@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centro de Operaciones · Desinflámate 21 · C2</title>
+<style>
+  :root{ color-scheme:light;
+    --bg:#f4f4f5; --card:#fff; --ink:#18181b; --muted:#71717a; --ink2:#3f3f46;
+    --accent:#ff5e2b; --accent-d:#e8410f; --accent-soft:#ffe7df; --line:#e8e8ea; --chip:#f1f1f2;
+    --org:#1f9d55; --org-s:#e7f6ec; --inorg:#6d5ae0; --inorg-s:#eceaff; --infra:#71717a; --infra-s:#eeeeef;
+    --nico:#6d5ae0; --mau:#1f9d55; --german:#18181b; --tomas:#d9a200; --elba:#d6336c;
+    --ok:#1f9d55; --warn:#d9a200;
+    --shadow:0 1px 3px rgba(24,24,27,.05),0 8px 26px rgba(24,24,27,.07);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+  .wrap{max-width:1000px;margin:0 auto;padding:18px 16px 70px}
+  header.top{padding:8px 4px 4px}
+  .kicker{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:800}
+  h1{font-size:25px;line-height:1.1;margin:6px 0 8px;font-weight:800;letter-spacing:-.02em}
+  .dates{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+  .dchip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:700;color:var(--ink2)}
+  .dchip b{color:var(--accent)}
+  .obig{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow);margin-bottom:12px}
+  .obig .l{display:flex;justify-content:space-between;align-items:baseline}.obig .l b{font-size:14px}.obig .l span{font-size:20px;font-weight:800;color:var(--accent)}
+  .pbar{height:10px;background:var(--chip);border-radius:999px;overflow:hidden;margin-top:7px}.pbar>i{display:block;height:100%;background:var(--accent);border-radius:999px;width:0;transition:width .35s}
+
+  nav.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 16px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+  .tab{border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:8px 16px;font-size:14px;font-weight:800;cursor:pointer;color:var(--ink2)}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .pane{display:none;animation:f .25s} .pane.on{display:block} @keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+
+  h2.sec{font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);font-weight:800;margin:24px 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)}
+  p{margin:0 0 10px;font-size:14px} ul{margin:6px 0;padding-left:18px} li{margin:5px 0;font-size:13.7px}
+  .tblwrap{overflow-x:auto;border-radius:11px;box-shadow:var(--shadow);margin:6px 0 12px}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);min-width:520px}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--ink);color:#fff;font-weight:700;font-size:11px} td b{color:var(--ink)} tr:last-child td{border-bottom:none}
+  td.r,th.r{text-align:right} .hit{background:var(--org-s);color:var(--org);font-weight:800}
+
+  /* chips */
+  .pill{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px}
+  .t-org{background:var(--org-s);color:var(--org)} .t-inorg{background:var(--inorg-s);color:var(--inorg)} .t-infra{background:var(--infra-s);color:var(--infra)}
+  .canal{background:var(--accent-soft);color:var(--accent-d)}
+  .own{color:#fff} .own.nico{background:var(--nico)}.own.mau{background:var(--mau)}.own.german{background:var(--german)}.own.tomas{background:var(--tomas);color:#3a2e00}.own.elba{background:var(--elba)}
+  .due{background:var(--chip);color:var(--ink2)} .due.hoy{background:var(--accent);color:#fff}
+  .dep{background:#efecff;color:var(--nico)}
+
+  /* filtros */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .fgroup{display:flex;gap:5px;flex-wrap:wrap}
+  .fbtn{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;color:var(--ink2);display:inline-flex;align-items:center;gap:5px}
+  .fbtn .sw{width:8px;height:8px;border-radius:3px;display:inline-block}
+  .fbtn.active{border-color:var(--ink);background:var(--ink);color:#fff}
+  select{font-family:inherit;font-size:12px;font-weight:700;border:1.5px solid var(--line);border-radius:999px;padding:5px 10px;background:var(--card);color:var(--ink2)}
+
+  /* tareas */
+  .phase{margin:14px 0 4px}
+  .phead{display:flex;justify-content:space-between;align-items:center;margin:0 2px 6px}.phead h3{font-size:12.5px;font-weight:800;margin:0;text-transform:uppercase;letter-spacing:.05em}.phead .gp{font-size:11.5px;font-weight:800;color:var(--muted)}
+  .gbar{height:5px;background:var(--chip);border-radius:999px;overflow:hidden;margin:0 2px 8px}.gbar>i{display:block;height:100%;background:var(--accent);width:0}
+  details.task{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:8px;overflow:hidden}
+  summary{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:10px;padding:11px 13px}summary::-webkit-details-marker{display:none}
+  summary .cbx{width:18px;height:18px;accent-color:var(--accent);flex:0 0 auto;margin-top:2px;cursor:pointer}
+  summary .pno{font-size:10.5px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 6px;margin-top:1px;flex:0 0 auto}
+  summary .head{flex:1;min-width:0}summary .ti{font-size:13.7px;font-weight:700;line-height:1.3}
+  details.task.done summary .ti{color:var(--muted);text-decoration:line-through}
+  summary .meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+  .body{padding:0 14px 12px 41px;font-size:13px;color:var(--ink2)}.body .obj{margin:0 0 8px}.body .lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:9px 0 3px}.body ul{margin:2px 0 0;padding-left:16px}.body li{margin:3px 0}
+  .body .crit{background:var(--org-s);border:1px solid #cfe7d2;border-radius:8px;padding:7px 10px;font-size:12.5px;margin-top:7px}.body .crit b{color:var(--org)}
+  code{background:var(--chip);padding:1px 5px;border-radius:5px;font-size:12px;color:var(--accent-d);font-weight:700}
+
+  /* gantt */
+  .gscroll{overflow-x:auto;border:1px solid var(--line);border-radius:13px;background:var(--card);box-shadow:var(--shadow)}
+  .gantt{min-width:760px;padding:4px 0}
+  .grow{display:grid;grid-template-columns:135px repeat(8,1fr);align-items:center}
+  .gh{padding:8px 4px;text-align:center;border-left:1px solid var(--line);font-size:10px;font-weight:800;color:var(--ink2);line-height:1.2}.gh small{display:block;color:var(--muted);font-weight:600;font-size:9px}
+  .gcorner{padding:8px 10px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase}
+  .grow.row{border-top:1px solid var(--line)}
+  .rlabel{padding:9px 10px;font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:6px}.rlabel .sw{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+  .track{grid-column:2/-1;display:grid;grid-template-columns:repeat(8,1fr);height:30px;align-items:center}
+  .bar{height:20px;border-radius:6px;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden}
+
+  /* kpis */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px}
+  .kc{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 15px;box-shadow:var(--shadow)}
+  .kc .kt{font-size:11.5px;font-weight:800;color:var(--ink2)}
+  .kc input{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:8px 10px;font-size:18px;font-weight:800;color:var(--accent);font-family:inherit;margin-top:5px}
+  .kc .kmeta{font-size:11px;color:var(--muted);margin-top:4px}
+  .lk{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit;color:var(--ink)}.lk:focus{outline:none;border-color:var(--accent)}
+  .lst{font-size:15px;font-weight:800;color:var(--muted)} .lopen{font-size:11px;font-weight:800;color:var(--accent);text-decoration:none;margin-left:6px}
+  .foot{text-align:center;color:var(--muted);font-size:11.5px;margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">Desinflámate 21 · Cohort 2 · Germán Roz</div>
+    <h1>Centro de Operaciones</h1>
+    <div class="dates">
+      <span class="dchip">📣 Anuncio <b>6 jun</b></span>
+      <span class="dchip">🎥 Webinar <b>10 jun · 8pm</b></span>
+      <span class="dchip">🛒 Carrito <b>10–30 jun</b></span>
+      <span class="dchip">💲 <b>$67→$77→$87</b></span>
+      <span class="dchip">🏁 Reto <b>1 jul</b></span>
+      <span class="dchip">⭐ Upsell HT <b>17–21 jul</b></span>
+    </div>
+    <div class="obig"><div class="l"><b>Avance operativo</b><span id="opct">0%</span></div><div class="pbar"><i id="obar"></i></div></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="resumen">Resumen</button>
+    <button class="tab" data-tab="gantt">Gantt</button>
+    <button class="tab" data-tab="tareas">Tareas</button>
+    <button class="tab" data-tab="kpis">KPIs</button>
+    <button class="tab" data-tab="enlaces">Enlaces</button>
+  </nav>
+
+  <!-- ================= RESUMEN ================= -->
+  <section class="pane on" id="pane-resumen">
+    <h2 class="sec">Tesis +$90K (revenue total de C2)</h2>
+    <div class="card">
+      <p>Reto $67→$77→$87 (promedio ≈ $76) + upsell HT $580 al Día 17–21. <b>Target limpio: ~800 compradores × 6% HT ≈ $89K.</b> Cuello de botella = <b>registros (~7–8K) + show-up</b>, no la conversión final. Confianza ~$90K: 45–55%; superar $45K: ~78%.</p>
+      <div class="tblwrap"><table>
+        <tr><th>Compradores ↓ / %HT →</th><th class="r">2%</th><th class="r">4%</th><th class="r">6%</th><th class="r">8%</th></tr>
+        <tr><td><b>500</b></td><td class="r">$44K</td><td class="r">$50K</td><td class="r">$56K</td><td class="r">$62K</td></tr>
+        <tr><td><b>650</b></td><td class="r">$58K</td><td class="r">$65K</td><td class="r">$73K</td><td class="r">$80K</td></tr>
+        <tr><td><b>800</b></td><td class="r">$71K</td><td class="r">$80K</td><td class="r hit">$89K</td><td class="r hit">$99K</td></tr>
+        <tr><td><b>1000</b></td><td class="r hit">$89K</td><td class="r hit">$100K</td><td class="r hit">$112K</td><td class="r hit">$123K</td></tr>
+      </table></div>
+    </div>
+
+    <h2 class="sec">Funnel + escalera</h2>
+    <div class="card"><ul style="margin:0">
+      <li><b>Fase 1 (6–10 jun):</b> orgánico + paid + email → REGISTRO (landing + diagnóstico).</li>
+      <li><b>Webinar 10 jun:</b> guion 15 partes (1er CTA al 10–20%), abre carrito a $67.</li>
+      <li><b>Fase 2 carrito (10–30 jun):</b> escalera $67 (10–16) → $77 (17–23) → $87 (24–30) = 3 micro-cierres. Replay a no-shows. Olas por email/WhatsApp + retargeting hot.</li>
+      <li><b>Backend (17–21 jul):</b> upsell HT $580 — la palanca de margen.</li>
+    </ul></div>
+
+    <h2 class="sec">Estrategia por canal y por tipo</h2>
+    <div class="tblwrap"><table>
+      <tr><th>Canal</th><th>Tipo</th><th>Rol</th><th>Owner</th></tr>
+      <tr><td>IG Reels + Stories</td><td><span class="pill t-org">Orgánico</span></td><td>Motor #1 de registros + olas de precio</td><td>Germán</td></tr>
+      <tr><td>ManyChat</td><td><span class="pill t-org">Orgánico</span></td><td>Captura keyword→DM→opt-in + recordatorios</td><td>Nico/Germán</td></tr>
+      <tr><td>WhatsApp Grupos</td><td><span class="pill t-org">Orgánico</span></td><td>Comunidad + prueba social + cierre</td><td>Mau/Elba</td></tr>
+      <tr><td>WhatsApp Bot</td><td><span class="pill t-org">Orgánico</span></td><td>Inscribe + recordatorios 2d/48h/24h/2h/30min</td><td>Nico</td></tr>
+      <tr><td>Email (MailerLite 3,141)</td><td><span class="pill t-org">Orgánico</span></td><td>Invitación + recordatorios + carrito C1–C12</td><td>Tomás</td></tr>
+      <tr><td>Webinar / Masterclass</td><td><span class="pill t-org">Orgánico</span></td><td>Evento de conversión</td><td>Germán</td></tr>
+      <tr><td>Meta Ads — Frío</td><td><span class="pill t-inorg">Inorgánico</span></td><td>Registros + test de hooks</td><td>Tomás</td></tr>
+      <tr><td>Meta Ads — Warm</td><td><span class="pill t-inorg">Inorgánico</span></td><td>Registros baratos</td><td>Tomás</td></tr>
+      <tr><td>Meta Ads — Hot/RMK</td><td><span class="pill t-inorg">Inorgánico</span></td><td>Venta post-webinar, escalar ganadores</td><td>Tomás</td></tr>
+      <tr><td>Whop · Tracking · Landing · QA</td><td><span class="pill t-infra">Infra</span></td><td>Checkout, Hyros, páginas, compliance</td><td>Nico/Mau</td></tr>
+    </table></div>
+    <div class="card"><p style="margin:0;font-size:13px"><b>Gaps a evaluar (no cubiertos aún):</b> afiliados/JV (fue ~60% del mix en C1), mecánica de referido (member-get-amiga), retargeting a quien abrió el quiz y no se registró. Son las 3 palancas extra de mayor impacto para los ~7–8K registros.</p></div>
+
+    <h2 class="sec">Documentos profundos</h2>
+    <div class="card"><p style="margin:0;font-size:13px">Brief completo, secuencias de email (16), estructura de grabación, matriz de permutaciones, diagnóstico, checklist de tracking Hyros y dev-brief del tracker → en <code>campaigns/desinflamate-21/</code> (01-architecture · 02-creative · 03-launch · 08-tooling).</p></div>
+  </section>
+
+  <!-- ================= GANTT ================= -->
+  <section class="pane" id="pane-gantt">
+    <h2 class="sec">Fases, workstreams y milestones</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink2);margin-bottom:8px">
+      <span><span class="pill t-org">Orgánico</span></span><span><span class="pill t-inorg">Inorgánico</span></span><span><span class="pill t-infra">Infra</span></span>
+    </div>
+    <div class="gscroll"><div class="gantt">
+      <div class="grow">
+        <div class="gcorner">Canal \ Fase</div>
+        <div class="gh">SETUP<small>6 jun</small></div>
+        <div class="gh">PRE-WEB<small>7–9</small></div>
+        <div class="gh">WEBINAR<small>10</small></div>
+        <div class="gh">$67<small>10–16</small></div>
+        <div class="gh">$77<small>17–23</small></div>
+        <div class="gh">$87·cierre<small>24–30</small></div>
+        <div class="gh">RETO<small>1–16 jul</small></div>
+        <div class="gh">HT<small>17–21</small></div>
+      </div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--infra)"></span>Setup/Tracking</div><div class="track"><div class="bar" style="grid-column:1/2;background:var(--infra)">Hyros·Whop·Pixel</div></div></div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--org)"></span>Orgánico + ManyChat</div><div class="track"><div class="bar" style="grid-column:1/7;background:var(--org)">Stories keyword→DM · reels · olas</div></div></div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--org)"></span>Email</div><div class="track"><div class="bar" style="grid-column:1/7;background:var(--org)">Warm-up → invitación → carrito</div></div></div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--inorg)"></span>Paid (Meta)</div><div class="track"><div class="bar" style="grid-column:1/7;background:var(--inorg)">Registro frío/warm → escalar hot</div></div></div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--org)"></span>WhatsApp (grupos+bot)</div><div class="track"><div class="bar" style="grid-column:1/9;background:var(--org)">Comunidad · show-up · cierre · reto · HT</div></div></div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--german)"></span>Evento</div><div class="track"><div class="bar" style="grid-column:3/4;background:var(--german)">Masterclass</div></div></div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--infra)"></span>Reto (producto)</div><div class="track"><div class="bar" style="grid-column:7/9;background:#52525b">21 días</div></div></div>
+      <div class="grow row"><div class="rlabel"><span class="sw" style="background:var(--tomas)"></span>Upsell HT</div><div class="track"><div class="bar" style="grid-column:8/9;background:var(--tomas);color:#3a2e00">$580</div></div></div>
+      <div class="grow" style="border-top:2px solid var(--ink)">
+        <div class="gcorner" style="color:var(--accent)">Hitos</div>
+        <div class="gh" style="color:var(--accent)">◆ arranque</div><div class="gh"></div>
+        <div class="gh" style="color:var(--accent)">◆ webinar</div><div class="gh"></div>
+        <div class="gh" style="color:var(--accent)">◆ →$77</div>
+        <div class="gh" style="color:var(--accent)">◆→$87/cierre</div>
+        <div class="gh" style="color:var(--accent)">◆ reto</div>
+        <div class="gh" style="color:var(--accent)">◆ HT</div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ================= TAREAS ================= -->
+  <section class="pane" id="pane-tareas">
+    <div class="filters">
+      <div class="fgroup" id="ftipo">
+        <button class="fbtn active" data-f="todos">Todas</button>
+        <button class="fbtn" data-f="Orgánico"><span class="sw" style="background:var(--org)"></span>Orgánico</button>
+        <button class="fbtn" data-f="Inorgánico"><span class="sw" style="background:var(--inorg)"></span>Inorgánico</button>
+        <button class="fbtn" data-f="Infra"><span class="sw" style="background:var(--infra)"></span>Infra</button>
+      </div>
+      <select id="fowner"><option value="">Todos los owners</option><option value="nico">Nico</option><option value="mau">Mau</option><option value="german">Germán</option><option value="tomas">Tomás</option><option value="elba">Elba</option></select>
+      <select id="fcanal"><option value="">Todos los canales</option></select>
+    </div>
+    <div id="board"></div>
+  </section>
+
+  <!-- ================= KPIs ================= -->
+  <section class="pane" id="pane-kpis">
+    <h2 class="sec">Scorecard (editable · se guarda)</h2>
+    <div class="kpis">
+      <div class="kc"><div class="kt">Registros</div><input id="k_reg" type="number" placeholder="0"><div class="kmeta">Meta ~7–8K</div></div>
+      <div class="kc"><div class="kt">Show-up %</div><input id="k_show" type="number" placeholder="0"><div class="kmeta">Meta 25–40%</div></div>
+      <div class="kc"><div class="kt">Compradores reto</div><input id="k_buy" type="number" placeholder="0"><div class="kmeta">Meta 800</div></div>
+      <div class="kc"><div class="kt">% Conversión a HT</div><input id="k_ht" type="number" placeholder="0"><div class="kmeta">Meta 6%</div></div>
+      <div class="kc"><div class="kt">ROAS real (Hyros)</div><input id="k_roas" type="number" placeholder="0"><div class="kmeta">source of truth</div></div>
+      <div class="kc"><div class="kt">Revenue estimado C2</div><input id="k_rev" type="text" readonly placeholder="—"><div class="kmeta">compradores×$76 + HT×$580</div></div>
+    </div>
+    <div class="card" style="margin-top:12px"><p style="margin:0;font-size:12.5px;color:var(--muted)">Input manual o feed de Claude (cuando se conecte la API). El revenue estimado se calcula solo desde compradores + %HT.</p></div>
+  </section>
+
+  <!-- ================= ENLACES ================= -->
+  <section class="pane" id="pane-enlaces">
+    <h2 class="sec">Enlaces & recursos — todo centralizado (editable · se guarda)</h2>
+    <p style="font-size:13px;color:var(--muted)">Cada quien pega aquí la URL cuando su pieza esté lista. <b style="color:var(--org)">●</b> cargado · <b style="color:var(--muted)">○</b> pendiente. Así nadie trabaja sin el link que necesita.</p>
+
+    <h2 class="sec">🔗 Landings & páginas</h2>
+    <div class="tblwrap"><table>
+      <tr><th>Recurso</th><th>Owner</th><th style="width:34px">●</th><th>URL</th></tr>
+      <tr><td>Landing registro + diagnóstico</td><td>Nico</td><td><span class="lst" data-for="l_reg">○</span></td><td><input class="lk" data-id="l_reg" placeholder="https://…"></td></tr>
+      <tr><td>VSL / página de venta</td><td>Mau/Nico</td><td><span class="lst" data-for="l_vsl">○</span></td><td><input class="lk" data-id="l_vsl" placeholder="https://…"></td></tr>
+      <tr><td>Thank-you page</td><td>Nico</td><td><span class="lst" data-for="l_ty">○</span></td><td><input class="lk" data-id="l_ty" placeholder="https://…"></td></tr>
+      <tr><td>Checkout Whop (producto $87)</td><td>Mau</td><td><span class="lst" data-for="l_checkout">○</span></td><td><input class="lk" data-id="l_checkout" placeholder="https://whop.com/…"></td></tr>
+      <tr><td>Cupones de precio ($67 / $77)</td><td>Mau</td><td><span class="lst" data-for="l_coupons">○</span></td><td><input class="lk" data-id="l_coupons" placeholder="códigos / links"></td></tr>
+    </table></div>
+
+    <h2 class="sec">💬 Comunicación</h2>
+    <div class="tblwrap"><table>
+      <tr><th>Recurso</th><th>Owner</th><th style="width:34px">●</th><th>URL</th></tr>
+      <tr><td>Grupo WhatsApp — activo</td><td>Mau</td><td><span class="lst" data-for="l_wa1">○</span></td><td><input class="lk" data-id="l_wa1" placeholder="https://chat.whatsapp.com/…"></td></tr>
+      <tr><td>Grupo WhatsApp — reserva (rotación)</td><td>Mau</td><td><span class="lst" data-for="l_wa2">○</span></td><td><input class="lk" data-id="l_wa2" placeholder="https://chat.whatsapp.com/…"></td></tr>
+      <tr><td>Bot WhatsApp (panel/challenges)</td><td>Nico</td><td><span class="lst" data-for="l_bot">○</span></td><td><input class="lk" data-id="l_bot" placeholder="panel del bot"></td></tr>
+      <tr><td>ManyChat (flow RETO)</td><td>Nico</td><td><span class="lst" data-for="l_manychat">○</span></td><td><input class="lk" data-id="l_manychat" placeholder="https://manychat.com/…"></td></tr>
+      <tr><td>Sala del webinar (link en vivo)</td><td>Nico/Mau</td><td><span class="lst" data-for="l_webinar">○</span></td><td><input class="lk" data-id="l_webinar" placeholder="link de ingreso"></td></tr>
+      <tr><td>Replay del webinar</td><td>Germán/Elba</td><td><span class="lst" data-for="l_replay">○</span></td><td><input class="lk" data-id="l_replay" placeholder="link grabación"></td></tr>
+    </table></div>
+
+    <h2 class="sec">📊 Tracking & herramientas</h2>
+    <div class="tblwrap"><table>
+      <tr><th>Recurso</th><th>Owner</th><th style="width:34px">●</th><th>URL</th></tr>
+      <tr><td>Hyros (dashboard)</td><td>Nico</td><td><span class="lst" data-for="l_hyros">○</span></td><td><input class="lk" data-id="l_hyros" placeholder="https://app.hyros.com/…"></td></tr>
+      <tr><td>Meta Ads Manager (campañas)</td><td>Tomás</td><td><span class="lst" data-for="l_meta">○</span></td><td><input class="lk" data-id="l_meta" placeholder="https://adsmanager.facebook.com/…"></td></tr>
+      <tr><td>MailerLite (cuenta/segmentos)</td><td>Tomás</td><td><span class="lst" data-for="l_ml">○</span></td><td><input class="lk" data-id="l_ml" placeholder="https://dashboard.mailerlite.com/…"></td></tr>
+      <tr><td>Whop (dashboard)</td><td>Mau</td><td><span class="lst" data-for="l_whop">○</span></td><td><input class="lk" data-id="l_whop" placeholder="https://whop.com/dashboard/…"></td></tr>
+      <tr><td>Instagram de Germán</td><td>Germán</td><td><span class="lst" data-for="l_ig">○</span></td><td><input class="lk" data-id="l_ig" placeholder="https://instagram.com/…"></td></tr>
+    </table></div>
+
+    <h2 class="sec">🎬 Assets & contenido</h2>
+    <div class="tblwrap"><table>
+      <tr><th>Recurso</th><th>Owner</th><th style="width:34px">●</th><th>URL / ubicación</th></tr>
+      <tr><td>Drive de creativos (bloques + anuncios)</td><td>Germán/Tomás</td><td><span class="lst" data-for="l_drive">○</span></td><td><input class="lk" data-id="l_drive" placeholder="https://drive.google.com/…"></td></tr>
+      <tr><td>Recetario (entrega)</td><td>Germán</td><td><span class="lst" data-for="l_recetario">○</span></td><td><input class="lk" data-id="l_recetario" placeholder="archivo / link"></td></tr>
+      <tr><td>Diagnóstico / Quiz</td><td>Nico</td><td><span class="lst" data-for="l_quiz">○</span></td><td><input class="lk" data-id="l_quiz" value="02-creative/cohort-2/DI21-Diagnostico-German-v1.html"></td></tr>
+    </table></div>
+
+    <h2 class="sec">📁 Documentos de la campaña (rutas)</h2>
+    <div class="tblwrap"><table>
+      <tr><th>Documento</th><th>Owner</th><th style="width:34px">●</th><th>Ruta</th></tr>
+      <tr><td>Brief AISLADO (maestro)</td><td>—</td><td><span class="lst" data-for="l_d1">○</span></td><td><input class="lk" data-id="l_d1" value="01-architecture/cohort-2/DI21-C2-Brief-AISLADO.html"></td></tr>
+      <tr><td>Secuencias de Email (16)</td><td>—</td><td><span class="lst" data-for="l_d2">○</span></td><td><input class="lk" data-id="l_d2" value="03-launch/cohort-2/DI21-C2-Secuencias-Email.html"></td></tr>
+      <tr><td>Estructura de Grabación</td><td>—</td><td><span class="lst" data-for="l_d3">○</span></td><td><input class="lk" data-id="l_d3" value="02-creative/cohort-2/DI21-C2-Estructura-Grabacion-German.html"></td></tr>
+      <tr><td>Matriz de Permutaciones</td><td>—</td><td><span class="lst" data-for="l_d4">○</span></td><td><input class="lk" data-id="l_d4" value="02-creative/cohort-2/DI21-C2-Matriz-Permutaciones.html"></td></tr>
+      <tr><td>Checklist de Tracking (Hyros)</td><td>—</td><td><span class="lst" data-for="l_d5">○</span></td><td><input class="lk" data-id="l_d5" value="03-launch/cohort-2/DI21-C2-Checklist-Hyros.html"></td></tr>
+      <tr><td>Dev-brief del tracker</td><td>—</td><td><span class="lst" data-for="l_d6">○</span></td><td><input class="lk" data-id="l_d6" value="08-tooling/DEV-BRIEF-Launch-Ops-Tracker.md"></td></tr>
+      <tr><td>Análisis playbooks (soft360/miro)</td><td>—</td><td><span class="lst" data-for="l_d7">○</span></td><td><input class="lk" data-id="l_d7" value="00-context/Analisis-Playbooks-soft360-elmalditomiro.html"></td></tr>
+    </table></div>
+    <p style="font-size:12px;color:var(--muted)">Todo bajo <code>campaigns/desinflamate-21/</code>. Tip: cuando una URL esté lista, pégala aquí y queda guardada para todo el equipo (en este dispositivo; sync de equipo = backend/MCP).</p>
+  </section>
+
+  <div class="foot">Centro de Operaciones · DI21 C2 · marca Germán · el avance y los KPIs se guardan al recargar (este dispositivo). Para sync de equipo en vivo → backend/MCP (ver dev-brief).</div>
+</div>
+
+<script>
+/* ---------- DATA: tareas ---------- */
+const T=[
+{ph:"F0",o:["mau"],d:"HOY",dep:"",t:"Whop: cuenta + KYC + producto $87 + cupones de la escalera + métodos de pago",obj:"Checkout funcional con la escalera de precio lista y pagos que conviertan en Perú.",steps:["Crear/configurar la cuenta Whop y completar KYC — es lo que más demora, hacerlo primero.","Producto «Reto Desinflámate 21», pago único, USD, anclado a $87.","Cupón −$20→$67 exp 16/6, 1 por cliente, con tope.","Cupón −$10→$77 exp 23/6, 1 por cliente.","PayPal + crypto (respaldo LATAM) + redirect post-checkout + thank-you."],crit:"Producto a $87, cupones aplican y expiran, PayPal en el checkout."},
+{ph:"F0",o:["nico"],d:"HOY",dep:"",t:"Landing de registro + diagnóstico embebido LIVE",obj:"Puerta de registro que captura el lead y obliga a completar el diagnóstico.",steps:["Publicar la landing.","Embeber el diagnóstico como paso obligatorio.","Conectar el form al opt-in (MailerLite S6 + ManyChat).","Confirmación con link al grupo WhatsApp + resultado.","QA mobile."],crit:"Un registro de prueba entra a MailerLite (S6) y muestra el link de WhatsApp."},
+{ph:"F0",o:["nico"],d:"HOY",dep:"Depende de #2",t:"Evento de registro Pixel + CAPI validado (anti value-bug)",obj:"Señal de conversión limpia para que el paid optimice por registro.",steps:["Pixel en la landing.","Complete Registration por Pixel + CAPI con event_id compartido.","Test Events.","Confirmar dedupe."],crit:"El registro de prueba aparece como 1 evento, sin duplicar."},
+{ph:"F0",o:["nico"],d:"HOY",dep:"Depende de #1, #2",t:"Hyros 100% montado (antes de prender ads)",obj:"Atribución y valor real cross-device + arreglar el value bug, sin resetear learning.",steps:["Script universal en landing + VSL.","Meta OAuth + parámetro en TODOS los adsets antes de gastar.","Whop↔Hyros + webhook final_amount.","MailerLite he=/el= + tracked links WhatsApp; sin acortadores.","Source-of-truth: Hyros manda Purchase a Meta, apagar Whop→Meta. Scientific Mode."],crit:"La compra de prueba registra valor correcto en Hyros, sin doble conteo."},
+{ph:"F0",o:["mau"],d:"HOY",dep:"",t:"Crear grupos de WhatsApp + URLs configuradas en el reto (rotación al llenarse)",obj:"Palanca de comunicación lista, conforme y escalable.",steps:["Grupo(s) ≤300–500 + link + modo solo-admins para el evento.","URLs parametrizadas en el reto para rotar al llenarse.","Opt-in explícito en el registro + bienvenida.","1–2 grupos de reserva."],crit:"Links funcionan, URLs editables desde el reto, hay grupo de reserva."},
+{ph:"F0",o:["mau","nico"],d:"HOY/7jun",dep:"Depende de #1, #4",t:"Whop: compra de prueba desde Perú",obj:"Validar que el checkout convierte y reporta valor correcto antes de gastar.",steps:["Compra real desde IP de Perú.","Verificar métodos de pago que renderizan.","Valor correcto en Hyros + Meta.","Webhook dispara el fan-out."],crit:"Compra completa, valor correcto, comprador excluido del retargeting."},
+{ph:"F0",o:["nico"],d:"HOY",dep:"",t:"Autenticar email: SPF + DKIM + DMARC + unsubscribe",obj:"Deliverability para que los emails de cierre lleguen al inbox.",steps:["Verificar SPF + DKIM (dominio «authenticated»).","DMARC p=none.","Unsubscribe 1 clic."],crit:"Dominio autenticado; envío de prueba no cae en spam."},
+{ph:"F0",o:["nico"],d:"HOY",dep:"",t:"Construir segmentos dinámicos S1–S6 en MailerLite",obj:"Poder enviar engaged-first y ramificar.",steps:["Segmentos por engagement sobre Cohort-Cierre (570) + Desinflama 21 (2,524).","S1 buyers engaged · S2 lapsed · S3 hot · S4 warm · S5 dormidos · S6 registrantes.","Verificar conteos."],crit:"Los 6 segmentos existen; S5 aislado del blast."},
+{ph:"F1",o:["nico"],d:"6–7jun",dep:"Depende de #2",t:"ManyChat: keyword RETO → DM con link + opt-in → push a MailerLite/Meta",obj:"Convertir el orgánico en leads capturados en canal propio.",steps:["Flow keyword RETO (story reply + comentario) → DM con link.","Capturar email + taggear.","Push a MailerLite S6 + Meta CA.","Probar end-to-end."],crit:"Responder RETO devuelve DM y el lead aparece en MailerLite + Meta."},
+{ph:"F1",o:["nico"],d:"7jun",dep:"Depende de #9",t:"ManyChat: flow de recordatorios (show-up + carrito)",obj:"ManyChat como segundo riel de recordatorios (IG-native).",steps:["DM día previo / día del webinar / 1h antes.","Carrito: link de checkout en cada flip + cierre.","Suprimir compradores."],crit:"Un opted-in recibe la secuencia; compradores excluidos."},
+{ph:"F1",o:["german"],d:"HOY",dep:"Depende de #2, #9",t:"Anuncio orgánico: story + reel con keyword RETO",obj:"Activar la expectativa y empezar a llenar registros hoy.",steps:["Story + reel revelando la masterclass.","Hook con el dolor #1 (energía), no el producto.","CTA «responde RETO».","Sin peso ni números."],crit:"Publicado; entran respuestas RETO y registros."},
+{ph:"F1",o:["tomas"],d:"6–7jun",dep:"",t:"Subir creativos de la matriz (hooks) al ad account",obj:"Banco de hooks listo para el test de paid.",steps:["Cargar 4–6 hooks como ads.","Convención de nombres.","Parámetro Hyros + URL correcta (sin acortadores)."],crit:"Ads listos para C1."},
+{ph:"F1",o:["tomas"],d:"7jun",dep:"Depende de #3, #4, #12",t:"Campaña C1 Registro (CBO · frío+warm · Complete Registration)",obj:"Máquina de registros pre-webinar.",steps:["1 campaña CBO, objetivo Leads.","Adset FRÍO (broad/Advantage+) + WARM (IG engagers) aparte.","Prender solo al validar tracking.","Destino: landing del diagnóstico."],crit:"Campaña activa entregando registros bien medidos."},
+{ph:"F1",o:["tomas"],d:"6–8jun",dep:"Depende de #7, #8",t:"Warm-up email engaged-first + Email A1 (invitación)",obj:"Reactivar la lista sin quemar deliverability.",steps:["Jun 6: solo Cohort-Cierre. Jun 7: +S3. Jun 8: +S4. Nunca a los 2,524 ni a S5.","Email A1: anuncia la masterclass + CTA registro."],crit:"Sin pico de quejas; A1 con buen open/clic."},
+{ph:"F1",o:["german"],d:"7–10jun",dep:"Depende de #11",t:"Reels diarios + stories (ángulos de la matriz)",obj:"Sostener registros y calentar audiencia para paid.",steps:["1 reel/día + stories (energía, antojos, anti-dieta, autoridad).","Encuestas/preguntas.","Toda story cierra con RETO."],crit:"Publicación diaria; engagement alimentando warm."},
+{ph:"F1",o:["tomas"],d:"7–10jun",dep:"Depende de #14",t:"Email A2/A3 + recordatorios R1–R4 a registrantes",obj:"Empujar registro y maximizar show-up.",steps:["A2 (por qué importa) + A3 (última llamada) a S1–S4.","R1–R4 (1 día / mañana / 1h / en vivo) solo a S6."],crit:"Secuencia programada; registrantes reciben recordatorios."},
+{ph:"F1",o:["elba"],d:"7–10jun",dep:"Tras: grupos creados",t:"Elba: envío de mensajes en los grupos (pre-webinar)",obj:"Subir show-up con comunicación humana. Paralelo al bot.",steps:["Bienvenida + 1 tip/día (máx 1–3/día), tono cálido.","Recordatorios día previo y día del webinar.","Teaser de valor + prueba social.","Coordinar con el bot para no duplicar."],crit:"Grupos activos, sin salidas masivas."},
+{ph:"F1",o:["tomas"],d:"8–9jun",dep:"Depende de #13",t:"Lectura de hooks (matar <25%, escalar 30%+)",obj:"Encontrar ángulos ganadores antes de meter budget.",steps:["Leer hook rate + hold + CTR; el costo aún miente.","Matar <25%; consolidar 30%+.","Preparar ganadores para Fase 2."],crit:"2–4 hooks ganadores; perdedores pausados."},
+{ph:"F2",o:["german","tomas"],d:"9jun",dep:"",t:"Guion del pitch del webinar (70/20, vender reto $67)",obj:"Una clase que entrega valor y convierte sin agredir.",steps:["hook → historia → enseñanza (3 cambios) → transición → oferta → stack → urgencia → cierre.","70–80% valor / 20–30% oferta. Abre carrito a $67.","HT NO se pitchea aquí.","Anti-dieta, sin números."],crit:"Guion aprobado y ensayado."},
+{ph:"F2",o:["nico","mau"],d:"9jun",dep:"",t:"Plataforma del webinar + sala + prueba técnica",obj:"Que el evento corra sin fallas el día 10.",steps:["Plataforma + sala.","Prueba técnica (audio/video/pantalla).","Link de ingreso para ManyChat/email/WhatsApp."],crit:"Prueba técnica OK; link funciona."},
+{ph:"F2",o:["german"],d:"9jun",dep:"",t:"Recetario antiinflamatorio listo (premio por asistir)",obj:"Incentivo de show-up + entrega de valor post-webinar.",steps:["Armar el recetario (recetas de chef).","Mecanismo de entrega a quienes se conecten.","Sin números; lenguaje de bienestar."],crit:"Recetario terminado y con vía de entrega."},
+{ph:"F2",o:["nico","mau"],d:"9jun",dep:"Depende de #1",t:"VSL de venta + página de checkout Whop + thank-you",obj:"Destino de conversión del carrito.",steps:["Página de venta con la VSL.","Botón al checkout Whop (producto + cupón vigente).","Thank-you + redirect al grupo del reto."],crit:"VSL → checkout → thank-you end-to-end."},
+{ph:"F2",o:["nico"],d:"9jun",dep:"Depende de #1, #4",t:"Webhook fan-out post-compra",obj:"Automatizar todo lo que pasa al comprar.",steps:["Whop payment.succeeded → MailerLite buyers + Hyros order + Meta exclude + link al grupo del reto."],crit:"Una compra de prueba dispara los 4 efectos."},
+{ph:"F2",o:["tomas"],d:"9–10jun",dep:"Depende de #8",t:"Cargar Secuencia B de carrito (C1–C12, ramificada)",obj:"Maquinaria de venta del carrito lista.",steps:["C1–C12 ramificada por asistente/no-show.","Emails ancla en cada flip + cierre.","Supresión de compradores."],crit:"Secuencia programada; ramas por comportamiento."},
+{ph:"F2",o:["german"],d:"10jun",dep:"Depende de #19,#20,#21",t:"Masterclass en vivo + abrir carrito $67",obj:"El evento de conversión.",steps:["Conducir la clase (70/20).","Abrir carrito a $67.","Testimonios + link en WhatsApp durante el pitch."],crit:"Webinar hecho, carrito abierto, primeras ventas."},
+{ph:"F2",o:["tomas"],d:"10jun",dep:"Depende de #13,#25",t:"Pasar paid a C3 Carrito (retargeting + escalar)",obj:"Monetizar registrantes/asistentes que no compraron.",steps:["C3 (Purchase): hot registrantes + visitantes VSL + warm no-reg.","Cargar hooks ganadores.","Excluir compradores."],crit:"C3 activa con CPA razonable."},
+{ph:"F2",o:["nico"],d:"10jun",dep:"Depende de #6,#25",t:"Lista hasheada de registrantes como Custom Audience",obj:"Retargeting confiable (no depender de pixel→CA).",steps:["Exportar registrantes hasheados.","Subir como CA primaria para C3.","Engagement (IG/video) como fallback."],crit:"CA de registrantes con tamaño, lista para C3."},
+{ph:"F2",o:["nico"],d:"10–11jun",dep:"Depende de #25",t:"Validar primeras 3–5 ventas en Hyros ($67/$77/$87)",obj:"Confirmar tracking de valor antes de escalar.",steps:["Ventas registran el precio correcto.","Atribución al ad correcto.","Si falla → CAPI propio desde webhook."],crit:"Ventas con valor correcto y atribución limpia."},
+{ph:"F3",o:["elba"],d:"10–30jun",dep:"",t:"Elba: envío de mensajes en los grupos (carrito)",obj:"Sostener urgencia y prueba social humana 20 días.",steps:["Testimonios diarios + 1 objeción.","Anclar cada flip (17 y 24).","Pitch: testimonios + link.","Cierre 3x."],crit:"Cadencia con spikes en cada flip y cierre."},
+{ph:"F3",o:["german"],d:"10–30jun",dep:"",t:"Stories de carrito + olas de precio",obj:"El orgánico sostiene la urgencia de la escalera.",steps:["Testimonios (energía/digestión/bienestar).","Story de aviso en cada subida.","Countdown al cierre."],crit:"Stories diarias; cada flip con aviso."},
+{ph:"F3",o:["mau","tomas"],d:"17jun",dep:"",t:"Flip a $77 (operativo)",obj:"Ejecutar la primera subida sin fricción.",steps:["Whop: cupón $67 expira → $77.","Email C5 a no-compradores.","Story + WhatsApp."],crit:"Checkout cobra $77 y salió la comunicación."},
+{ph:"F3",o:["mau","tomas"],d:"24jun",dep:"",t:"Flip a $87 (operativo)",obj:"Ejecutar la última subida.",steps:["Whop: cupón $77 expira → $87.","Email C8 + story + WhatsApp.","Avisar cierre el 30."],crit:"Checkout cobra $87 y salió la comunicación."},
+{ph:"F3",o:["tomas"],d:"7jun",dep:"",t:"Track de reactivación S5 (sunset) — baja prioridad, en paralelo",obj:"Recuperar lista dormida sin arriesgar deliverability.",steps:["3–4 emails de reactivación a S5.","Quien reabre → sube a S4.","El resto se aparca."],crit:"Serie enviada; reactivados a S4."},
+{ph:"F3",o:["tomas"],d:"30jun",dep:"",t:"Cierre de carrito 30 jun 23:59 + suprimir compradores",obj:"Cerrar limpio y exprimir el último día.",steps:["Emails C10–C12 escalando.","WhatsApp 3x.","Cerrar 23:59 PET; suprimir compradores."],crit:"Carrito cerrado a horario; comunicación ejecutada."},
+{ph:"F4",o:["mau"],d:"≤29jun",dep:"",t:"Plataforma del reto + acceso para compradores",obj:"Acceso al reto sin fricción el 1 jul.",steps:["Configurar plataforma/acceso.","Sincronizar compradores Whop → acceso.","Probar con cuenta de prueba."],crit:"Un comprador de prueba accede."},
+{ph:"F4",o:["mau"],d:"≤1jul",dep:"Depende de #36",t:"Onboarding + grupos del reto en WhatsApp",obj:"Arrancar el reto con comunidad lista.",steps:["Grupo(s) del reto.","Onboarding + reglas.","Calendario de acompañamiento diario."],crit:"Grupos del reto con los compradores dentro."},
+{ph:"F4",o:["german"],d:"≤1jul",dep:"",t:"Material del reto (plan 21 días + recetas)",obj:"Contenido del reto listo.",steps:["Plan 21 días + recetas de chef.","Tips diarios.","Sin números; hábitos y bienestar."],crit:"Material completo y cargado."},
+{ph:"F4",o:["german","tomas"],d:"≤16jul",dep:"",t:"Proceso de cierre del HT (clase + secuencia + closer) — palanca $90K",obj:"Montar el cierre del high-ticket: mayor retorno de la campaña.",steps:["Clase/sesión de cierre en el grupo del reto.","Secuencia 3–4 msj presentando el Acompañamiento ($580).","Closer 1:1 + guion.","Enmarcar como continuidad."],crit:"Cierre listo y agendado antes del Día 17."},
+{ph:"F4",o:["tomas"],d:"14jul",dep:"Depende de #39",t:"Segmentar compradores más activos del reto para el HT",obj:"Priorizar a quienes más convierten al HT.",steps:["Identificar los más activos (WhatsApp + avance).","Lista prioritaria para el closer.","Personalizar la oferta."],crit:"Lista priorizada para el cierre."},
+{ph:"F4",o:["german","tomas"],d:"17–21jul",dep:"Tras: proceso HT + segmentación",t:"Upsell HT en vivo (Día 17–21)",obj:"El cierre del HT — donde se decide si tocamos los $90K.",steps:["Correr la clase de cierre.","Secuencia + closer 1:1.","Medir conversión a HT (6%)."],crit:"Ofertas enviadas, cierres en marcha, conversión medida."},
+{ph:"F1",o:["nico"],d:"7jun",dep:"Tras: landing + registro",t:"Configurar el BOT de WhatsApp (sistema de challenges) + inscripción de registrantes",obj:"Canal automatizado paralelo a los grupos.",steps:["Conectar el bot al sistema de challenges + inscribir registrantes.","Cadencia: 2 días · 48h · 24h · 2h · 30min antes.","Anuncios puntuales (carrito/flips/cierre).","Contenido de Tomás; tracked links Hyros."],crit:"Un registrante de prueba queda inscrito y recibe la secuencia."},
+{ph:"F3",o:["nico","tomas"],d:"10–30jun",dep:"Tras: bot configurado",t:"BOT WhatsApp: anuncios de carrito (olas de precio + cierre)",obj:"Riel automatizado de urgencia, paralelo a Elba.",steps:["Anuncio en cada flip (17 y 24) + cierre (30).","Link de checkout con tracked link.","Suprimir compradores."],crit:"Anuncios en cada hito; compradores excluidos."},
+{ph:"F2",o:["german","tomas"],d:"9jun",dep:"Rescatado del playbook",t:"Guion de la masterclass sobre estructura de 15 partes",obj:"La masterclass es la palanca #1.",steps:["15 bloques: hook → historia → problema → dolores → epifanía → solución → cambio de paradigma → resultados → transición → producto → anclaje de VALOR → 1er CTA → bonus → urgencia → prueba social + CTA final.","Primer CTA al 10–20%, no al final.","Anclaje de VALOR, nunca precio futuro."],crit:"Guion con el primer CTA antes del cierre."},
+{ph:"F2",o:["german","elba"],d:"9–10jun",dep:"Tras: guion",t:"Stack del día D (toques en vivo + mini-VSL post + bonus + replay)",obj:"Subir retención y capturar el ~40% del valor del replay.",steps:["Vivo: 4 anchors (dolores → método → testimonios → 'momento importante').","Post: mini-VSL + stories en vivo + grabación.","Bonus por asistir → +22% show-up.","Replay a no-shows con deadline."],crit:"Toques guionados, mini-VSL, bonus, replay programado."},
+{ph:"F2",o:["nico","mau","tomas"],d:"8–9jun",dep:"",t:"Checklist técnico pre-evento end-to-end",obj:"Evitar un fallo el día D que tire semanas de captación.",steps:["Stream + internet de respaldo.","ManyChat con usuario real + grupos con admin.","Landing + pixel + replay grabándose.","Checkout Whop end-to-end (compra desde Perú)."],crit:"Flujo probado de punta a punta."},
+{ph:"F2",o:["german","elba"],d:"12–13jun",dep:"Tras: webinar",t:"Q&A post-evento (~12–13 jun) con objeciones reales del grupo",obj:"Recuperar 20–25% de no-shows/indecisos.",steps:["Recolectar objeciones top de DMs/grupo.","Q&A respondiéndolas + empuje a indecisos.","Dentro de la ventana $67."],crit:"Q&A hecho; indecisos reactivados."},
+{ph:"F3",o:["tomas","elba"],d:"10–30jun",dep:"",t:"Loop Ventas→Contenido lite (quiz + DMs + grupo → emails + hooks)",obj:"El quiz es una mina de lenguaje del avatar sin explotar.",steps:["Doc vivo actualizado diario.","Capturar objeciones + frases del quiz/ManyChat/grupo.","Top del día → email/WhatsApp + hooks."],crit:"Doc vivo; 1 insight/día al copy."},
+{ph:"F3",o:["tomas"],d:"9jun",dep:"",t:"Script de las 6 objeciones (para grupo y DM)",obj:"Convertir indecisos con preguntas, no defensas.",steps:["Precio / tiempo / duda / pareja / 'lo pienso' / otro programa.","Reframe salud-energía, tuteo empático.","Sirve para carrito y HT."],crit:"Script en manos de Elba/Mau."},
+{ph:"F3",o:["nico","mau"],d:"9jun",dep:"Tras: checkout Whop",t:"Whop: order bump + upsell post-checkout",obj:"Subir AOV + plantar el HT automatizado.",steps:["Order bump brand-safe (ej. recetario premium).","Upsell post-compra con video/copy.","Tracked links; sin claims de peso."],crit:"Order bump + upsell configurados y testeados."},
+{ph:"F4",o:["german","tomas","nico"],d:"≤16jul",dep:"Tras: proceso HT",t:"HT sales system (VSL post-agenda + llamada 6 pasos + chat pre-agenda + 3 toques)",obj:"Sin sistema, el HT $580 vende por suerte.",steps:["VSL post-agenda ~17 secciones (reutilizable).","Llamada 6 pasos: hielo → objetivo → cualificación → resumen → oferta → cierre.","Chat pre-agenda + 3 toques 12h/30h/48h.","Garantía + resultado-en-21-días (Hormozi)."],crit:"Sistema HT listo antes del Día 17."},
+{ph:"F0",o:["nico"],d:"HOY–7jun",dep:"",t:"Completar el checklist de tracking Hyros (35 ítems · doc aparte)",obj:"Medir absolutamente todos los canales.",steps:["Ejecutar los 10 bloques (A–J) del checklist Hyros.","Source-of-truth + validación de valor con compra de prueba.","Dashboards: CPA real por canal, ROAS, mix paid/orgánico."],crit:"Checklist Hyros al 100%; todos los canales atribuyen."},
+{ph:"F1",o:["german"],d:"7–8jun",dep:"",t:"Germán graba los bloques modulares (hooks + problema + solución + mecánica + cierre) + B-roll",obj:"Materia prima de los anuncios.",steps:["Grabar por bloques (2–3 tomas c/u).","Mismo outfit/luz/encuadre/mic.","B-roll: cocina, ingredientes, platos, WhatsApp.","Sin números corporales."],crit:"Bloques + B-roll grabados y subidos."},
+{ph:"F1",o:["tomas"],d:"7–9jun",dep:"Tras: grabación",t:"Editar los anuncios de la matriz de permutaciones (frío/warm)",obj:"Convertir los bloques en los anuncios de C1/C3.",steps:["Ola 1 de frío (test de hooks) + warm.","B-roll cada 2–3s, CTA a mitad, subtítulos.","NO mezclar formatos.","Fecha/precio solo en overlay, no en audio."],crit:"8–12 anuncios listos para paid."},
+{ph:"F1",o:["tomas"],d:"7–9jun",dep:"",t:"QA de marca + compliance en TODOS los assets (gate antes de publicar)",obj:"Que nada salga off-brand ni con riesgo de Meta.",steps:["Anti-dieta: sin peso/calorías/IMC/antes-después.","Sin condiciones médicas, sin IA, tuteo, 'pacientes', chef.","NO anclar precio futuro.","Sin claims de ingresos ni garantías agresivas."],crit:"Todos los assets pasan el gate; Cris aprueba."},
+{ph:"F5",o:["nico","tomas"],d:"10jun",dep:"",t:"Configurar reportes diarios / scorecard del lanzamiento",obj:"Ver el lanzamiento en números cada día.",steps:["Scorecard: registros, show-up, CPA por canal, ventas por tramo, ROAS, % HT.","Reporte diario automatizado.","Umbrales de alarma."],crit:"Reporte diario corriendo desde el webinar."},
+{ph:"F5",o:["tomas"],d:"diario carrito",dep:"Tras: scorecard",t:"Daily de números + decisión (árbol de optimización)",obj:"No volar a ciegas: leer métricas en orden.",steps:["hook→hold→CTR→CPL→CPA→freq.","CPA alto con CTR sano → revisar funnel.","Escalar ganadores +20%/48h."],crit:"Decisión diaria documentada."},
+{ph:"F5",o:["german","elba"],d:"1–21jul",dep:"",t:"Capturar testimonios de pacientes durante el reto",obj:"Munición para HT, carrito de C3 y prueba social.",steps:["Pedir testimonios en el grupo (energía/digestión/bienestar).","Video + texto, con permiso.","Etiquetar por dolor/objeción."],crit:"Banco de testimonios creciendo."},
+{ph:"F5",o:["tomas"],d:"≤5jul",dep:"Tras: cierre",t:"Post-mortem del lanzamiento + handoff a C3",obj:"Capturar aprendizajes y alimentar la máquina mensual.",steps:["Números finales vs target.","Qué funcionó/qué no por canal.","Learnings C3 + memoria + loop."],crit:"Post-mortem documentado; C3 actualizado."}
+];
+/* ---------- META: canal + tipo por índice ---------- */
+const M=[
+["Whop","Infra"],["Landing","Infra"],["Tracking","Infra"],["Tracking","Infra"],["WA Grupos","Orgánico"],["Whop","Infra"],["Email","Infra"],["Email","Infra"],
+["ManyChat","Orgánico"],["ManyChat","Orgánico"],["IG Orgánico","Orgánico"],["Meta Ads","Inorgánico"],["Meta Ads","Inorgánico"],["Email","Orgánico"],["IG Orgánico","Orgánico"],["Email","Orgánico"],["WA Grupos","Orgánico"],["Meta Ads","Inorgánico"],
+["Webinar","Orgánico"],["Webinar","Infra"],["Webinar","Orgánico"],["Landing","Infra"],["Tracking","Infra"],["Email","Orgánico"],["Webinar","Orgánico"],["Meta Ads","Inorgánico"],["Meta Ads","Inorgánico"],["Tracking","Infra"],
+["WA Grupos","Orgánico"],["IG Orgánico","Orgánico"],["Carrito/Precio","Infra"],["Carrito/Precio","Infra"],["Email","Orgánico"],["Carrito/Precio","Orgánico"],
+["Reto","Infra"],["WA Grupos","Orgánico"],["Reto","Orgánico"],["HT/Backend","Orgánico"],["HT/Backend","Infra"],["HT/Backend","Orgánico"],
+["WA Bot","Orgánico"],["WA Bot","Orgánico"],["Webinar","Orgánico"],["Webinar","Orgánico"],["Webinar","Infra"],["Webinar","Orgánico"],["Contenido","Orgánico"],["WA Grupos","Orgánico"],["Whop","Infra"],["HT/Backend","Orgánico"],
+["Tracking","Infra"],["Creativo","Orgánico"],["Creativo","Inorgánico"],["QA","Infra"],["Ops","Infra"],["Ops","Infra"],["Reto","Orgánico"],["Ops","Infra"]
+];
+const PH=[{id:"F0",n:"⚡ F0 · Setup crítico — HOY"},{id:"F1",n:"F1 · Llenar el webinar (6–10 jun)"},{id:"F2",n:"F2 · Webinar + abrir carrito (9–10 jun)"},{id:"F3",n:"F3 · Carrito · 20 días (10–30 jun)"},{id:"F4",n:"F4 · Reto + Upsell HT (1–21 jul)"},{id:"F5",n:"F5 · Monitoreo + Post-launch"}];
+const OWN={nico:"Nico",mau:"Mau",german:"Germán",tomas:"Tomás",elba:"Elba"};
+const TIPC={"Orgánico":"t-org","Inorgánico":"t-inorg","Infra":"t-infra"};
+const KEY="di21c2_checklist_v2";
+let state={};try{state=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){}
+
+const board=document.getElementById('board');
+const canales=[...new Set(M.map(m=>m[0]))].sort();
+const fc=document.getElementById('fcanal'); canales.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;fc.appendChild(o);});
+
+PH.forEach(p=>{
+  const wrap=document.createElement('div');wrap.className='phase';wrap.dataset.phase=p.id;
+  wrap.innerHTML=`<div class="phead"><h3>${p.n}</h3><span class="gp" id="gp_${p.id}"></span></div><div class="gbar"><i id="gb_${p.id}"></i></div>`;
+  T.forEach((tk,gi)=>{ if(tk.ph!==p.id) return;
+    const id="t"+gi; const canal=M[gi][0], tipo=M[gi][1];
+    const det=document.createElement('details');det.className='task'+(state[id]?' done':'');
+    det.dataset.owner=tk.o.join(' ');det.dataset.phase=p.id;det.dataset.tipo=tipo;det.dataset.canal=canal;
+    const owns=tk.o.map(o=>`<span class="pill own ${o}">${OWN[o]}</span>`).join('');
+    const dueCls=/HOY/.test(tk.d)?'pill due hoy':'pill due';
+    const dep=tk.dep?`<span class="pill dep">${tk.dep}</span>`:'';
+    const steps=tk.steps.map(s=>`<li>${s}</li>`).join('');
+    det.innerHTML=`<summary><input type="checkbox" class="cbx" data-id="${id}" ${state[id]?'checked':''}><span class="pno">#${gi+1}</span><span class="head"><span class="ti">${tk.t}</span><span class="meta"><span class="pill ${TIPC[tipo]}">${tipo}</span><span class="pill canal">${canal}</span>${owns}<span class="${dueCls}">${tk.d}</span>${dep}</span></span></summary><div class="body"><p class="obj">${tk.obj}</p><div class="lbl">Pasos</div><ul>${steps}</ul><div class="crit"><b>Listo cuando:</b> ${tk.crit}</div></div>`;
+    wrap.appendChild(det);
+  });
+  board.appendChild(wrap);
+});
+
+function update(){let tot=0,done=0;PH.forEach(p=>{const cb=[...document.querySelectorAll(`details[data-phase="${p.id}"] .cbx`)];const d=cb.filter(c=>c.checked).length;tot+=cb.length;done+=d;const pct=cb.length?Math.round(d/cb.length*100):0;document.getElementById('gb_'+p.id).style.width=pct+'%';document.getElementById('gp_'+p.id).textContent=`${d}/${cb.length}`;});const op=tot?Math.round(done/tot*100):0;document.getElementById('obar').style.width=op+'%';document.getElementById('opct').textContent=op+'%';}
+board.addEventListener('click',e=>{if(e.target.classList.contains('cbx'))e.stopPropagation();});
+board.addEventListener('change',e=>{if(e.target.classList.contains('cbx')){state[e.target.dataset.id]=e.target.checked;e.target.closest('details.task').classList.toggle('done',e.target.checked);try{localStorage.setItem(KEY,JSON.stringify(state))}catch(x){}update();}});
+
+let fTipo='todos';
+function applyFilters(){const owner=document.getElementById('fowner').value;const canal=document.getElementById('fcanal').value;
+  document.querySelectorAll('details.task').forEach(r=>{
+    const okT=fTipo==='todos'||r.dataset.tipo===fTipo;
+    const okO=!owner||r.dataset.owner.split(' ').includes(owner);
+    const okC=!canal||r.dataset.canal===canal;
+    r.style.display=(okT&&okO&&okC)?'block':'none';});
+  document.querySelectorAll('.phase').forEach(s=>{const vis=[...s.querySelectorAll('details.task')].some(r=>r.style.display!=='none');s.style.display=vis?'block':'none';});
+}
+document.getElementById('ftipo').addEventListener('click',e=>{const b=e.target.closest('.fbtn');if(!b)return;document.querySelectorAll('#ftipo .fbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');fTipo=b.dataset.f;applyFilters();});
+document.getElementById('fowner').addEventListener('change',applyFilters);
+document.getElementById('fcanal').addEventListener('change',applyFilters);
+update();
+
+/* ---------- tabs ---------- */
+document.querySelector('nav.tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));document.getElementById('pane-'+b.dataset.tab).classList.add('on');window.scrollTo({top:0,behavior:'smooth'});});
+
+/* ---------- KPIs ---------- */
+const KK="di21c2_kpis";let kpi={};try{kpi=JSON.parse(localStorage.getItem(KK))||{}}catch(e){}
+const kf=["k_reg","k_show","k_buy","k_ht","k_roas"];
+kf.forEach(id=>{const el=document.getElementById(id);if(kpi[id]!=null)el.value=kpi[id];el.addEventListener('input',()=>{kpi[id]=el.value;try{localStorage.setItem(KK,JSON.stringify(kpi))}catch(x){}calcRev();});});
+function calcRev(){const b=parseFloat(document.getElementById('k_buy').value)||0;const h=parseFloat(document.getElementById('k_ht').value)||0;const rev=b*76 + b*(h/100)*580;document.getElementById('k_rev').value=rev?('$'+Math.round(rev).toLocaleString()):'—';}
+calcRev();
+
+/* ---------- Enlaces ---------- */
+const LK="di21c2_links"; let links={}; try{links=JSON.parse(localStorage.getItem(LK))||{}}catch(e){}
+document.querySelectorAll('.lk').forEach(inp=>{
+  const id=inp.dataset.id; if(links[id]!=null) inp.value=links[id];
+  const st=document.querySelector('.lst[data-for="'+id+'"]');
+  const upd=()=>{const v=(inp.value||'').trim();if(st){st.textContent=v?'●':'○';st.style.color=v?'var(--org)':'var(--muted)';}};
+  upd();
+  inp.addEventListener('input',()=>{links[id]=inp.value;try{localStorage.setItem(LK,JSON.stringify(links))}catch(x){}upd();});
+});
+</script>
+</body>
+</html>

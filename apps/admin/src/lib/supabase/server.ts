@@ -47,3 +47,13 @@ export function getSupabaseMetaOps() {
 export function getSupabaseMarketingOps() {
   return supabaseAdminForSchema('marketing_ops');
 }
+
+/** Service-role client scoped to launch_ops (Launch Ops tracker data source). */
+export function getSupabaseLaunchOps() {
+  return supabaseAdminForSchema('launch_ops');
+}
+
+/** Service-role client scoped to backoffice (identity / tenancy). */
+export function getSupabaseBackoffice() {
+  return supabaseAdminForSchema('backoffice');
+}
