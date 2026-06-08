@@ -176,3 +176,79 @@ export async function upsertCaroFitnessProgress(input: {
     return rowToRecord(result.rows[0]);
   });
 }
+
+const BASE_HEADERS = [
+  'session_id',
+  'lead_id',
+  'created_at',
+  'updated_at',
+  'first_name',
+  'email',
+  'phone',
+  'status',
+  'quiz_step',
+  'source',
+  'completed_at',
+] as const;
+
+export async function listCaroFitnessProgressForTable() {
+  return withClient(async (client) => {
+    const result = await client.query<CaroFitnessProgressRow>(
+      `SELECT *
+       FROM marketing.caro_fitness_progress
+       ORDER BY created_at DESC`,
+    );
+
+    const records = result.rows.map(rowToRecord);
+    const answerKeys = new Set<string>();
+    const utmKeys = new Set<string>();
+
+    for (const record of records) {
+      for (const key of Object.keys(record.answers)) {
+        answerKeys.add(key);
+      }
+      for (const key of Object.keys(record.utmData)) {
+        utmKeys.add(key);
+      }
+    }
+
+    const tableRows = records.map((record) => {
+      const row: Record<string, string> = {
+        session_id: record.sessionId,
+        lead_id: record.leadId ?? '',
+        created_at: record.createdAt,
+        updated_at: record.updatedAt,
+        first_name: record.firstName,
+        email: record.email,
+        phone: record.phone,
+        status: record.status,
+        quiz_step: record.quizStep,
+        source: record.source,
+        completed_at: record.completedAt ?? '',
+      };
+
+      for (const key of answerKeys) {
+        row[key] = record.answers[key] ?? '';
+      }
+
+      for (const key of utmKeys) {
+        row[key] = record.utmData[key] ?? '';
+      }
+
+      return row;
+    });
+
+    return {
+      ok: true as const,
+      source: 'landing-caro-fitness-diagnostico',
+      storage: 'supabase' as const,
+      total: tableRows.length,
+      headers: [
+        ...BASE_HEADERS,
+        ...Array.from(answerKeys).sort(),
+        ...Array.from(utmKeys).sort(),
+      ],
+      data: tableRows,
+    };
+  });
+}

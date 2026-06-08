@@ -9,3 +9,15 @@ export function getCaroFitnessBackendBaseUrl() {
 }
 
 export const CARO_FITNESS_INGEST_PATH = '/api/orgs/caro-fitness/bus/main/ingest';
+export const CARO_FITNESS_PROGRESS_API_PATH = '/api/caro-fitness/progress';
+
+/** Token explicitly provided by the client (URL or header). */
+export function getCaroFitnessUserViewToken(request: Request): string {
+  const url = new URL(request.url);
+  return url.searchParams.get('token') ?? request.headers.get('x-view-token') ?? '';
+}
+
+/** Token to authenticate with the API — user token first, then server env. */
+export function resolveCaroFitnessApiViewToken(request: Request): string {
+  return getCaroFitnessUserViewToken(request) || process.env.CARO_FITNESS_VIEW_TOKEN || '';
+}

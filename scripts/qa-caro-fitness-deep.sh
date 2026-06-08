@@ -53,6 +53,9 @@ for f in \
   "apps/web/src/app/api/caro-fitness/ingest/route.ts" \
   "apps/web/src/app/api/caro-fitness/progress/route.ts" \
   "apps/web/src/lib/caro-fitness/api-config.ts" \
+  "apps/web/src/lib/caro-fitness/export-leads.ts" \
+  "apps/web/src/app/(landings)/caro-fitness/diagnostico/responses/page.tsx" \
+  "apps/web/src/app/(landings)/caro-fitness/diagnostico/responses/responses-view.tsx" \
   "apps/api/src/core/routes/caro-fitness-progress.routes.ts" \
   "apps/api/src/core/services/caro-fitness-progress.service.ts" \
   "apps/api/src/orgs/caro-fitness/main/config.ts"; do
@@ -70,6 +73,14 @@ grep -q "PROGRESS_PATH" "$LANDING_HTML" && pass "landing has progress autosave p
 grep -q "scheduleProgressSave" "$LANDING_HTML" && pass "landing schedules progress saves" || fail "scheduleProgressSave missing"
 grep -q "intro-cta-bottom" "$LANDING_HTML" && pass "CTA at bottom of intro" || fail "intro-cta-bottom missing"
 grep -q "cta-actions-hidden" "$LANDING_HTML" && pass "webinar/WhatsApp CTAs hidden" || fail "cta-actions-hidden missing"
+grep -q "listCaroFitnessProgressForTable" "$ROOT/apps/api/src/core/services/caro-fitness-progress.service.ts" && \
+  pass "progress service has listForTable" || fail "listCaroFitnessProgressForTable missing"
+grep -q "export async function GET" "$ROOT/apps/web/src/app/api/caro-fitness/progress/route.ts" && \
+  pass "progress route supports GET list" || fail "GET /api/caro-fitness/progress missing"
+grep -q "downloadLeadsCsv" "$ROOT/apps/web/src/app/(landings)/caro-fitness/diagnostico/responses/responses-view.tsx" && \
+  pass "responses panel supports CSV export" || fail "CSV export missing in responses panel"
+grep -q "downloadLeadsXlsx" "$ROOT/apps/web/src/app/(landings)/caro-fitness/diagnostico/responses/responses-view.tsx" && \
+  pass "responses panel supports Excel export" || fail "Excel export missing in responses panel"
 
 section "1. Environment"
 [[ -n "${CARO_FITNESS_ORG_ID:-}" ]] && pass "CARO_FITNESS_ORG_ID set" || fail "CARO_FITNESS_ORG_ID missing"
@@ -116,6 +127,7 @@ section "3. Web pages"
 for path in \
   "/caro-fitness/diagnostico" \
   "/caro-fitness/diagnostico/raw" \
+  "/caro-fitness/diagnostico/responses" \
   "/caro-fitness"; do
   headers=$(curl -s -D /tmp/qa_caro_hdr.txt -o /tmp/qa_caro_page.html -w "%{http_code}" "$WEB$path" 2>/dev/null || echo "000")
   if [[ "$path" == "/caro-fitness" ]]; then
@@ -145,6 +157,10 @@ grep -q "cta-actions-hidden" /tmp/qa_caro_raw.html && pass "raw HTML hides webin
 grep -q "intro-cta-bottom" /tmp/qa_caro_raw.html && pass "raw HTML has bottom intro CTA" || fail "intro-cta-bottom missing in raw"
 grep -q "data-screen=\"lead\"" /tmp/qa_caro_raw.html && pass "lead capture screen present" || fail "lead screen missing"
 grep -q "data-screen=\"results\"" /tmp/qa_caro_raw.html && pass "results screen present" || fail "results screen missing"
+
+curl -s "$WEB/caro-fitness/diagnostico/responses" -o /tmp/qa_caro_responses.html 2>/dev/null || true
+grep -q "Registros del diagnóstico" /tmp/qa_caro_responses.html && pass "responses panel page renders" || fail "responses panel missing title"
+grep -q "CaroFitnessResponsesView\|Registros del diagnóstico" /tmp/qa_caro_responses.html && pass "responses panel SSR shell" || fail "responses panel shell missing"
 
 img_code=$(curl -s -o /dev/null -w "%{http_code}" "$WEB/caro-fitness/diagnostico/intro.png" 2>/dev/null || echo "000")
 if [[ "$img_code" == "200" ]]; then
@@ -248,6 +264,17 @@ code=$(curl -s -o /tmp/qa_caro_progress_bad.json -w "%{http_code}" -X POST "$WEB
   -H "Content-Type: application/json" \
   -d '{"source":"'"$SOURCE"'","answers":{"sexo":"mujer"}}' 2>/dev/null || echo "000")
 [[ "$code" == "400" ]] && pass "progress rejects missing sessionId → 400" || fail "progress should reject missing sessionId → $code"
+
+code=$(curl -s -o /tmp/qa_caro_progress_list.json -w "%{http_code}" "$WEB/api/caro-fitness/progress" 2>/dev/null || echo "000")
+if [[ "$code" == "200" ]]; then
+  pass "GET /api/caro-fitness/progress → 200"
+  grep -q '"data"' /tmp/qa_caro_progress_list.json && pass "progress list includes data array" || fail "progress list shape unexpected"
+  grep -q '"total"' /tmp/qa_caro_progress_list.json && pass "progress list includes total" || fail "progress list total missing"
+elif [[ "$code" == "401" && -n "${CARO_FITNESS_VIEW_TOKEN:-}" ]]; then
+  pass "GET /api/caro-fitness/progress protected → 401"
+else
+  fail "GET /api/caro-fitness/progress → $code: $(cat /tmp/qa_caro_progress_list.json 2>/dev/null | head -c 300)"
+fi
 
 section "5. Direct API ingest (dedup update)"
 DEDUP_EMAIL="qa-caro-dedup-${TS}@afluence-test.invalid"

@@ -1,9 +1,23 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate';
-import { upsertCaroFitnessProgress } from '../services/caro-fitness-progress.service';
+import {
+  listCaroFitnessProgressForTable,
+  upsertCaroFitnessProgress,
+} from '../services/caro-fitness-progress.service';
 
 const router = Router();
+
+const VIEW_TOKEN = process.env.CARO_FITNESS_VIEW_TOKEN ?? '';
+
+function isAuthorized(req: { query: Record<string, unknown>; get: (name: string) => string | undefined }) {
+  if (!VIEW_TOKEN) return true;
+
+  const tokenFromQuery = String(req.query.token ?? '');
+  const tokenFromHeader = req.get('x-view-token') ?? '';
+
+  return tokenFromQuery === VIEW_TOKEN || tokenFromHeader === VIEW_TOKEN;
+}
 
 const upsertSchema = z.object({
   sessionId: z.string().min(8),
@@ -16,6 +30,20 @@ const upsertSchema = z.object({
   answers: z.record(z.string(), z.string()).optional(),
   utmData: z.record(z.string(), z.string()).optional(),
   leadId: z.string().uuid().optional(),
+});
+
+router.get('/caro-fitness/progress', async (req, res, next) => {
+  try {
+    if (!isAuthorized(req)) {
+      res.status(401).json({ ok: false, error: 'Unauthorized' });
+      return;
+    }
+
+    const payload = await listCaroFitnessProgressForTable();
+    res.status(200).json(payload);
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post('/caro-fitness/progress', validate(upsertSchema), async (req, res, next) => {
