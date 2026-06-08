@@ -51,7 +51,7 @@ export function BuSelector({ options, currentPath }: BuSelectorProps) {
       }}
     >
       {options.map((opt) => (
-        <option key={opt.path} value={opt.path} style={{ background: 'var(--color-surface)' }}>
+        <option key={opt.path} value={opt.path} style={{ background: 'var(--color-bg-card)' }}>
           {opt.organizer_name} · {opt.bu_name}
         </option>
       ))}

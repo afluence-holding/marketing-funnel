@@ -11,6 +11,7 @@
  */
 import Link from 'next/link';
 import type { CreatorResponseLink } from '@/lib/responses/navigation';
+import type { AdminModuleLink } from '@/lib/launch-ops/navigation';
 
 interface FormItem {
   id: string;
@@ -21,6 +22,7 @@ export function ResponsesSidebar({
   brand,
   subtitle,
   creators,
+  moduleLinks = [],
   activeOrganizer,
   forms,
   activeFormId,
@@ -31,6 +33,7 @@ export function ResponsesSidebar({
   brand: string;
   subtitle: string;
   creators: CreatorResponseLink[];
+  moduleLinks?: AdminModuleLink[];
   activeOrganizer: string;
   forms: FormItem[];
   activeFormId: string;
@@ -45,6 +48,20 @@ export function ResponsesSidebar({
           {brand}
           <small>{subtitle}</small>
         </div>
+
+        {moduleLinks.length > 0 && (
+          <div>
+            <div className="launch-sb-sec">Módulos</div>
+            {moduleLinks.map((m) => (
+              <Link key={m.id} href={m.href} className="launch-navitem" onClick={onClose}>
+                <span className="ic" aria-hidden>
+                  {m.icon}
+                </span>
+                {m.label}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {forms.length > 1 && (
           <div>

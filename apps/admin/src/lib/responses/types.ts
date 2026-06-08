@@ -10,6 +10,34 @@
  * No schema changes, no new tables.
  */
 
+/**
+ * Lifecycle statuses a source may declare (e.g. Caro's diagnostic quiz). Labels
+ * and colors live here so the view and the repository share one source of truth
+ * (mirrors how launch-ops keeps STATUS_LABELS in its types).
+ */
+export type ResponseStatus = 'completed' | 'in_progress' | 'abandoned';
+
+/** Singular labels for chips / table badges. */
+export const RESPONSE_STATUS_LABELS: Record<ResponseStatus, string> = {
+  completed: 'Completado',
+  in_progress: 'En progreso',
+  abandoned: 'Abandonado',
+};
+
+/** Plural labels for aggregate stat cards. */
+export const RESPONSE_STATUS_STAT_LABELS: Record<ResponseStatus, string> = {
+  completed: 'Completados',
+  in_progress: 'En progreso',
+  abandoned: 'Abandonados',
+};
+
+/** Semantic color token per status. */
+export const RESPONSE_STATUS_COLORS: Record<ResponseStatus, string> = {
+  completed: 'var(--color-success)',
+  in_progress: 'var(--color-accent)',
+  abandoned: 'var(--color-critical)',
+};
+
 /** A normalized submission. `fields` holds every flattened value as a string. */
 export interface ResponseRecord {
   id: string;
@@ -52,7 +80,7 @@ export interface ResponseSource {
   /** Column that holds a lifecycle status, if any (enables status filter/stats). */
   statusColumn?: string;
   /** Known status values, ordered, for filter chips + stats breakdown. */
-  statusValues?: string[];
+  statusValues?: readonly ResponseStatus[];
   /**
    * Field key (in the flattened `fields` map) that holds the acquisition source
    * to filter by. Defaults to `utm_source` when `utmColumn` is set, otherwise

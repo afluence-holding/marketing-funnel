@@ -9,12 +9,13 @@
 
 import { getSupabaseMarketing } from '@/lib/supabase/server';
 import { sourcesForTenant } from './sources';
-import type {
-  ResponseRecord,
-  ResponseSource,
-  ResponseSourceData,
-  ResponseStat,
-  ResponsesOverview,
+import {
+  RESPONSE_STATUS_STAT_LABELS,
+  type ResponseRecord,
+  type ResponseSource,
+  type ResponseSourceData,
+  type ResponseStat,
+  type ResponsesOverview,
 } from './types';
 
 type Row = Record<string, unknown>;
@@ -79,14 +80,9 @@ function buildStats(records: ResponseRecord[], total: number, source: ResponseSo
   const stats: ResponseStat[] = [{ label: 'Total', value: total }];
 
   if (source.statusColumn && source.statusValues?.length) {
-    const labelByStatus: Record<string, string> = {
-      completed: 'Completados',
-      in_progress: 'En progreso',
-      abandoned: 'Abandonados',
-    };
     for (const status of source.statusValues) {
       stats.push({
-        label: labelByStatus[status] ?? status,
+        label: RESPONSE_STATUS_STAT_LABELS[status] ?? status,
         value: records.filter((r) => r.status === status).length,
       });
     }
