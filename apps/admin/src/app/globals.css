@@ -276,3 +276,158 @@ th {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(0.7); }
 }
+
+/* -------------------------------------------------------------------------
+ * Launch Ops — Centro de Operaciones sectioned sidebar
+ * -------------------------------------------------------------------------
+ * Sectioned module navigation replacing the old flat tab strip. Structure
+ * mirrors the validated reference design (docs/DI21-C2-Centro-Operaciones.html)
+ * but uses the admin's dark design tokens for consistency with the rest of the
+ * app. Desktop: sticky sidebar | content grid. Mobile (<=860px): off-canvas
+ * drawer toggled by `.open`, with a backdrop that is `display:none` by default
+ * and only shown via `.show` (so it never occupies a grid column).
+ * ------------------------------------------------------------------------- */
+.launch-shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.launch-sidebar {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 10px;
+}
+.launch-sb-brand {
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+  padding: 2px 8px 11px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 8px;
+}
+.launch-sb-brand small {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-top: 3px;
+}
+.launch-sb-role { margin: 6px 4px 10px; }
+.launch-sb-role label {
+  display: block;
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+.launch-sb-role select {
+  width: 100%;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.launch-sb-preview {
+  display: block;
+  margin: 5px 2px 0;
+  font-size: 0.62rem;
+  color: var(--color-accent);
+}
+.launch-sb-sec {
+  margin: 13px 6px 3px;
+  font-size: 0.56rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--color-text-secondary);
+}
+.launch-navitem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  border-radius: 9px;
+  padding: 9px 10px;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.launch-navitem:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+.launch-navitem.active {
+  background: var(--color-text-primary);
+  color: #0a0a1a;
+  font-weight: 800;
+}
+.launch-navitem .ic {
+  font-size: 0.95rem;
+  width: 20px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.launch-main { min-width: 0; }
+.launch-sb-toggle { display: none; }
+.launch-sb-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 40;
+}
+.launch-sb-backdrop.show { display: block; }
+
+@media (max-width: 860px) {
+  .launch-shell { grid-template-columns: 1fr; gap: 0; }
+  .launch-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 236px;
+    height: 100vh;
+    max-height: none;
+    z-index: 50;
+    border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  .launch-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.55);
+  }
+  .launch-sb-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    padding: 9px 14px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+}

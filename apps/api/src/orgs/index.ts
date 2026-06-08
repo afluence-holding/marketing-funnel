@@ -16,7 +16,13 @@
  * That's it. The engine picks them up automatically on next startup.
  */
 
-import type { ClickUpPipelineConfig, SequenceDef, WorkflowDef, RoutingEngine } from '../core/types';
+import type {
+  ClickUpPipelineConfig,
+  SequenceDef,
+  WorkflowDef,
+  RoutingEngine,
+  WhatsAppGroupPoolSeed,
+} from '../core/types';
 
 // -- Afluence / Company-1 -----------------------------------------------------
 import { workflows as afluenceOrgWorkflows } from './afluence/workflows';
@@ -40,6 +46,7 @@ import { sequences as germanRozSequences } from './german-roz/main/sequences';
 import { workflows as germanRozWorkflows } from './german-roz/main/workflows';
 import { IDS as germanRozIDS } from './german-roz/main/config';
 import { routingEngine as germanRozRouting } from './german-roz/main/routing';
+import { whatsappGroupPools as germanRozWhatsappGroupPools } from './german-roz/main/whatsapp-groups';
 
 // -- German Roz / Plan 90 Pro -------------------------------------------------
 import { sequences as germanRozPlan90ProSequences } from './german-roz/plan-90-pro/sequences';
@@ -176,6 +183,14 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...recetasCamiWorkflows,
   ...caroFitnessWorkflows,
 };
+
+/**
+ * Aggregated WhatsApp group rotation pool seeds across all BUs. Add a BU's
+ * `whatsappGroupPools` export here to enable rotation for that BU.
+ */
+export const whatsappGroupPoolRegistry: WhatsAppGroupPoolSeed[] = [
+  ...germanRozWhatsappGroupPools,
+];
 
 export const clickupRegistryByPipelineId: Record<string, ClickUpPipelineConfig> = {
   ...(company1Ids.pipelineId ? { [company1Ids.pipelineId]: company1ClickupConfig } : {}),
