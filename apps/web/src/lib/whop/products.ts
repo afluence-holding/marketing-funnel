@@ -87,7 +87,7 @@ export const WHOP_PRODUCTS: Record<string, WhopProductConfig> = {
     country: 'pe',
     timezone: 'America/Lima',
     source: 'landing-german-roz-desinflamate',
-    contentIds: ['di21-desinflamate'],
+    contentIds: ['di21-c2'],
     contentName: 'Reto Desinflámate 21 días',
     contentCategory: 'reto-low-ticket',
     contentType: 'product',

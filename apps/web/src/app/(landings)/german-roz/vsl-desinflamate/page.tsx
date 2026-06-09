@@ -3,7 +3,12 @@ import path from 'node:path';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { LandingConfig } from '@/components/landing-config';
-import { getWhopProduct, getWhopWindowRedirect } from '@/lib/whop/products';
+import {
+  formatWhopPrice,
+  getWhopProduct,
+  getWhopWindowRedirect,
+  resolveWhopTier,
+} from '@/lib/whop/products';
 import { VslAttribution } from './vsl-attribution';
 import { VslTracker } from './vsl-tracker';
 
@@ -51,12 +56,23 @@ async function loadHtml(): Promise<string> {
 }
 
 export default async function GermanRozVslDesinflamateLanding() {
+  const product = getWhopProduct('german-desinflamate')!;
+
   // Cohort sales window: before opensAt → webinar registration; after closesAt
   // → waitlist; only serves the selling VSL while the window is open.
-  const windowRedirect = getWhopWindowRedirect(getWhopProduct('german-desinflamate')!);
+  const windowRedirect = getWhopWindowRedirect(product);
   if (windowRedirect) redirect(windowRedirect);
 
-  const html = await loadHtml();
+  // Keep the VSL price in lockstep with the active checkout tier so the bundle
+  // never anchors a stale price as the $67→$77→$87 ladder flips. The compiled
+  // bundle ships the launch price ("$67"); we rewrite those literals per request.
+  const livePrice = formatWhopPrice(product, resolveWhopTier(product).price);
+  const html = (await loadHtml())
+    .replaceAll('children: "$67 USD"', `children: "${livePrice} USD"`)
+    .replace(
+      'fontWeight: 800 }, children: "$67" }',
+      `fontWeight: 800 }, children: "${livePrice}" }`,
+    );
 
   return (
     <>

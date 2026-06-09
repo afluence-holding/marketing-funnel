@@ -48,7 +48,7 @@ export default function DesinflamateCheckoutPage() {
       <div className="checkout-shell">
         <div className="checkout-page">
           <header className="checkout-top">
-            <a href="/german-roz/lista-espera" className="back-link">
+            <a href="/german-roz/vsl-desinflamate" className="back-link">
               ← Volver
             </a>
             <div className="brand-lockup">
@@ -65,8 +65,9 @@ export default function DesinflamateCheckoutPage() {
               <p className="checkout-headline">{product.headline}</p>
               <div className="checkout-price-row">
                 <span className="checkout-price">{price}</span>
+                <span className="checkout-price-cur">USD</span>
               </div>
-              <p className="checkout-price-meta">USD · pago único · acceso de por vida</p>
+              <p className="checkout-price-meta">Pago único en dólares · acceso al reto de 21 días</p>
             </div>
 
             <div className="checkout-divider" aria-hidden />
@@ -227,6 +228,15 @@ html, body { min-height: 100%; background: var(--crema); }
   color: var(--naranja);
   line-height: 0.9;
   letter-spacing: -2px;
+}
+
+.checkout-price-cur {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy-soft);
+  margin-left: 7px;
+  margin-bottom: 9px;
+  letter-spacing: 0.5px;
 }
 
 .checkout-price-meta {
