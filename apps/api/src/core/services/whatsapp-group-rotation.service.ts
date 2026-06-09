@@ -390,15 +390,20 @@ export async function seedWhatsAppGroupPools(seeds: WhatsAppGroupPoolSeed[]) {
     for (const seed of seeds) {
       const capacity = seed.capacity ?? 500;
       const rotationMode: WhatsAppGroupRotationMode = seed.rotationMode ?? 'auto_count';
+      const label = seed.label ?? '';
+      const launchCode = seed.launchCode ?? null;
       const poolRes = await client.query<{ id: string }>(
-        `INSERT INTO marketing.whatsapp_group_pools (org_key, bu_key, pool_key, capacity, rotation_mode)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO marketing.whatsapp_group_pools (org_key, bu_key, pool_key, capacity, rotation_mode, label, launch_code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (org_key, bu_key, pool_key) DO UPDATE
            SET capacity = EXCLUDED.capacity,
                rotation_mode = EXCLUDED.rotation_mode,
+               -- never clobber live admin edits with empty seed values
+               label = CASE WHEN EXCLUDED.label <> '' THEN EXCLUDED.label ELSE marketing.whatsapp_group_pools.label END,
+               launch_code = COALESCE(EXCLUDED.launch_code, marketing.whatsapp_group_pools.launch_code),
                updated_at = now()
          RETURNING id`,
-        [seed.orgKey, seed.buKey, seed.poolKey, capacity, rotationMode],
+        [seed.orgKey, seed.buKey, seed.poolKey, capacity, rotationMode, label, launchCode],
       );
       const poolId = poolRes.rows[0].id;
 

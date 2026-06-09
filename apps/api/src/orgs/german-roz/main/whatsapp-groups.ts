@@ -33,6 +33,8 @@ export const whatsappGroupPools: WhatsAppGroupPoolSeed[] = [
     orgKey: 'german-roz',
     buKey: 'main',
     poolKey: 'webinar-2026-06-10',
+    label: 'Webinar · 10 jun 2026',
+    launchCode: 'DI21-C2',
     capacity: Number(process.env.GERMAN_ROZ_WA_GROUP_CAPACITY ?? 500),
     rotationMode: 'auto_count',
     groups: parseGroupUrls(),

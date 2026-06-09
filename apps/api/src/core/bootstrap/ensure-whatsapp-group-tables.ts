@@ -21,6 +21,17 @@ CREATE TABLE IF NOT EXISTS marketing.whatsapp_group_pools (
 CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_group_pools_key_unique
   ON marketing.whatsapp_group_pools (org_key, bu_key, pool_key);
 
+ALTER TABLE marketing.whatsapp_group_pools
+  ADD COLUMN IF NOT EXISTS label text NOT NULL DEFAULT '';
+ALTER TABLE marketing.whatsapp_group_pools
+  ADD COLUMN IF NOT EXISTS launch_code text;
+ALTER TABLE marketing.whatsapp_group_pools
+  ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
+
+CREATE INDEX IF NOT EXISTS whatsapp_group_pools_launch_idx
+  ON marketing.whatsapp_group_pools (launch_code)
+  WHERE launch_code IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS marketing.whatsapp_groups (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   pool_id uuid NOT NULL REFERENCES marketing.whatsapp_group_pools(id) ON DELETE CASCADE,

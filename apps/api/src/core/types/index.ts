@@ -268,6 +268,10 @@ export interface WhatsAppGroupPoolSeed {
   buKey: string;
   /** Unique pool identifier within the org/bu, e.g. "webinar-2026-06-10". */
   poolKey: string;
+  /** Human label shown in the admin module, e.g. "Webinar · 10 jun". */
+  label?: string;
+  /** Optional cohort linkage (launch_ops.launch.code), e.g. "DI21-C2". */
+  launchCode?: string;
   /** Rotate to the next group once a group hits this many (default 500). */
   capacity?: number;
   rotationMode?: WhatsAppGroupRotationMode;

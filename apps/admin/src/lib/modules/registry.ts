@@ -11,7 +11,7 @@
  * changing any consumer.
  */
 
-export type AdminModuleId = 'campaigns' | 'responses' | 'launch';
+export type AdminModuleId = 'campaigns' | 'responses' | 'launch' | 'whatsapp-groups';
 
 export interface AdminModule {
   id: AdminModuleId;
@@ -24,6 +24,7 @@ export const ADMIN_MODULES: Record<AdminModuleId, AdminModule> = {
   campaigns: { id: 'campaigns', label: 'Campañas', pathSuffix: '' },
   responses: { id: 'responses', label: 'Respuestas', pathSuffix: '/responses' },
   launch: { id: 'launch', label: 'Launch Ops', pathSuffix: '/launch' },
+  'whatsapp-groups': { id: 'whatsapp-groups', label: 'Grupos WhatsApp', pathSuffix: '/whatsapp-groups' },
 };
 
 /**
@@ -35,7 +36,7 @@ const ENABLED: Record<string, AdminModuleId[]> = {
   // german-roz is unified on the `di21` BU: that's where the Meta campaigns
   // data lives (meta_ops) AND the Centro/launch. The legacy `/german-roz/main`
   // URL is 308-redirected to `di21` in middleware.
-  'german-roz/di21': ['campaigns', 'launch', 'responses'],
+  'german-roz/di21': ['campaigns', 'launch', 'responses', 'whatsapp-groups'],
   // Creators whose landing intake lives outside the CRM (dedicated marketing
   // tables). Responses-only back office — no Meta campaigns dashboard.
   'bukku/main': ['responses'],
