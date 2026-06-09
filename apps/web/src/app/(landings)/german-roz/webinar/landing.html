@@ -4,104 +4,125 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diagnóstico de Inflamación · Germán Roz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F6F2EC; --card:#FFFFFF; --ink:#27302a; --muted:#6f776f;
-    --green:#4e5b48; --green2:#69785f; --terra:#b4744f; --terra-soft:#f1e2d8;
-    --line:#e6ddd2; --chip:#eef1ea; --warm:#fbf4ee;
-    --sel:#eef3ea; --selbd:#7d9070;
-    --shadow:0 1px 3px rgba(40,48,42,.07),0 10px 30px rgba(40,48,42,.08);
+    --bg:#FFFFFF; --bg-alt:#F7F8F9; --card:#FFFFFF;
+    --ink:#303841; --ink-soft:#5a6470; --muted:#6B7280;
+    --orange:#FF5722; --orange-dark:#E64A19; --orange-soft:#FFF1EC; --orange-line:rgba(255,87,34,.20);
+    --line:rgba(48,56,65,.10); --line-strong:rgba(48,56,65,.16);
+    --sel:#FFF1EC; --selbd:#FF5722;
+    --shadow:0 1px 3px rgba(48,56,65,.06),0 12px 32px rgba(48,56,65,.08);
+    --shadow-lg:0 24px 64px rgba(48,56,65,.12);
   }
   *{box-sizing:border-box}
   html,body{margin:0}
   body{background:var(--bg);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     line-height:1.5;-webkit-font-smoothing:antialiased}
-  .app{max-width:560px;margin:0 auto;padding:20px 18px 60px;min-height:100vh}
+  .app{max-width:600px;margin:0 auto;padding:22px 18px 64px;min-height:100vh}
 
-  .brandbar{display:flex;align-items:center;gap:10px;justify-content:center;margin:8px 0 6px}
-  .brandbar .b{font-weight:800;font-size:14px;letter-spacing:.02em}
-  .brandbar .d{font-size:12px;color:var(--terra);font-weight:700;text-transform:uppercase;letter-spacing:.12em}
+  /* BRAND LOCKUP */
+  .brandbar{display:flex;align-items:center;justify-content:center;margin:6px 0 20px}
+  .di-lockup{text-align:center;line-height:1.05}
+  .di-mark{display:block;font-weight:800;font-size:1.15rem;letter-spacing:.02em;color:var(--ink)}
+  .di-sub{display:block;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--orange);margin-top:3px}
 
   .scr{display:none;animation:fade .35s ease}
   .scr.on{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
   /* INTRO */
-  .qual{display:inline-block;background:var(--terra-soft);color:var(--terra);font-weight:700;
-    font-size:12px;padding:5px 13px;border-radius:999px;margin:14px 0 14px}
-  h1{font-size:30px;line-height:1.16;font-weight:800;margin:0 0 12px;letter-spacing:-.01em}
-  .lead{font-size:16px;color:var(--muted);margin:0 0 22px}
-  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
-  .badge{background:var(--card);border:1px solid var(--line);border-radius:10px;
-    padding:9px 12px;font-size:12.5px;color:var(--green);box-shadow:var(--shadow);flex:1;text-align:center;min-width:90px}
-  .badge b{display:block;font-size:15px;color:var(--terra)}
+  .intro-hero{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;margin-bottom:4px}
+  .intro-photo{flex-shrink:0;display:flex;justify-content:center}
+  .intro-photo img{width:200px;height:200px;object-fit:cover;object-position:center 18%;
+    border-radius:24px;border:3px solid var(--orange-soft);box-shadow:var(--shadow-lg);display:block}
+  .intro-copy{width:100%}
+  .qual{display:inline-block;background:var(--orange-soft);color:var(--orange);font-weight:700;
+    font-size:12px;padding:6px 14px;border-radius:999px;margin:0 0 14px;border:1px solid var(--orange-line)}
+  h1{font-size:clamp(28px,5.5vw,34px);line-height:1.12;font-weight:800;margin:0 0 12px;letter-spacing:-.02em}
+  .lead{font-size:16px;color:var(--ink-soft);margin:0}
+  @media(min-width:600px){
+    .intro-hero{flex-direction:row;text-align:left;align-items:center;gap:26px}
+    .intro-photo img{width:212px;height:212px}
+  }
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0 26px}
+  .badge{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:10px 12px;font-size:12.5px;color:var(--ink-soft);box-shadow:var(--shadow);flex:1;text-align:center;min-width:90px}
+  .badge b{display:block;font-size:15px;color:var(--orange)}
 
-  .btn{display:block;width:100%;border:none;cursor:pointer;border-radius:13px;
+  .btn{display:block;width:100%;border:none;cursor:pointer;border-radius:12px;
     padding:16px 18px;font-size:16px;font-weight:700;text-align:center;
-    background:var(--green);color:#fff;box-shadow:var(--shadow);transition:transform .1s,filter .15s}
-  .btn:hover{filter:brightness(1.06)} .btn:active{transform:scale(.99)}
-  .btn.ghost{background:transparent;color:var(--green);border:1.5px solid var(--selbd);box-shadow:none}
+    background:var(--orange);color:#fff;box-shadow:0 8px 22px rgba(255,87,34,.32);transition:transform .1s,background .15s,filter .15s}
+  .btn:hover{background:var(--orange-dark)} .btn:active{transform:scale(.99)}
+  .btn.ghost{background:transparent;color:var(--orange);border:1.5px solid var(--orange-line);box-shadow:none}
+  .btn.ghost:hover{background:var(--orange-soft)}
   .btn[disabled]{opacity:.4;cursor:not-allowed}
   .btn.sm{padding:13px;font-size:15px}
 
   /* PROGRESS */
   .ptop{display:flex;align-items:center;justify-content:space-between;margin:6px 0 16px}
-  .pnum{font-size:12px;font-weight:800;color:var(--terra);letter-spacing:.06em}
+  .pnum{font-size:12px;font-weight:800;color:var(--orange);letter-spacing:.06em}
   .back{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:6px 2px}
   .bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin-bottom:22px}
-  .bar > i{display:block;height:100%;background:var(--terra);border-radius:999px;transition:width .35s ease}
+  .bar > i{display:block;height:100%;background:var(--orange);border-radius:999px;transition:width .35s ease}
 
-  .qtitle{font-size:23px;font-weight:800;line-height:1.22;margin:0 0 6px}
-  .qwhy{font-size:14px;color:var(--muted);margin:0 0 18px}
+  .qtitle{font-size:23px;font-weight:800;line-height:1.22;margin:0 0 6px;color:var(--ink)}
+  .qwhy{font-size:14px;color:var(--ink-soft);margin:0 0 18px}
 
   .opt{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;cursor:pointer;
     background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:10px;
     box-shadow:var(--shadow);transition:border-color .15s,background .15s,transform .1s}
-  .opt:hover{border-color:var(--selbd)} .opt:active{transform:scale(.995)}
-  .opt.sel{border-color:var(--selbd);background:var(--sel)}
+  .opt:hover{border-color:var(--orange)} .opt:active{transform:scale(.995)}
+  .opt.sel{border-color:var(--orange);background:var(--sel)}
   .opt .ol{font-size:16px;font-weight:700;color:var(--ink)}
   .opt .os{font-size:13px;color:var(--muted)}
 
   /* GATE */
   .field{margin-bottom:13px}
-  .field label{display:block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--green2);margin-bottom:6px}
-  .field input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:14px 15px;font-size:16px;background:var(--card);color:var(--ink);font-family:inherit}
-  .field input:focus{outline:none;border-color:var(--selbd)}
+  .field label{display:block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  .field input{width:100%;border:1.5px solid var(--line-strong);border-radius:12px;padding:14px 15px;font-size:16px;background:var(--card);color:var(--ink);font-family:inherit}
+  .field input:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,87,34,.15)}
   .phone-wrap{display:grid;grid-template-columns:122px 1fr;gap:10px;align-items:stretch}
   .phone-wrap .csel{position:relative}
-  .phone-wrap select{width:100%;height:100%;min-height:50px;border:1.5px solid var(--line);border-radius:12px;
+  .phone-wrap select{width:100%;height:100%;min-height:50px;border:1.5px solid var(--line-strong);border-radius:12px;
     padding:0 26px 0 12px;font-size:15px;background:var(--card);color:var(--ink);font-family:inherit;
     outline:none;appearance:none;cursor:pointer}
   .phone-wrap .csel::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:11px}
-  .phone-wrap select:focus{border-color:var(--selbd)}
+  .phone-wrap select:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,87,34,.15)}
   .fineprint{font-size:12.5px;color:var(--muted);text-align:center;margin-top:14px}
-  .gate-error{font-size:13px;color:var(--terra);text-align:center;margin-top:12px;display:none}
+  .gate-error{font-size:13px;color:var(--orange-dark);text-align:center;margin-top:12px;display:none}
 
   /* RESULT */
-  .rkicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--terra);font-weight:800;text-align:center}
-  .rtitle{font-size:26px;font-weight:800;text-align:center;margin:6px 0 18px}
+  .rkicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);font-weight:800;text-align:center}
+  .rtitle{font-size:26px;font-weight:800;text-align:center;margin:6px 0 18px;color:var(--ink)}
   .gauge{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow);text-align:center;margin-bottom:14px}
-  .glabel{font-size:13px;color:var(--muted);font-weight:600}
-  .glevel{font-size:30px;font-weight:800;margin:4px 0 12px}
-  .gtrack{height:12px;border-radius:999px;background:linear-gradient(90deg,#9bbf8e,#e8c86a,#d98a5f);position:relative}
+  .glabel{font-size:13px;color:var(--ink-soft);font-weight:600}
+  .glevel{font-size:30px;font-weight:800;margin:4px 0 12px;color:var(--ink)}
+  .gtrack{height:12px;border-radius:999px;background:linear-gradient(90deg,#7cc0a0,#ffc36a,#ff5722);position:relative}
   .gtrack > i{position:absolute;top:-5px;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--ink);transform:translateX(-50%);transition:left .6s ease}
   .gscale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:7px}
 
   .rcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px 18px;box-shadow:var(--shadow);margin-bottom:13px}
-  .rcard h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--terra);margin:0 0 9px;font-weight:800}
+  .rcard h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin:0 0 9px;font-weight:800}
   .rcard p{margin:0;font-size:15.5px;color:var(--ink)}
   .blind{margin:0;padding:0;list-style:none}
-  .blind li{display:flex;gap:10px;font-size:15px;margin:9px 0;align-items:flex-start}
-  .blind li::before{content:"●";color:var(--terra);font-size:12px;margin-top:4px}
+  .blind li{display:flex;gap:10px;font-size:15px;margin:9px 0;align-items:flex-start;color:var(--ink)}
+  .blind li::before{content:"●";color:var(--orange);font-size:12px;margin-top:4px}
 
-  .webinar{background:linear-gradient(160deg,#4e5b48,#3c4639);color:#fff;border-radius:18px;padding:22px;box-shadow:var(--shadow);margin:18px 0 14px}
-  .webinar .wk{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--terra-soft);font-weight:700}
-  .webinar h2{font-size:22px;margin:8px 0 8px;line-height:1.25}
-  .webinar .when{display:inline-block;background:rgba(255,255,255,.14);border-radius:9px;padding:7px 12px;font-size:13.5px;font-weight:700;margin-bottom:12px}
-  .webinar p{font-size:14px;color:#e6e9e2;margin:0 0 16px}
-  .webinar .btn{background:#fff;color:var(--green)}
+  .webinar{position:relative;overflow:hidden;background:linear-gradient(160deg,#303841,#1A1F24);color:#fff;border-radius:20px;padding:24px;box-shadow:var(--shadow-lg);margin:18px 0 14px}
+  .webinar::before{content:"";position:absolute;top:-40%;right:-20%;width:280px;height:280px;background:radial-gradient(circle,rgba(255,87,34,.28),transparent 70%);pointer-events:none}
+  .webinar > *{position:relative}
+  .webinar .wk{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#ffb59c;font-weight:800}
+  .webinar h2{font-size:22px;margin:8px 0 10px;line-height:1.25}
+  .webinar .when{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:9px;padding:7px 12px;font-size:13.5px;font-weight:700;margin-bottom:14px}
+  .webinar p{font-size:14px;color:#d9dde2;margin:0 0 16px}
+  .webinar .btn{background:var(--orange);color:#fff}
+  .webinar .btn:hover{background:var(--orange-dark)}
   .webinar .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.5);margin-top:10px}
+  .webinar .btn.ghost:hover{background:rgba(255,255,255,.08)}
 
   .disc{font-size:11.5px;color:var(--muted);text-align:center;margin:18px 4px 0;line-height:1.55}
   .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:14px}
@@ -110,13 +131,25 @@
 <body>
 <div class="app">
 
-  <div class="brandbar"><span class="b">Germán Roz</span><span class="d">Diagnóstico</span></div>
+  <header class="brandbar">
+    <div class="di-lockup">
+      <span class="di-mark">DESINFLÁMATE!</span>
+      <span class="di-sub">con Germán Roz</span>
+    </div>
+  </header>
 
   <!-- ===== INTRO ===== -->
   <section class="scr on" id="s-intro">
-    <span class="qual">Para quienes viven cansadas, hinchadas o con antojos</span>
-    <h1>¿Qué está inflamando tu cuerpo?</h1>
-    <p class="lead">Un diagnóstico rápido que cruza tus síntomas, tu energía y tu forma de comer para detectar qué te está inflamando — y qué cambiar primero.</p>
+    <div class="intro-hero">
+      <div class="intro-photo">
+        <img src="/german-roz/german-avatar.jpg" alt="Germán Roz, chef y nutricionista" width="212" height="212">
+      </div>
+      <div class="intro-copy">
+        <span class="qual">Para quienes viven cansadas, hinchadas o con antojos</span>
+        <h1>¿Qué está inflamando tu cuerpo?</h1>
+        <p class="lead">Un diagnóstico rápido que cruza tus síntomas, tu energía y tu forma de comer para detectar qué te está inflamando — y qué cambiar primero.</p>
+      </div>
+    </div>
     <div class="badges">
       <div class="badge"><b>2 min</b>rápido</div>
       <div class="badge"><b>100%</b>personalizado</div>
