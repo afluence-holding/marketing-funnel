@@ -1,8 +1,13 @@
--- Generic, multi-tenant WhatsApp group rotation module.
--- A "pool" belongs to an org/bu and holds N rotatable group invite links.
--- New registrants are assigned the active group; when it fills (by assigned
--- count, by real member count via join webhook, or manually) rotation advances
--- to the next group. Adding/editing groups is done live in DB (no code change).
+-- WhatsApp group rotation pools (multi-BU, multi-cohort).
+--
+-- Idempotent and additive. This is the committed source of truth for the tables
+-- previously created only by the API bootstrap (ensure-whatsapp-group-tables.ts).
+-- The bootstrap loads THIS file when present, so it runs on every API boot.
+--
+-- Model: a POOL is scoped by (org_key, bu_key, pool_key) and owns N GROUPS
+-- (invite links rotated by capacity). A pool optionally links to a launch/cohort
+-- via `launch_code` (launch_ops.launch.code, e.g. 'DI21-C2') so the admin module
+-- can group pools per cohort.
 
 CREATE TABLE IF NOT EXISTS marketing.whatsapp_group_pools (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -18,6 +23,18 @@ CREATE TABLE IF NOT EXISTS marketing.whatsapp_group_pools (
 
 CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_group_pools_key_unique
   ON marketing.whatsapp_group_pools (org_key, bu_key, pool_key);
+
+-- Additive: human label + cohort linkage + soft-disable.
+ALTER TABLE marketing.whatsapp_group_pools
+  ADD COLUMN IF NOT EXISTS label text NOT NULL DEFAULT '';
+ALTER TABLE marketing.whatsapp_group_pools
+  ADD COLUMN IF NOT EXISTS launch_code text;
+ALTER TABLE marketing.whatsapp_group_pools
+  ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
+
+CREATE INDEX IF NOT EXISTS whatsapp_group_pools_launch_idx
+  ON marketing.whatsapp_group_pools (launch_code)
+  WHERE launch_code IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS marketing.whatsapp_groups (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -54,7 +71,6 @@ CREATE TABLE IF NOT EXISTS marketing.whatsapp_group_assignments (
   joined_at timestamptz
 );
 
--- One assignment per phone per pool (idempotent re-assignment).
 CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_group_assignments_pool_phone_unique
   ON marketing.whatsapp_group_assignments (pool_id, phone)
   WHERE phone <> '';

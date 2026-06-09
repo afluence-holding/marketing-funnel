@@ -82,6 +82,7 @@ export const ADMIN_MODULE_ICON: Record<AdminModuleId, string> = {
   campaigns: '📈',
   responses: '📥',
   launch: '🚀',
+  'whatsapp-groups': '💬',
 };
 
 export interface AdminModuleLink {
