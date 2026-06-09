@@ -9,6 +9,10 @@ const monorepoRoot = path.resolve(__dirname, '..', '..');
 loadEnvConfig(monorepoRoot);
 
 const nextConfig: NextConfig = {
+  // Pin the workspace root to the monorepo so Next infers env files (.env,
+  // .env.local) and file tracing from here — a stray lockfile elsewhere on
+  // the machine would otherwise mis-detect the root and skip our env vars.
+  outputFileTracingRoot: monorepoRoot,
   experimental: {
     externalDir: true,
   },
