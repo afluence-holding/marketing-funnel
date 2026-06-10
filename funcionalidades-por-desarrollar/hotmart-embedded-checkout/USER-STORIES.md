@@ -87,10 +87,11 @@
 
 ---
 
-## FASE 1 — Adapter Hotmart sobre el catálogo
-**Objetivo:** que el catálogo pueda declarar tiers Hotmart sin romper nada. (La antigua Fase 1 quedó obsoleta: la abstracción provider ya existe en `packages/catalog`; esto es lo único que falta.)
+## FASE 1 — Adapter Hotmart sobre el catálogo — ✅ IMPLEMENTADA (2026-06-10)
+**Objetivo:** que el catálogo pueda declarar tiers Hotmart sin romper nada. (La antigua Fase 1 quedó obsoleta: la abstracción provider ya existe en `packages/catalog`; esto era lo único que faltaba.)
 
-> **Precondición:** `modularizacion-cohorts` mergeado y desplegado (API → web), migración `20260611000000` aplicada, `gen-types` corrido.
+> **Precondición:** ✅ cumplida — `modularizacion-cohorts` mergeado (PR #78) y desplegado; migración aplicada; checkout verificado en producción ($67, HTTP 200). `gen-types` diferido (script ausente en el repo + requiere Docker; nada consume el cliente tipado aún).
+> **Implementación:** rama `feat/hotmart-tier-adapter` — `CheckoutTier` neutral, validación de providers mezclados, `getHotmartOfferCodes`/`getCohortProvider`, sesión Whop falla cerrada para tiers no-whop. 49/49 tests; auditoría adversarial GO (paridad Whop/C2 exacta).
 
 **US-1.1** — Como Dev, quiero que el adapter web soporte tiers con `checkoutRef.provider === 'hotmart'`, para que el catálogo pueda declarar offers sin romper el checkout.
 - **CE:** un tipo de tier neutral reemplaza el filtro `toWhopTier` que hoy **descarta** tiers hotmart (`apps/web/src/lib/whop/products.ts`); un cohort de fixture con tiers hotmart resuelve tier/precio/contentId igual que uno whop; `validate.ts` del catálogo **rechaza** providers mezclados dentro de un mismo cohort (un cohort vende por UN provider — simplifica embed y webhook); helper `getHotmartOfferCodes()` análogo a `getWhopPlanIds()`.
