@@ -248,6 +248,8 @@ Orden y dueños (evita códigos colgantes):
 3. Pools de WhatsApp del cohort se crean en el admin (Grupos WhatsApp) apuntando al mismo `launch_code`.
 4. Deploy → el sync de C2 (story) materializa el cohort en `marketing.cohorts`.
 
+> ⚠️ **GOTCHA de deploy (confirmado 2026-06-10, switch C2→Hotmart):** un PR que cambia **solo `packages/catalog`** redespliega el **API** pero **NO el servicio web** de Railway — pese a que `apps/web/railway.toml` lista `packages/catalog/**` en `watchPatterns`. Resultado: el API resuelve el cohort nuevo pero el bundle de web queda viejo (sigue mostrando el proveedor/edición anterior). **Mitigaciones:** (a) incluir en el PR de catálogo un toque mínimo a `apps/web/**` para forzar el redeploy de web (lo que hizo el PR #90), **o** (b) arreglar el trigger en el dashboard de Railway → servicio **web** → ajustar "Watch Paths"/"Config file path" para que observe `packages/catalog/**` (fix de raíz, recomendado).
+
 ## Dependencias / relación con otras funcionalidades
 - **`hotmart-embedded-checkout`**: depende de este modelo. `offerCode` por tier encaja en `Tier.checkoutRef`; su webhook mapea `offer.code → cohort` y usa su `contentId`. Idealmente Épicas A–B van **antes** de su Fase 1. El manejo de refunds de `purchases` (C1) está alineado con sus US-3.2/3.4. Nota: Hotmart declara "sin estrategia de rollback" — compatible solo si el rollback de la DoD se prueba antes del switch.
 - **`launch_ops` (Centro de Operaciones)**: `Cohort.launchCode` → `launch_ops.launch.code` (`DI21-C2`). No se duplica la config de checkout en `launch_ops`.
