@@ -16,7 +16,18 @@ export type WhopPurchaseCapiInput = {
   clientIpAddress?: string;
   clientUserAgent?: string;
   eventSourceUrl?: string;
+  /** ISO-2 del comprador (Hotmart lo entrega) — default: país del producto. */
+  buyerCountry?: string;
+  /** Sufijo del source en custom_data (p.ej. '-hotmart-webhook'). */
+  sourceSuffix?: string;
 };
+
+/** Whether the org has Meta CAPI credentials configured — callers that are
+ * CAPI-only (no browser pixel backup) must NOT mark the purchase as sent when
+ * this is false, or a misconfiguration silently loses every conversion. */
+export function hasCapiCredentials(product: WhopPurchaseProduct): boolean {
+  return Boolean(process.env[product.pixelEnv]?.trim() && process.env[product.tokenEnv]?.trim());
+}
 
 function getProductCapiCredentials(
   product: WhopPurchaseProduct,
@@ -41,7 +52,7 @@ export async function sendWhopPurchaseCapi(input: WhopPurchaseCapiInput): Promis
       phone: input.phone,
       firstName: input.firstName,
       lastName: input.lastName,
-      country: product.country,
+      country: input.buyerCountry ?? product.country,
       fbp: input.fbp,
       fbc: input.fbc,
       clientIpAddress: input.clientIpAddress,
@@ -56,7 +67,7 @@ export async function sendWhopPurchaseCapi(input: WhopPurchaseCapiInput): Promis
       currency: input.currency ?? product.currency,
       order_id: input.orderId,
       num_items: 1,
-      source: `${product.source}-whop-webhook`,
+      source: `${product.source}${input.sourceSuffix ?? '-whop-webhook'}`,
     },
     ...capiCreds,
   });

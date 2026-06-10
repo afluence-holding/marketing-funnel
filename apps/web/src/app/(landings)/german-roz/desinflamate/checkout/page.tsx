@@ -7,6 +7,7 @@ import {
   getWhopProduct,
   resolveWhopTier,
 } from '@/lib/whop/products';
+import { HotmartCheckoutEmbed } from '@/components/hotmart/hotmart-checkout-embed';
 import { DesinflamateCheckoutEmbedLoader } from './checkout-embed-loader';
 
 // Resolve the price ladder per request (not at build time).
@@ -49,7 +50,8 @@ export default function DesinflamateCheckoutPage() {
       <div className="checkout-shell">
         <div className="checkout-page">
           <header className="checkout-top">
-            <a href="/german-roz/lista-espera" className="back-link">
+            {/* C4 (ex PR #74): Volver → VSL (lista-espera decía "edición cerrada" en plena venta). */}
+            <a href="/german-roz/vsl-desinflamate" className="back-link">
               ← Volver
             </a>
             <div className="brand-lockup">
@@ -67,24 +69,40 @@ export default function DesinflamateCheckoutPage() {
               <div className="checkout-price-row">
                 <span className="checkout-price">{price}</span>
               </div>
-              <p className="checkout-price-meta">USD · pago único · acceso de por vida</p>
+              {/* C1 (ex PR #74): moneda inequívoca + promesa real (21 días, no "de por vida").
+                  Hotmart cobra el equivalente en moneda local (ancla USD) — anunciarlo evita
+                  la sorpresa en el widget. */}
+              <p className="checkout-price-meta">
+                {product.provider === 'hotmart'
+                  ? 'USD · pago único · se cobra en tu moneda local · acceso al reto de 21 días'
+                  : 'USD · pago único · acceso al reto de 21 días'}
+              </p>
             </div>
 
             <div className="checkout-divider" aria-hidden />
 
-            <Suspense
-              fallback={
-                <div className="checkout-state">
-                  <div className="spinner" aria-hidden />
-                  <p>Preparando formulario de pago…</p>
-                </div>
-              }
-            >
-              <DesinflamateCheckoutEmbedLoader />
-            </Suspense>
+            {/* El provider lo decide el cohort activo del catálogo: lanzar una
+                edición Hotmart (C3) enruta aquí sin tocar este archivo. */}
+            {product.provider === 'hotmart' ? (
+              <HotmartCheckoutEmbed
+                productKey={PRODUCT_KEY}
+                backHref="/german-roz/vsl-desinflamate"
+              />
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="checkout-state">
+                    <div className="spinner" aria-hidden />
+                    <p>Preparando formulario de pago…</p>
+                  </div>
+                }
+              >
+                <DesinflamateCheckoutEmbedLoader />
+              </Suspense>
+            )}
 
             <ul className="checkout-trust">
-              <li>🔒 Pago seguro vía Whop</li>
+              <li>🔒 Pago seguro vía {product.provider === 'hotmart' ? 'Hotmart' : 'Whop'}</li>
               <li>💬 Acceso por WhatsApp</li>
               <li>🥗 21 días · comida real, sin dietas restrictivas</li>
             </ul>

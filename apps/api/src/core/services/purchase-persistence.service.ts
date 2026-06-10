@@ -112,6 +112,38 @@ export async function persistPurchase(record: PurchaseRecord): Promise<PersistPu
   }
 }
 
+/**
+ * Mark a purchase as refunded/charged-back/canceled (provider status events
+ * UPDATE the existing row — never a new insert). Returns whether a row matched
+ * so the caller can log refunds for unknown purchases. Never throws.
+ */
+export async function updatePurchaseStatus(
+  provider: PurchaseRecord['provider'],
+  externalId: string,
+  status: 'refunded' | 'chargeback' | 'canceled',
+): Promise<{ updated: boolean }> {
+  const client = createClient();
+  try {
+    await client.connect();
+    const result = await client.query(
+      `UPDATE marketing.purchases
+          SET status = $3, refunded_at = COALESCE(refunded_at, now())
+        WHERE provider = $1 AND external_id = $2`,
+      [provider, externalId, status],
+    );
+    return { updated: (result.rowCount ?? 0) > 0 };
+  } catch (error) {
+    console.warn('[purchases] status update failed', {
+      externalId,
+      status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { updated: false };
+  } finally {
+    void client.end().catch(() => {});
+  }
+}
+
 /** Stamp that Meta accepted the Purchase CAPI for this payment. Best-effort:
  * a missed stamp only causes a redundant re-send (same event_id → deduped). */
 export async function markPurchaseCapiSent(
