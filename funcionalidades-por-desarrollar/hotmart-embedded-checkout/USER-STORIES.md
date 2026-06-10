@@ -117,7 +117,10 @@
 
 ---
 
-## FASE 2 — Embed Hotmart en web (German Roz)
+## FASE 2 — Embed Hotmart en web (German Roz) — ✅ IMPLEMENTADA (2026-06-10, PR #83)
+Provider-routed embed inerte hasta el flip de catálogo. `sck`=purchaseEventId estable por visitante+cohort, cupón oculto, retry sin recarga, textos provider-aware, C1/C4 aplicados. Verificado post-deploy: funnel Whop intacto ($67, textos nuevos).
+
+### Stories (referencia)
 **Objetivo:** renderizar el checkout Hotmart inline en la ruta de German (staging/preview), con atribución, tiers y dedup resuelto.
 
 **US-2.1** — Como Comprador, quiero ver el checkout Hotmart dentro de la página de German, para pagar sin salir del dominio.
@@ -153,7 +156,10 @@
 
 ---
 
-## FASE 3 — Webhook + confirmación server-side (api)
+## FASE 3 — Webhook + confirmación server-side (api) — ✅ IMPLEMENTADA (2026-06-10, PR #83)
+`PURCHASE_APPROVED/COMPLETE` → catálogo por offer.code → `persistPurchase` → CAPI con `event_id`=`origin.sck` (CAPI-only, user_data con país/teléfono reales del comprador); refunds → UPDATE de status. Guard: sin credenciales Meta NO se estampa `capi_sent_at`. Smoke verificado post-deploy: refund de tx inexistente → 200 sin side-effects (0 filas en purchases).
+
+### Stories (referencia)
 **Objetivo:** confirmar la venta y disparar acceso + CAPI Purchase desde el webhook, reusando la infraestructura de purchases.
 
 **US-3.1** — Como Sistema, quiero `POST /api/webhooks/hotmart` validando `X-HOTMART-HOTTOK`, para rechazar payloads no auténticos.
