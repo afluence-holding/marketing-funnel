@@ -1,6 +1,7 @@
 # Capa de Integraciones / Fan-out — User Stories
 
-**Estado:** 📝 Plan (rev. 2026-06-10 — análisis multi-agente + diseño SaaS modular + auditoría adversarial incorporada). Listo para revisión de negocio; implementación pendiente de go-ahead.
+**Estado:** 🚧 IMPLEMENTADO el camino crítico de German (2026-06-10) — `apps/api/src/core/integrations/` + outbox `marketing.integration_deliveries` + dispatch de registro/compra + 28 tests vitest. QA por US: A1/A3/A5/A6/B1/B2/B4/C2/C3 ✅; meta-capi excluido para German a propósito (ya tiene CAPI inline — evita doble-fire), connector+tests cubren D2 para el creador N.
+> **Follow-ups documentados (no bloqueantes, no afectan a German):** E3 bootstrap de cuenta MailerLite (German ya provisionada); B3 script/endpoint de replay de `dead`; C1 dispatch de compra desde el webhook **Hotmart** (German va por Whop); Hyros real (D1 [CONFIRM] endpoint) — al activarlo requiere backfill porque los no-op previos quedan `delivered`; A2 respetar `Retry-After` en 429 (hoy backoff genérico); grep de token-literal en CI. La validación de config corre en CI (`validate.test.ts` exige el registry válido) y al boot (loguea, no tumba el API vivo).
 **Objetivo de negocio:** convertir el fan-out de integraciones (MailerLite, Hyros, Meta CAPI) en una **capa modular por organización**, de modo que **activar un creador nuevo sea aditivo** (un archivo de config + sus secretos), sin tocar el core ni a los creadores existentes — con la robustez para que **ningún registro/venta se pierda ni se duplique**.
 > **Fuera de alcance (decisión de Negocio 2026-06-10): Palti / bot de WhatsApp** — NO entra en esta capa. El push al bot lo maneja otro sistema. Esta capa cubre MailerLite, Hyros y Meta CAPI.
 

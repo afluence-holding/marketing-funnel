@@ -22,8 +22,11 @@ import { ensureGermanRozProgressTable } from './core/bootstrap/ensure-german-roz
 import { ensureWhatsAppGroupTables } from './core/bootstrap/ensure-whatsapp-group-tables';
 import { ensurePurchaseTables } from './core/bootstrap/ensure-purchase-tables';
 import { ensureHotmartEventsTable } from './core/bootstrap/ensure-hotmart-events-table';
+import { ensureIntegrationTables } from './core/bootstrap/ensure-integration-tables';
 import { seedWhatsAppGroupPools } from './core/services/whatsapp-group-rotation.service';
 import { syncCohortsFromCatalog } from './core/services/cohort-sync.service';
+import { validateIntegrationConfigs } from './core/integrations/validate';
+import { allIntegrationConfigs } from './core/integrations/registry';
 import { whatsappGroupPoolRegistry } from './orgs';
 
 const app = express();
@@ -79,6 +82,15 @@ app.listen(env.PORT, () => {
     .catch((error) => {
       console.error('[purchases] failed to ensure/sync cohort+purchase tables', error);
     });
+  // Integraciones / fan-out: valida el registry (falla temprano y claro) y
+  // asegura el outbox. La validación NO tumba el boot (solo loguea).
+  const integrationErrors = validateIntegrationConfigs(allIntegrationConfigs());
+  if (integrationErrors.length > 0) {
+    console.error('[integrations] config registry inválido', { errors: integrationErrors });
+  }
+  void ensureIntegrationTables().catch((error) => {
+    console.error('[integrations] failed to ensure integration_deliveries table', error);
+  });
   void ensureHotmartEventsTable().catch((error) => {
     console.error('[hotmart] failed to ensure webhook events table', error);
   });
