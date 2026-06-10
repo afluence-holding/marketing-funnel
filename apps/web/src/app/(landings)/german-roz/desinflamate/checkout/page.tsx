@@ -71,10 +71,22 @@ export default function DesinflamateCheckoutPage() {
   return (
     <div className={jakarta.className}>
       <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ} />
-      <link rel="preconnect" href="https://api.whop.com" />
-      <link rel="preconnect" href="https://js.whop.com" />
-      <link rel="dns-prefetch" href="https://api.whop.com" />
-      <link rel="dns-prefetch" href="https://js.whop.com" />
+      {/* Preconnect al host del proveedor del cohort activo (acelera el primer paint
+          del embed). Provider-aware: Hotmart vs Whop. */}
+      {product.provider === 'hotmart' ? (
+        <>
+          <link rel="preconnect" href="https://checkout.hotmart.com" />
+          <link rel="preconnect" href="https://pay.hotmart.com" />
+          <link rel="dns-prefetch" href="https://checkout.hotmart.com" />
+        </>
+      ) : (
+        <>
+          <link rel="preconnect" href="https://api.whop.com" />
+          <link rel="preconnect" href="https://js.whop.com" />
+          <link rel="dns-prefetch" href="https://api.whop.com" />
+          <link rel="dns-prefetch" href="https://js.whop.com" />
+        </>
+      )}
       <style>{styles}</style>
 
       <div className="checkout-shell">
