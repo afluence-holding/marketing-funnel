@@ -144,8 +144,10 @@ export default function DesinflamateCheckoutPage() {
               <li>✓ BONO: 3 sesiones coaching grupal con Germán ($197)</li>
               <li>✓ BONO: Recetario Saludable ($47)</li>
               <li>
-                🔒 Pago 100% seguro vía {product.provider === 'hotmart' ? 'Hotmart' : 'Whop'} ·
-                Visa, Mastercard, PayPal
+                {/* Hotmart: solo tarjeta (métodos alternativos ocultos en el embed). */}
+                {product.provider === 'hotmart'
+                  ? '🔒 Pago 100% seguro vía Hotmart · Visa, Mastercard'
+                  : '🔒 Pago 100% seguro vía Whop · Visa, Mastercard, PayPal'}
               </li>
             </ul>
 

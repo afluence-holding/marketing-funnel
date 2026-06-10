@@ -99,7 +99,7 @@ export default function HotmartCheckoutPreviewPage() {
               <li>✓ BONO: Video Meal Prep Recetas Peruanas ($127)</li>
               <li>✓ BONO: 3 sesiones coaching grupal con Germán ($197)</li>
               <li>✓ BONO: Recetario Saludable ($47)</li>
-              <li>🔒 Pago 100% seguro vía Hotmart · Visa, Mastercard, PayPal</li>
+              <li>🔒 Pago 100% seguro vía Hotmart · Visa, Mastercard</li>
             </ul>
 
             <div className="checkout-guarantee">
