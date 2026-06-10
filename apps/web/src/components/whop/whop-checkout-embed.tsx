@@ -190,7 +190,10 @@ export function GenericWhopCheckoutEmbed({
         sessionId={sessionId}
         returnUrl={returnUrl}
         theme={theme}
-        adaptivePricing
+        // CRO v2 item 1: el total mostraba "PEN 67.00" con opción "Pay in USD
+        // instead" — la campaña entera habla en USD, así que el display se
+        // fuerza a la moneda del plan (el banco del comprador convierte).
+        adaptivePricing={false}
         skipRedirect
         themeOptions={{ accentColor }}
         fallback={
