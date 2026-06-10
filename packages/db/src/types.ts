@@ -66,6 +66,42 @@ export type Database = {
           },
         ]
       }
+      bukku_leads: {
+        Row: {
+          created_at: string
+          custom_fields: Json
+          email: string
+          first_name: string
+          id: string
+          phone: string
+          source: string
+          updated_at: string
+          utm_data: Json
+        }
+        Insert: {
+          created_at?: string
+          custom_fields?: Json
+          email: string
+          first_name?: string
+          id?: string
+          phone?: string
+          source?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Update: {
+          created_at?: string
+          custom_fields?: Json
+          email?: string
+          first_name?: string
+          id?: string
+          phone?: string
+          source?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Relationships: []
+      }
       business_units: {
         Row: {
           created_at: string
@@ -97,6 +133,113 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caro_fitness_progress: {
+        Row: {
+          answers: Json
+          completed_at: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          lead_id: string | null
+          phone: string
+          quiz_step: string
+          session_id: string
+          source: string
+          status: string
+          updated_at: string
+          utm_data: Json
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          lead_id?: string | null
+          phone?: string
+          quiz_step?: string
+          session_id: string
+          source?: string
+          status?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          lead_id?: string | null
+          phone?: string
+          quiz_step?: string
+          session_id?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Relationships: []
+      }
+      cohorts: {
+        Row: {
+          bu_key: string
+          business_unit_id: string | null
+          code: string
+          content_id: string
+          created_at: string
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          org_key: string
+          starts_at: string | null
+          synced_at: string
+          tiers: Json
+          timezone: string
+        }
+        Insert: {
+          bu_key: string
+          business_unit_id?: string | null
+          code: string
+          content_id: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          org_key: string
+          starts_at?: string | null
+          synced_at?: string
+          tiers?: Json
+          timezone: string
+        }
+        Update: {
+          bu_key?: string
+          business_unit_id?: string | null
+          code?: string
+          content_id?: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          org_key?: string
+          starts_at?: string | null
+          synced_at?: string
+          tiers?: Json
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohorts_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
             referencedColumns: ["id"]
           },
         ]
@@ -179,6 +322,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      german_roz_progress: {
+        Row: {
+          answers: Json
+          completed_at: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          lead_id: string | null
+          phone: string
+          quiz_step: string
+          session_id: string
+          source: string
+          status: string
+          updated_at: string
+          utm_data: Json
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          lead_id?: string | null
+          phone?: string
+          quiz_step?: string
+          session_id: string
+          source?: string
+          status?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          lead_id?: string | null
+          phone?: string
+          quiz_step?: string
+          session_id?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Relationships: []
       }
       lead_pipeline_entries: {
         Row: {
@@ -340,6 +534,42 @@ export type Database = {
           },
         ]
       }
+      mama_sin_caos_leads: {
+        Row: {
+          created_at: string
+          custom_fields: Json
+          email: string
+          first_name: string
+          id: string
+          phone: string
+          source: string
+          updated_at: string
+          utm_data: Json
+        }
+        Insert: {
+          created_at?: string
+          custom_fields?: Json
+          email: string
+          first_name?: string
+          id?: string
+          phone?: string
+          source?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Update: {
+          created_at?: string
+          custom_fields?: Json
+          email?: string
+          first_name?: string
+          id?: string
+          phone?: string
+          source?: string
+          updated_at?: string
+          utm_data?: Json
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           created_at: string
@@ -434,6 +664,101 @@ export type Database = {
           },
         ]
       }
+      purchases: {
+        Row: {
+          amount: number
+          business_unit_id: string | null
+          capi_sent_at: string | null
+          cohort_code: string
+          cohort_id: string | null
+          content_id: string | null
+          created_at: string
+          currency: string
+          external_id: string
+          id: string
+          lead_id: string | null
+          metadata: Json
+          organization_id: string
+          plan_or_offer_id: string | null
+          product_key: string
+          provider: string
+          purchased_at: string
+          refunded_at: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          business_unit_id?: string | null
+          capi_sent_at?: string | null
+          cohort_code: string
+          cohort_id?: string | null
+          content_id?: string | null
+          created_at?: string
+          currency?: string
+          external_id: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          organization_id: string
+          plan_or_offer_id?: string | null
+          product_key: string
+          provider: string
+          purchased_at?: string
+          refunded_at?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          business_unit_id?: string | null
+          capi_sent_at?: string | null
+          cohort_code?: string
+          cohort_id?: string | null
+          content_id?: string | null
+          created_at?: string
+          currency?: string
+          external_id?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          organization_id?: string
+          plan_or_offer_id?: string | null
+          product_key?: string
+          provider?: string
+          purchased_at?: string
+          refunded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sequence_enrollments: {
         Row: {
           completed_at: string | null
@@ -494,6 +819,146 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_group_assignments: {
+        Row: {
+          assigned_at: string
+          group_id: string
+          id: string
+          joined_at: string | null
+          lead_id: string | null
+          phone: string
+          pool_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          group_id: string
+          id?: string
+          joined_at?: string | null
+          lead_id?: string | null
+          phone?: string
+          pool_id: string
+        }
+        Update: {
+          assigned_at?: string
+          group_id?: string
+          id?: string
+          joined_at?: string | null
+          lead_id?: string | null
+          phone?: string
+          pool_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_group_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_group_assignments_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_group_pools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_group_pools: {
+        Row: {
+          bu_key: string
+          capacity: number
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          launch_code: string | null
+          org_key: string
+          pool_key: string
+          rotation_mode: string
+          updated_at: string
+        }
+        Insert: {
+          bu_key: string
+          capacity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          launch_code?: string | null
+          org_key: string
+          pool_key: string
+          rotation_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          bu_key?: string
+          capacity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          launch_code?: string | null
+          org_key?: string
+          pool_key?: string
+          rotation_mode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_groups: {
+        Row: {
+          assigned_count: number
+          created_at: string
+          group_jid: string | null
+          id: string
+          invite_url: string
+          is_active: boolean
+          is_full: boolean
+          label: string
+          member_count: number
+          pool_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_count?: number
+          created_at?: string
+          group_jid?: string | null
+          id?: string
+          invite_url: string
+          is_active?: boolean
+          is_full?: boolean
+          label?: string
+          member_count?: number
+          pool_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_count?: number
+          created_at?: string
+          group_jid?: string | null
+          id?: string
+          invite_url?: string
+          is_active?: boolean
+          is_full?: boolean
+          label?: string
+          member_count?: number
+          pool_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_groups_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_group_pools"
             referencedColumns: ["id"]
           },
         ]
