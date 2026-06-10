@@ -51,7 +51,22 @@
 
 ---
 
-## FASE 0 — Spike de viabilidad
+## FASE 0 — Spike de viabilidad — ✅ EJECUTADA (2026-06-10, compra real HP0999901990)
+
+**Resultados de los [CONFIRM] (payloads completos en `marketing.hotmart_webhook_events`):**
+- **US-0.2/0.3 ✅** Compra real `PURCHASE_APPROVED` (transaction `HP0999901990`, offer `ymzf5qdj`, cupón `TEST` → $0.71 USD cobrados como **2.44 PEN**) recibida en `POST /api/webhooks/hotmart` con HOTTOK válido; contrato v2.0.0 = brief §5.3 + extras útiles: `original_offer_price`, `offer.coupon_code`, `buyer.address.country_iso` (→ campo country del CAPI), `commissions[]` en USD.
+- **US-0.4 ✅✅ (el crítico)** Round-trip de atribución EXACTO: `sck` volvió con el UUID de 36 chars intacto (`29cf0c6a-…`), `src`/`xcod` idénticos → **`sck` ES el portador viable del `purchaseEventId`** para el dedup pixel/CAPI de Fase 2/3.
+- **US-0.7 ✅** Moneda confirmada en compra real: offer ancla USD → cobro en moneda local (PEN). CAPI debe reportar lo cobrado; `amount_usd` snapshot para reporting.
+- **Bonus**: el test de webhook del panel disparó TODOS los tipos de evento (`REFUNDED`, `CHARGEBACK`, `CANCELED`, `EXPIRED`, `PROTEST`, `BILLET_PRINTED`, `COMPLETE`, `ORDER_FULFILLMENT`) — contrato de refunds para Fase 3 capturado.
+- **Nota Fase 2**: el campo de cupón estaba visible (se usó `TEST`) → confirmar `hideCouponOption: '1'` en el embed de producción.
+- **US-0.5 ✅** iOS: el embed montó y scrolleó bien en iPhone real → **go**.
+- **US-0.1 ~resuelta por diseño**: el panel de diagnóstico no mostró el init usado (se vio en blanco), pero la compra completó → el código con fallback `'inlineCheckout' → 'inline'` funciona tal cual. Decisión: **Fase 2 conserva el mismo try-in-order + log** del init que dispare (la telemetría lo responderá en producción).
+- **US-0.6 ⚠️ HALLAZGO CLAVE**: tras pagar **NO hubo redirect** — el comprador se queda en el embed (confirmación inline de Hotmart). Implicación: la página de gracias NO se alcanza por defecto → el pixel Purchase del navegador no dispararía. Resolución en dos vías: (a) intentar configurar la "página de gracias" del producto en el panel Hotmart (ajustes de confirmación de compra por método de pago) y re-probar; (b) si no existe/no funciona → **Purchase CAPI-only** (diseño ya previsto): sin pixel no hay nada que dedupear, y el CAPI va con user_data fuerte (Hotmart entrega email+nombre+documento+país del comprador) + `event_id` del `sck`. La Fase 2 implementa gracias tolerante a ambos mundos.
+- **Pendiente operativo**: refund de la compra de prueba `HP0999901990` desde el panel (validará de paso el evento `REFUNDED` real).
+
+**GO/NO-GO de FASE 0: ✅ GO** — iOS funciona, atribución sobrevive front→back con `sck` como portador del event_id, webhook autenticado con contrato completo (incl. refunds), moneda localizada confirmada. Único ajuste de diseño derivado: Purchase posiblemente CAPI-only (ver US-0.6).
+
+### Stories originales (referencia)
 **Objetivo:** resolver los `[CONFIRM]` del brief con la librería y el panel reales antes de invertir en arquitectura. (Código desechable, ½–1 día.) **Esta fase no depende de nada — puede arrancar ya, en paralelo al merge de cohorts.**
 
 **US-0.1** — Como Dev, quiero montar `inlineCheckout` con un offer real en una página throwaway, para confirmar el identificador y script correctos.
