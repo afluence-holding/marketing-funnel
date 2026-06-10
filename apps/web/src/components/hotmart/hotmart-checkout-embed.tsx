@@ -65,9 +65,18 @@ type Props = {
   productKey: string;
   backHref?: string;
   backLabel?: string;
+  /** QA-ONLY: fuerza un offer code, saltando la resolución de tier del
+   * catálogo. Usado por la página de preview para ver el embed Hotmart antes
+   * de que exista un cohort Hotmart activo. NUNCA pasar en producción real. */
+  previewOffer?: string;
 };
 
-export function HotmartCheckoutEmbed({ productKey, backHref, backLabel = '← Volver' }: Props) {
+export function HotmartCheckoutEmbed({
+  productKey,
+  backHref,
+  backLabel = '← Volver',
+  previewOffer,
+}: Props) {
   const mounted = useRef(false);
   const tracked = useRef(false);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -83,7 +92,12 @@ export function HotmartCheckoutEmbed({ productKey, backHref, backLabel = '← Vo
     }
 
     const tier = resolveWhopTier(product);
-    if (tier.checkoutRef.provider !== 'hotmart') {
+    let offerCode: string;
+    if (previewOffer) {
+      offerCode = previewOffer;
+    } else if (tier.checkoutRef.provider === 'hotmart') {
+      offerCode = tier.checkoutRef.offerCode;
+    } else {
       console.error('[hotmart-embed] active tier is not a hotmart offer', {
         productKey,
         cohortCode: product.cohortCode,
@@ -99,7 +113,7 @@ export function HotmartCheckoutEmbed({ productKey, backHref, backLabel = '← Vo
     const xcod = qs.get('xcod') ?? qs.get('utm_campaign') ?? product.cohortCode;
 
     const options = {
-      offer: tier.checkoutRef.offerCode,
+      offer: offerCode,
       prefilledInfo: { sck: purchaseEventId },
       visibilityOptions: {
         src,
@@ -115,9 +129,10 @@ export function HotmartCheckoutEmbed({ productKey, backHref, backLabel = '← Vo
         lib.init(initId, options).mount('#inline_checkout');
         console.info('[hotmart-embed] mounted', {
           initId,
-          offer: tier.checkoutRef.offerCode,
+          offer: offerCode,
           cohortCode: product.cohortCode,
           purchaseEventId,
+          preview: Boolean(previewOffer),
         });
         setState('ready');
         if (!tracked.current) {
