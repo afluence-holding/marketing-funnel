@@ -1,6 +1,6 @@
 # Migración checkout Whop → Hotmart (German Roz) — User Stories
 
-**Estado:** 📝 Plan (rev. 2026-06-09 — re-verificado multi-agente contra el repo POST-implementación de cohorts)
+**Estado:** ✅ HECHO — German vende por Hotmart en producción 2026-06-10. Fases 0–4 ejecutadas: spike → embed provider-aware → webhook + CAPI + refunds → switch C2 (#89) → compra real validada en Meta. Plan conservado abajo como registro.
 **Objetivo de negocio:** reemplazar el checkout embebido de Whop por el de Hotmart en la página de checkout de German Roz (DI21), manteniendo atribución de paid media, tracking deduplicado y entrega de acceso.
 
 **Alcance:**
