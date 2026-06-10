@@ -27,6 +27,22 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** "16 de junio" en la tz del producto — fecha límite del tier vigente. */
+function formatTierDeadline(until: string | undefined, timezone: string): string | null {
+  if (!until) return null;
+  const d = new Date(until);
+  if (Number.isNaN(d.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat('es-PE', {
+      day: 'numeric',
+      month: 'long',
+      timeZone: timezone,
+    }).format(d);
+  } catch {
+    return null;
+  }
+}
+
 export default function DesinflamateCheckoutPage() {
   // Cohort + tier resolved PER REQUEST (force-dynamic) — never at module load,
   // so a deploy that already contains a future cohort keeps selling the right
@@ -37,6 +53,20 @@ export default function DesinflamateCheckoutPage() {
   }
   const tier = resolveWhopTier(product);
   const price = formatWhopPrice(product, tier.price);
+
+  // CRO v2 (docs/Propuesta de Cambios Checkout v2.docx): urgencia y escalera
+  // derivadas del CATÁLOGO — al lanzar C3 estos textos se actualizan solos.
+  const tierIndex = product.tiers.indexOf(tier);
+  const nextTier = tierIndex >= 0 ? product.tiers[tierIndex + 1] : undefined;
+  const deadline = formatTierDeadline(tier.until, product.timezone);
+  const urgencyLine =
+    tierIndex === 0
+      ? 'Última oportunidad al precio de lanzamiento'
+      : 'Última oportunidad de unirte al reto';
+  const priceRiseLine =
+    nextTier && deadline
+      ? `Precio sube a ${formatWhopPrice(product, nextTier.price)} después del ${deadline} · `
+      : '';
 
   return (
     <div className={jakarta.className}>
@@ -65,17 +95,19 @@ export default function DesinflamateCheckoutPage() {
 
             <div className="checkout-offer">
               <h1 className="checkout-title">{product.title}</h1>
-              <p className="checkout-headline">{product.headline}</p>
+              <p className="checkout-urgency">{urgencyLine}</p>
+              <p className="checkout-value-anchor">
+                <s>$1,160</s> Valor total
+              </p>
               <div className="checkout-price-row">
                 <span className="checkout-price">{price}</span>
               </div>
+              <p className="checkout-price-hook">Hoy lo llevas todo por solo {price} USD</p>
               {/* C1 (ex PR #74): moneda inequívoca + promesa real (21 días, no "de por vida").
-                  Hotmart cobra el equivalente en moneda local (ancla USD) — anunciarlo evita
-                  la sorpresa en el widget. */}
+                  Hotmart cobra el equivalente en moneda local (ancla USD). */}
               <p className="checkout-price-meta">
-                {product.provider === 'hotmart'
-                  ? 'USD · pago único · se cobra en tu moneda local · acceso al reto de 21 días'
-                  : 'USD · pago único · acceso al reto de 21 días'}
+                {priceRiseLine}pago único · acceso al reto de 21 días
+                {product.provider === 'hotmart' ? ' · se cobra en tu moneda local' : ''}
               </p>
             </div>
 
@@ -101,11 +133,37 @@ export default function DesinflamateCheckoutPage() {
               </Suspense>
             )}
 
-            <ul className="checkout-trust">
-              <li>🔒 Pago seguro vía {product.provider === 'hotmart' ? 'Hotmart' : 'Whop'}</li>
-              <li>💬 Acceso por WhatsApp</li>
-              <li>🥗 21 días · comida real, sin dietas restrictivas</li>
+            <ul className="checkout-trust checkout-value-list">
+              <li>✓ 21 videos educativos de Germán (5–7 min c/u)</li>
+              <li>✓ Menús personalizados Semana 2 y 3</li>
+              <li>✓ Listas de compra semanales</li>
+              <li>✓ Guía diaria por WhatsApp con Palti</li>
+              <li>✓ Análisis nutricional de platos por foto</li>
+              <li>✓ Comunidad privada de WhatsApp</li>
+              <li>✓ BONO: Video Meal Prep Recetas Peruanas ($127)</li>
+              <li>✓ BONO: 3 sesiones coaching grupal con Germán ($197)</li>
+              <li>✓ BONO: Recetario Saludable ($47)</li>
+              <li>
+                🔒 Pago 100% seguro vía {product.provider === 'hotmart' ? 'Hotmart' : 'Whop'} ·
+                Visa, Mastercard, PayPal
+              </li>
             </ul>
+
+            <div className="checkout-testimonial">
+              <p className="stars" aria-hidden>
+                ⭐⭐⭐⭐⭐
+              </p>
+              <p className="quote">
+                “Bajé 4 kilos de inflamación y me siento con energía increíble. Las recetas
+                son deliciosas.”
+              </p>
+              <p className="author">— María González, 42 años · Grupo 1</p>
+              <p className="social-proof">+2,500 mujeres transformadas · 98% reportan más energía</p>
+            </div>
+
+            <div className="checkout-guarantee">
+              🛡 Garantía de 7 días · si no ves resultados, te devolvemos el 100%. Sin preguntas.
+            </div>
           </div>
         </div>
       </div>
@@ -254,6 +312,73 @@ html, body { min-height: 100%; background: var(--crema); }
   letter-spacing: 0.6px;
   text-transform: uppercase;
   margin-top: 10px;
+}
+
+.checkout-urgency {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--naranja);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+
+.checkout-value-anchor {
+  font-size: 14px;
+  color: var(--navy-soft);
+  margin-bottom: 6px;
+}
+.checkout-value-anchor s {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.checkout-price-hook {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  margin-top: 10px;
+}
+
+.checkout-value-list li {
+  text-align: left;
+  font-size: 13px;
+}
+
+.checkout-testimonial {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: var(--crema);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  text-align: center;
+}
+.checkout-testimonial .stars { font-size: 14px; letter-spacing: 2px; }
+.checkout-testimonial .quote {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--navy);
+  margin: 8px auto 6px;
+  max-width: 42ch;
+  line-height: 1.5;
+}
+.checkout-testimonial .author { font-size: 12px; color: var(--navy-soft); }
+.checkout-testimonial .social-proof {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--naranja);
+  margin-top: 10px;
+}
+
+.checkout-guarantee {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1px dashed var(--naranja);
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--navy);
+  text-align: center;
+  line-height: 1.5;
 }
 
 .checkout-divider {
