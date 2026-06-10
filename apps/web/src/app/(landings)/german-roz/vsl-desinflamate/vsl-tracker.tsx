@@ -16,14 +16,42 @@ const CONTENT_NAME = 'german-roz-vsl-desinflamate';
 const SOURCE = 'landing-german-roz-vsl-desinflamate';
 
 /**
+ * Lleva al usuario a la sección de oferta (urgencia + desglose de valor +
+ * precio + botón de compra) dentro del iframe `srcDoc`. Se ancla por el texto
+ * estable "La oferta termina en:" (el elemento más interno que lo contiene)
+ * para NO depender de las clases del bundle minificado; si no aparece, cae al
+ * botón de compra centrado.
+ */
+function scrollToOffer(doc: Document): void {
+  const matches = Array.from(doc.querySelectorAll('p, h1, h2, h3, span, div')).filter(
+    (el) => (el.textContent ?? '').includes('La oferta termina en'),
+  );
+  // El match más corto es el elemento más interno (la etiqueta, no un ancestro).
+  const offerStart = matches.sort(
+    (a, b) => (a.textContent?.length ?? 0) - (b.textContent?.length ?? 0),
+  )[0];
+  if (offerStart) {
+    offerStart.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  const checkoutBtn = Array.from(doc.querySelectorAll('button, a')).find((b) =>
+    (b.textContent ?? '').toLowerCase().includes('desinflamarme'),
+  );
+  checkoutBtn?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/**
  * Listens for postMessage events from the srcDoc iframe:
  * - `vsl-milestone`: fires custom VSL_25/50/75/100 events
  *
- * Also intercepts CTA clicks inside the iframe to fire InitiateCheckout and
- * send the buyer to the embedded Whop checkout (/german-roz/desinflamate/checkout)
- * instead of the legacy Hotmart link baked into the compiled bundle. srcDoc
- * iframes are same-origin so we can attach listeners directly to the iframe's
- * document.
+ * Also intercepts CTA clicks inside the iframe (capture phase, so it overrides
+ * the bundle's native onClick). Two behaviors:
+ * - El botón de compra final ("UNIRME A DESINFLAMARME EN 21 DÍAS") → checkout
+ *   embebido (/german-roz/desinflamate/checkout) + InitiateCheckout.
+ * - Los CTAs de "unirse al reto" ("UNIRME AL RETO", "SÍ, QUIERO EMPEZAR…") →
+ *   scroll a la sección de oferta (precio + qué incluye), NO al checkout.
+ * srcDoc iframes are same-origin so we can attach listeners directly to the
+ * iframe's document.
  */
 export function VslTracker() {
   useEffect(() => {
@@ -77,37 +105,46 @@ export function VslTracker() {
       const iframeDoc = iframe.contentDocument;
       if (!iframeDoc) return;
 
-      iframeDoc.addEventListener('click', (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        // Check if click target or any ancestor has an onclick that opens Hotmart
-        // The CTA buttons use onClick: () => window.open(hotmartUrl, "_top")
-        // so we check for buttons/anchors near the click
-        const btn = target.closest('button, a, [role="button"]');
-        if (!btn) return;
+      iframeDoc.addEventListener(
+        'click',
+        (e: MouseEvent) => {
+          const target = e.target as HTMLElement;
+          const btn = target.closest('button, a, [role="button"]');
+          if (!btn) return;
 
-        // Check the element's text or nearby context for Hotmart indicators
-        const text = btn.textContent?.toLowerCase() ?? '';
-        const href = (btn as HTMLAnchorElement).href ?? '';
-        const isCTA =
-          HOTMART_PATTERN.test(href) ||
-          text.includes('quiero') ||
-          text.includes('unirme') ||
-          text.includes('reto') ||
-          text.includes('reserv') ||
-          text.includes('compr') ||
-          text.includes('inscrib');
+          const text = btn.textContent?.toLowerCase() ?? '';
+          const href = (btn as HTMLAnchorElement).href ?? '';
 
-        if (isCTA) {
-          if (!ctaFired) {
-            ctaFired = true;
-            trackEvent('InitiateCheckout', { content_name: CONTENT_NAME });
-          }
-          // Every CTA now drives to the embedded Whop checkout (not Hotmart).
+          // SOLO el botón de compra final ("UNIRME A DESINFLAMARME EN 21 DÍAS",
+          // o cualquier enlace Hotmart heredado del bundle) abre el checkout.
+          const isCheckout = HOTMART_PATTERN.test(href) || text.includes('desinflamarme');
+          // Los CTAs de "unirse al reto" (incl. "SÍ, QUIERO EMPEZAR…") NO compran:
+          // bajan a la oferta para que el lead vea precio + qué incluye antes de
+          // decidir. Se usan frases exactas para no atrapar preguntas del FAQ que
+          // contengan "reto".
+          const isScrollCta =
+            !isCheckout &&
+            (text.includes('unirme al reto') ||
+              text.includes('unirse al reto') ||
+              text.includes('quiero empezar'));
+
+          if (!isCheckout && !isScrollCta) return;
+
           e.preventDefault();
           e.stopPropagation();
-          window.open(buildDesinflamateCheckoutUrl(), '_top');
-        }
-      }, true);
+
+          if (isCheckout) {
+            if (!ctaFired) {
+              ctaFired = true;
+              trackEvent('InitiateCheckout', { content_name: CONTENT_NAME });
+            }
+            window.open(buildDesinflamateCheckoutUrl(), '_top');
+          } else {
+            scrollToOffer(iframeDoc);
+          }
+        },
+        true,
+      );
     }
 
     // The iframe content loads async, retry until it's ready
