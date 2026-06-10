@@ -82,6 +82,16 @@ export function validateProduct(product: BusinessUnitProduct): string[] {
       continue;
     }
 
+    // A cohort sells through exactly ONE provider — mixing whop/hotmart tiers
+    // in the same edition would force the embed and webhook to juggle two
+    // checkout stacks at once. Switch providers by launching a new cohort.
+    const providers = new Set(cohort.tiers.map((tier) => tier.checkoutRef.provider));
+    if (providers.size > 1) {
+      errors.push(
+        `${cWhere}: tiers mix providers (${[...providers].join(', ')}) — a cohort must sell through a single provider`,
+      );
+    }
+
     let prevUntil = -Infinity;
     cohort.tiers.forEach((tier, i) => {
       const tWhere = `${cWhere} tier[${i}]`;

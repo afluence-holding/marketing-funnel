@@ -1,10 +1,10 @@
 # Modularización de cohorts — Plan de implementación
 
-**Estado:** ✅ IMPLEMENTADO EN WORKING TREE (2026-06-09) — **sin commitear**, pendiente QA local + decisión de commit/PRs.
-Todo el plan (PR1–PR7 + fixes de 4 auditorías adversariales) está aplicado localmente:
-- Validado: catalog 42/42 tests, typecheck de las 12 workspaces, `next build` web y `tsc` API en verde, lockdown grep activo.
-- Migración `20260611000000_marketing_cohorts_and_purchases.sql` escrita pero **NO aplicada a Supabase** (también se auto-aplica en boot vía `ensure-purchase-tables.ts`, patrón del repo).
-- Al commitear: incluir TODO junto (packages/catalog + .github/workflows/ci.yml + apps — el build remoto rompe si van separados).
+**Estado:** ✅ **DESPLEGADO EN PRODUCCIÓN** (2026-06-10, PR #78 mergeado como `381d221`).
+- Migración `20260611000000` **aplicada a Supabase** vía psql (2026-06-09) + re-asegurada en boot.
+- CI nuevo verde en su primera ejecución; 5 auditorías adversariales (GO).
+- **Verificación post-deploy**: checkout en producción HTTP 200 con precio $67 (tier 1 del catálogo).
+- Pendientes: `gen-types` (script `apps/api/scripts/gen-types.sh` no existe en el repo — pre-existente — y el CLI requiere Docker; nada consume aún el cliente tipado de las tablas nuevas); confirmar buildCommand del servicio API en el dashboard de Railway; `business_unit_id` NULL hasta el mapping de identidad de BU.
 
 **Estado original (rev. 2026-06-09):** 🚧 En ejecución
 **Fuente:** `USER-STORIES.md` (mismo directorio). Este doc baja las épicas A–C a una secuencia de PRs pequeños, cada uno mergeable y reversible por sí solo.

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   getCohortByCheckoutId,
+  getCohortProvider,
+  getHotmartOfferCodes,
   getWhopPlanIds,
   getWhopPlanPrices,
   resolveActiveCohort,
@@ -206,6 +208,64 @@ describe('webhook attribution: resolveCohortForPayment', () => {
     });
     expect(r.cohort.code).toBe('DI21-C2');
     expect(r.resolutionSource).toBe('paid_at');
+  });
+});
+
+describe('hotmart tiers (US-1.1 — adapter parity)', () => {
+  // A future Hotmart-only edition: must resolve tier/price/contentId exactly
+  // like a Whop cohort.
+  const HOTMART_C4: Cohort = {
+    code: 'DI21-C4',
+    contentId: 'di21-c4',
+    startsAt: '2026-12-01T21:00:00-05:00',
+    endsAt: '2026-12-21T23:59:59-05:00',
+    timezone: 'America/Lima',
+    tiers: [
+      { price: 67, until: '2026-12-07T23:59:59-05:00', checkoutRef: { provider: 'hotmart', offerCode: 'abc123xy' } },
+      { price: 87, checkoutRef: { provider: 'hotmart', offerCode: 'def456zw' } },
+    ],
+  };
+  const WITH_HOTMART: BusinessUnitProduct = {
+    ...GERMAN_ROZ_MAIN,
+    cohorts: [...GERMAN_ROZ_MAIN.cohorts, HOTMART_C4],
+  };
+
+  it('resolves a hotmart cohort and tier by date like a whop one', () => {
+    const r = resolveActiveTier(WITH_HOTMART, at('2026-12-05T12:00:00-05:00'));
+    expect(r.cohort.code).toBe('DI21-C4');
+    expect(r.cohort.contentId).toBe('di21-c4');
+    expect(r.tier.price).toBe(67);
+    expect(r.tier.checkoutRef).toEqual({ provider: 'hotmart', offerCode: 'abc123xy' });
+    expect(r.resolutionSource).toBe('active');
+  });
+
+  it('finds the owning cohort by offer code (webhook path)', () => {
+    const hit = getCohortByCheckoutId(WITH_HOTMART, 'def456zw');
+    expect(hit?.cohort.code).toBe('DI21-C4');
+    expect(hit?.tier.price).toBe(87);
+  });
+
+  it('lists hotmart offer codes and keeps whop plan ids separate', () => {
+    expect(getHotmartOfferCodes(WITH_HOTMART)).toEqual(['abc123xy', 'def456zw']);
+    expect(getWhopPlanIds(WITH_HOTMART)).toEqual([
+      'plan_9hbxfopJ53A1q',
+      'plan_H5qC30Wqrkuac',
+      'plan_wFhRjp54MsvJm',
+    ]);
+  });
+
+  it('reports the cohort provider', () => {
+    expect(getCohortProvider(HOTMART_C4)).toBe('hotmart');
+    expect(getCohortProvider(GERMAN_ROZ_MAIN.cohorts[0])).toBe('whop');
+  });
+
+  it('adding a hotmart cohort does not change any C2 resolution (additive)', () => {
+    for (const iso of ['2026-06-15T12:00:00-05:00', '2026-06-28T12:00:00-05:00']) {
+      const before = resolveActiveTier(GERMAN_ROZ_MAIN, at(iso));
+      const after = resolveActiveTier(WITH_HOTMART, at(iso));
+      expect(after.cohort.code).toBe(before.cohort.code);
+      expect(after.tier).toEqual(before.tier);
+    }
   });
 });
 
