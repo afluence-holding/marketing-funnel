@@ -172,3 +172,22 @@ export function getWhopPlanPrices(product: BusinessUnitProduct): Record<string, 
   }
   return prices;
 }
+
+/** All Hotmart offer codes across every cohort of a product (webhook matching). */
+export function getHotmartOfferCodes(product: BusinessUnitProduct): string[] {
+  const codes: string[] = [];
+  for (const cohort of product.cohorts) {
+    for (const tier of cohort.tiers) {
+      if (tier.checkoutRef.provider === 'hotmart') codes.push(tier.checkoutRef.offerCode);
+    }
+  }
+  return codes;
+}
+
+/**
+ * The single provider a cohort sells through (validation rejects mixed-provider
+ * cohorts, so the first tier is authoritative).
+ */
+export function getCohortProvider(cohort: Cohort): CheckoutRef['provider'] {
+  return cohort.tiers[0]?.checkoutRef.provider ?? 'whop';
+}

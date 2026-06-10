@@ -15,21 +15,29 @@
  */
 
 import {
+  getCohortProvider,
   getProductByKey,
   resolveActiveCohort,
   type BusinessUnitProduct,
+  type CheckoutRef,
   type Cohort,
   type CohortResolutionSource,
   type Tier,
 } from '@marketing-funnel/catalog';
 
-export type WhopTier = {
-  /** Whop plan id (plan_xxx). */
-  planId: string;
+/**
+ * Provider-neutral tier: carries the catalog `checkoutRef` instead of a Whop
+ * planId, so cohorts selling through Hotmart resolve price/contentId exactly
+ * like Whop ones (US-1.1 of hotmart-embedded-checkout). Provider-specific
+ * code (session creation, embeds) narrows on `checkoutRef.provider`.
+ */
+export type CheckoutTier = {
   /** Base price in the product currency (major units, e.g. 67 for $67 USD). */
   price: number;
   /** Tier is active while `now <= until` (inclusive). ISO 8601 with tz offset. */
   until?: string;
+  /** Provider-specific checkout pointer (whop planId | hotmart offerCode). */
+  checkoutRef: CheckoutRef;
 };
 
 export type WhopProductConfig = {
@@ -62,7 +70,9 @@ export type WhopProductConfig = {
   /** One-line headline for the checkout card. */
   headline: string;
   /** Date-driven price ladder of the resolved cohort; last tier omits `until`. */
-  tiers: WhopTier[];
+  tiers: CheckoutTier[];
+  /** Provider the resolved cohort sells through (one provider per cohort). */
+  provider: CheckoutRef['provider'];
   /** Cohort (sales edition) this config was resolved for — `launch_ops.launch.code`. */
   cohortCode: string;
   /** How the cohort was resolved (`active` vs explicit fallback — never blocks the sale). */
@@ -98,9 +108,8 @@ const WEB_PRODUCT_SETTINGS: Record<string, WebProductSettings> = {
   },
 };
 
-function toWhopTier(tier: Tier): WhopTier | null {
-  if (tier.checkoutRef.provider !== 'whop') return null;
-  return { planId: tier.checkoutRef.planId, price: tier.price, until: tier.until };
+function toCheckoutTier(tier: Tier): CheckoutTier {
+  return { price: tier.price, until: tier.until, checkoutRef: tier.checkoutRef };
 }
 
 function toProductConfig(
@@ -110,9 +119,9 @@ function toProductConfig(
 ): WhopProductConfig | null {
   const settings = WEB_PRODUCT_SETTINGS[product.productKey];
   if (!settings) return null;
-  const tiers = cohort.tiers
-    .map(toWhopTier)
-    .filter((tier): tier is WhopTier => tier !== null);
+  // No provider filtering: hotmart tiers resolve price/contentId like whop
+  // ones (catalog validation guarantees one provider per cohort).
+  const tiers = cohort.tiers.map(toCheckoutTier);
   if (tiers.length === 0) return null;
   return {
     key: product.productKey,
@@ -127,6 +136,7 @@ function toProductConfig(
     contentCategory: product.contentCategory,
     contentType: product.contentType,
     tiers,
+    provider: getCohortProvider(cohort),
     cohortCode: cohort.code,
     cohortResolutionSource: resolutionSource,
     ...settings,
@@ -149,9 +159,11 @@ export function getWhopProduct(
   return toProductConfig(product, cohort, resolutionSource);
 }
 
-/** Every plan id of the resolved cohort — used for webhook plan matching. */
+/** Every Whop plan id of the resolved cohort — used for webhook plan matching. */
 export function getWhopProductPlanIds(product: WhopProductConfig): string[] {
-  return product.tiers.map((tier) => tier.planId);
+  return product.tiers.flatMap((tier) =>
+    tier.checkoutRef.provider === 'whop' ? [tier.checkoutRef.planId] : [],
+  );
 }
 
 /**
@@ -162,7 +174,7 @@ export function getWhopProductPlanIds(product: WhopProductConfig): string[] {
 export function resolveWhopTier(
   product: WhopProductConfig,
   now: Date = new Date(),
-): WhopTier {
+): CheckoutTier {
   const nowMs = now.getTime();
   for (const tier of product.tiers) {
     if (!tier.until) return tier;

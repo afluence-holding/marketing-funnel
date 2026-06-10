@@ -42,6 +42,17 @@ export async function createWhopCheckoutSessionServer(
   if (!apiKey) return null;
 
   const tier = resolveWhopTier(product);
+  // A Whop session must never be created for a non-Whop cohort (e.g. a future
+  // Hotmart edition) — fail closed; the provider-specific embed routes instead.
+  if (tier.checkoutRef.provider !== 'whop') {
+    console.error('[whop-checkout.server] active tier is not a whop plan', {
+      productKey,
+      cohortCode: product.cohortCode,
+      provider: tier.checkoutRef.provider,
+    });
+    return null;
+  }
+  const planId = tier.checkoutRef.planId;
   const purchaseEventId = createPurchaseEventId(product.key);
   const redirectUrl = getWhopProductRedirectUrl(product);
 
@@ -56,10 +67,10 @@ export async function createWhopCheckoutSessionServer(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        plan_id: tier.planId,
+        plan_id: planId,
         mode: 'payment',
         redirect_url: redirectUrl,
-        metadata: buildSessionMetadata(product, tier.planId, tier.price, purchaseEventId, meta),
+        metadata: buildSessionMetadata(product, planId, tier.price, purchaseEventId, meta),
       }),
       cache: 'no-store',
       signal: controller.signal,
@@ -81,7 +92,7 @@ export async function createWhopCheckoutSessionServer(
 
     return {
       sessionId: payload.id,
-      planId: tier.planId,
+      planId,
       purchaseEventId,
       value: tier.price,
       currency: product.currency,

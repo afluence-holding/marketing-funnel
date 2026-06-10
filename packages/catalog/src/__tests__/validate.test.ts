@@ -116,6 +116,31 @@ describe('validateProduct', () => {
     expect(validateCatalog([p1, p2]).join('\n')).toMatch(/claimed by both/);
   });
 
+  it('rejects mixed providers within one cohort (a cohort sells through ONE provider)', () => {
+    const p = clone();
+    p.cohorts[0].tiers[2] = {
+      price: 87,
+      checkoutRef: { provider: 'hotmart', offerCode: 'abc123xy' },
+    };
+    expect(validateProduct(p).join('\n')).toMatch(/tiers mix providers/);
+  });
+
+  it('accepts a valid hotmart-only cohort', () => {
+    const p = clone();
+    p.cohorts.push({
+      code: 'DI21-C4',
+      contentId: 'di21-c4',
+      startsAt: '2026-12-01T21:00:00-05:00',
+      endsAt: '2026-12-21T23:59:59-05:00',
+      timezone: 'America/Lima',
+      tiers: [
+        { price: 67, until: '2026-12-07T23:59:59-05:00', checkoutRef: { provider: 'hotmart', offerCode: 'abc123xy' } },
+        { price: 87, checkoutRef: { provider: 'hotmart', offerCode: 'def456zw' } },
+      ],
+    });
+    expect(validateProduct(p)).toEqual([]);
+  });
+
   it('accepts a valid additive C3', () => {
     const p = clone();
     p.cohorts.push({
