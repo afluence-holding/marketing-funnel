@@ -38,6 +38,10 @@ export type WhopCheckoutContext = {
   fbc?: string;
   value: number;
   currency: string;
+  /** Cohort (sales edition) the checkout session was created for. The purchase
+   * keeps the SESSION's cohort even if the visitor pays after a cohort change
+   * (explicit rule — see modularizacion-cohorts US B4). */
+  cohortCode?: string;
   startedAt: number;
 };
 
@@ -53,6 +57,7 @@ export function persistCheckoutSession(
     fbc: meta.fbc,
     value: session.value || resolveWhopTier(product).price,
     currency: session.currency || product.currency,
+    cohortCode: session.cohortCode ?? product.cohortCode,
     startedAt: Date.now(),
   };
   writeStorage(ctxKey(product.key), JSON.stringify(ctx));

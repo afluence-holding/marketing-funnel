@@ -12,6 +12,8 @@ export type WhopCheckoutSession = {
   purchaseEventId: string;
   value: number;
   currency: string;
+  /** Cohort (sales edition) the session was created for. */
+  cohortCode?: string;
 };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -56,21 +58,31 @@ export async function requestWhopCheckoutSession(
       purchaseEventId: data.purchaseEventId,
       value: data.value ?? 0,
       currency: data.currency ?? '',
+      cohortCode: data.cohortCode,
     };
   } finally {
     clearTimeout(timeout);
   }
 }
 
-export function getCachedWhopSession(productKey: string): WhopCheckoutSession | null {
+export function getCachedWhopSession(product: WhopProductConfig): WhopCheckoutSession | null {
   if (typeof sessionStorage === 'undefined') return null;
   try {
-    const raw = sessionStorage.getItem(cacheKey(productKey));
+    const raw = sessionStorage.getItem(cacheKey(product.key));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedWhopSession;
     if (!parsed.sessionId || !parsed.purchaseEventId) return null;
     if (Date.now() - parsed.cachedAt > CACHE_TTL_MS) {
-      sessionStorage.removeItem(cacheKey(productKey));
+      sessionStorage.removeItem(cacheKey(product.key));
+      return null;
+    }
+    // A session created for another cohort (sales edition) must never be
+    // reused: its plan_id/price/eventId belong to the old edition. Entries
+    // without cohortCode predate this deploy — same-edition by definition
+    // (10-minute TTL), so they stay valid and in-flight checkouts keep their
+    // purchaseEventId (pixel/CAPI dedup survives the deploy).
+    if (parsed.cohortCode && parsed.cohortCode !== product.cohortCode) {
+      sessionStorage.removeItem(cacheKey(product.key));
       return null;
     }
     return {
@@ -79,22 +91,30 @@ export function getCachedWhopSession(productKey: string): WhopCheckoutSession | 
       purchaseEventId: parsed.purchaseEventId,
       value: parsed.value,
       currency: parsed.currency,
+      cohortCode: parsed.cohortCode,
     };
   } catch {
     return null;
   }
 }
 
-export function cacheWhopSession(productKey: string, session: WhopCheckoutSession): void {
+export function cacheWhopSession(
+  product: WhopProductConfig,
+  session: WhopCheckoutSession,
+): void {
   if (typeof sessionStorage === 'undefined') return;
-  const payload: CachedWhopSession = { ...session, cachedAt: Date.now() };
-  sessionStorage.setItem(cacheKey(productKey), JSON.stringify(payload));
+  const payload: CachedWhopSession = {
+    ...session,
+    cohortCode: session.cohortCode ?? product.cohortCode,
+    cachedAt: Date.now(),
+  };
+  sessionStorage.setItem(cacheKey(product.key), JSON.stringify(payload));
 }
 
 export async function prefetchWhopCheckoutSession(
   product: WhopProductConfig,
 ): Promise<WhopCheckoutSession> {
-  const cached = getCachedWhopSession(product.key);
+  const cached = getCachedWhopSession(product);
   if (cached) return cached;
 
   const existing = inflightByProduct.get(product.key);
@@ -106,7 +126,7 @@ export async function prefetchWhopCheckoutSession(
       fbp: meta.fbp,
       fbc: meta.fbc,
     });
-    cacheWhopSession(product.key, session);
+    cacheWhopSession(product, session);
     persistCheckoutSession(product, session);
     return session;
   })().finally(() => {

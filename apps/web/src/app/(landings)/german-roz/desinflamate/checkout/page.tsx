@@ -19,16 +19,21 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 const PRODUCT_KEY = 'german-desinflamate';
-const product = getWhopProduct(PRODUCT_KEY)!;
 
 export const metadata: Metadata = {
   title: 'Reservar cupo — Reto Desinflámate · Germán Roz',
-  description: product.headline,
+  description: 'COMIDA REAL, SIN DIETAS RESTRICTIVAS — 21 DÍAS CON GERMÁN ROZ.',
   robots: { index: false, follow: false },
 };
 
 export default function DesinflamateCheckoutPage() {
-  // Sin redirección por ventana de venta: el checkout vende siempre.
+  // Cohort + tier resolved PER REQUEST (force-dynamic) — never at module load,
+  // so a deploy that already contains a future cohort keeps selling the right
+  // edition. Sin redirección por ventana de venta: el checkout vende siempre.
+  const product = getWhopProduct(PRODUCT_KEY);
+  if (!product) {
+    throw new Error(`[checkout] product not configured: ${PRODUCT_KEY}`);
+  }
   const tier = resolveWhopTier(product);
   const price = formatWhopPrice(product, tier.price);
 

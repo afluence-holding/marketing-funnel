@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
+    "prebuild": "npm run build -w @marketing-funnel/catalog",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3001}",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@marketing-funnel/catalog": "*",
     "@tailwindcss/postcss": "^4.2.1",
     "@whop/checkout": "^0.0.54",
     "lightningcss": "^1.31.1",

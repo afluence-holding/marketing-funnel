@@ -50,6 +50,7 @@ export async function POST(
       purchaseEventId: session.purchaseEventId,
       value: session.value,
       currency: session.currency,
+      cohortCode: session.cohortCode,
     });
   } catch {
     return NextResponse.json(

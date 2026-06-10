@@ -19,7 +19,9 @@ import { ensureMamaSinCaosLeadsTable } from './core/bootstrap/ensure-mama-sin-ca
 import { ensureCaroFitnessProgressTable } from './core/bootstrap/ensure-caro-fitness-progress-table';
 import { ensureGermanRozProgressTable } from './core/bootstrap/ensure-german-roz-progress-table';
 import { ensureWhatsAppGroupTables } from './core/bootstrap/ensure-whatsapp-group-tables';
+import { ensurePurchaseTables } from './core/bootstrap/ensure-purchase-tables';
 import { seedWhatsAppGroupPools } from './core/services/whatsapp-group-rotation.service';
+import { syncCohortsFromCatalog } from './core/services/cohort-sync.service';
 import { whatsappGroupPoolRegistry } from './orgs';
 
 const app = express();
@@ -68,6 +70,11 @@ app.listen(env.PORT, () => {
     .then(() => seedWhatsAppGroupPools(whatsappGroupPoolRegistry))
     .catch((error) => {
       console.error('[whatsapp-groups] failed to ensure/seed whatsapp group tables', error);
+    });
+  void ensurePurchaseTables()
+    .then(() => syncCohortsFromCatalog())
+    .catch((error) => {
+      console.error('[purchases] failed to ensure/sync cohort+purchase tables', error);
     });
   startWorkflowEngine();
   startCron();

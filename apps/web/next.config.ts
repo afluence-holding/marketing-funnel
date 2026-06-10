@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
   // .env.local) and file tracing from here — a stray lockfile elsewhere on
   // the machine would otherwise mis-detect the root and skip our env vars.
   outputFileTracingRoot: monorepoRoot,
+  transpilePackages: ['@marketing-funnel/catalog'],
   experimental: {
     externalDir: true,
   },

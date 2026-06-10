@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build shared packages
+        run: |
+          npm run build -w @marketing-funnel/config
+          npm run build -w @marketing-funnel/catalog
+          npm run build -w @marketing-funnel/db
+      - name: Typecheck catalog
+        run: npm run typecheck -w @marketing-funnel/catalog
+      - name: Tests
+        run: npm run test --workspaces --if-present
+      - name: Catalog lockdown — legacy registries must stay thin wrappers
+        run: |
+          # The price ladder / contentIds live ONLY in packages/catalog.
+          # Fail if someone re-inlines plan ids or content ids in the wrappers.
+          if grep -nE "plan_[A-Za-z0-9]{10,}|contentIds: \['di21" \
+            apps/web/src/lib/whop/products.ts \
+            apps/api/src/core/services/whop-products.ts; then
+            echo "::error::Inline tiers/contentIds found in a thin wrapper — define them in packages/catalog instead."
+            exit 1
+          fi
