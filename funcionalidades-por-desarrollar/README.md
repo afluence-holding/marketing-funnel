@@ -53,6 +53,6 @@ Mínimo obligatorio por funcionalidad: `USER-STORIES.md`.
 |---|---|---|---|
 | Modularización de cohorts | [`modularizacion-cohorts/`](./modularizacion-cohorts/USER-STORIES.md) | ✅ Hecho | `packages/catalog` + `marketing.cohorts`/`purchases` en producción (PRs #77–#92). Cohort como entidad de primera clase. |
 | Migración checkout Whop → Hotmart (German Roz) | [`hotmart-embedded-checkout/`](./hotmart-embedded-checkout/USER-STORIES.md) | ✅ Hecho | German vende por Hotmart en producción (C2→Hotmart switch, #89); embed + webhook + CAPI verificados con compra real. Lucas en Whop. |
-| Capa de integraciones / fan-out (modular por creador) | [`integraciones-fanout/`](./integraciones-fanout/USER-STORIES.md) | 📝 Plan | Fan-out registro/compra → MailerLite, Palti, Hyros, Meta CAPI. Modular por org (cada creador con sus cuentas). Outbox durable + reintentos. Bloqueante: contrato API de Palti. |
+| Capa de integraciones / fan-out (modular por creador) | [`integraciones-fanout/`](./integraciones-fanout/USER-STORIES.md) | 📝 Plan | Fan-out registro/compra → MailerLite, Hyros, Meta CAPI. Modular por org (cada creador con sus cuentas). Outbox durable + reintentos. Palti fuera de alcance (otro sistema). |
 
 > Pendientes de negocio (no de código): fechas/escalera de C3, Watch Paths del servicio web en Railway, UptimeRobot, refund de la compra de prueba. Ver el final de cada `USER-STORIES.md`.
