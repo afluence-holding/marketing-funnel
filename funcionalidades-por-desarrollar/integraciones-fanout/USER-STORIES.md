@@ -1,7 +1,8 @@
 # Capa de Integraciones / Fan-out — User Stories
 
-**Estado:** 📝 Plan (rev. 2026-06-10 — análisis multi-agente + diseño SaaS modular + auditoría adversarial incorporada). Listo para revisión de negocio; implementación pendiente de go-ahead + contrato de Palti.
-**Objetivo de negocio:** convertir el fan-out de integraciones (MailerLite, Palti, Hyros, Meta CAPI) en una **capa modular por organización**, de modo que **activar un creador nuevo sea aditivo** (un archivo de config + sus secretos), sin tocar el core ni a los creadores existentes — con la robustez para que **ningún registro/venta se pierda ni se duplique**.
+**Estado:** 📝 Plan (rev. 2026-06-10 — análisis multi-agente + diseño SaaS modular + auditoría adversarial incorporada). Listo para revisión de negocio; implementación pendiente de go-ahead.
+**Objetivo de negocio:** convertir el fan-out de integraciones (MailerLite, Hyros, Meta CAPI) en una **capa modular por organización**, de modo que **activar un creador nuevo sea aditivo** (un archivo de config + sus secretos), sin tocar el core ni a los creadores existentes — con la robustez para que **ningún registro/venta se pierda ni se duplique**.
+> **Fuera de alcance (decisión de Negocio 2026-06-10): Palti / bot de WhatsApp** — NO entra en esta capa. El push al bot lo maneja otro sistema. Esta capa cubre MailerLite, Hyros y Meta CAPI.
 
 **Brief de referencia:** [`docs/DI21-C2-DEV-Brief-Integraciones.md`](../../docs/DI21-C2-DEV-Brief-Integraciones.md) (caso DI21-C2 / German).
 
@@ -11,11 +12,11 @@
 
 Si una historia no contribuye a esa frase, es un enabler técnico y vive en la DoD transversal.
 
-**Premisa de dominio:** un evento de negocio (`registro` = lead creado · `compra` = pago confirmado) ocurre en la DB y se reparte (fan-out) a N destinos externos. Cada **creador (org/BU)** puede tener **su propia cuenta** en cada destino: su token de MailerLite, sus group IDs y field keys, su pixel/CAPI, su Hyros, su Palti. El **mapeo** (qué destinos, qué IDs) es definición → code-first; los **tokens** son secretos → env.
+**Premisa de dominio:** un evento de negocio (`registro` = lead creado · `compra` = pago confirmado) ocurre en la DB y se reparte (fan-out) a N destinos externos. Cada **creador (org/BU)** puede tener **su propia cuenta** en cada destino: su token de MailerLite, sus group IDs y field keys, su pixel/CAPI, su Hyros. El **mapeo** (qué destinos, qué IDs) es definición → code-first; los **tokens** son secretos → env.
 
 **Alcance:**
-- ENTRA: dispatcher de fan-out por `orgKey/buKey`; connectors MailerLite / Palti / Hyros / Meta-CAPI (este último envolviendo lo existente); outbox durable con idempotencia + reintentos por cron; config code-first por creador; emisión de evento `compra` desde los webhooks y `registro` desde la ingesta.
-- NO ENTRA (anti-overshoot): UI de admin para editar integraciones (es code-first, PR+deploy); connectors de proveedores no usados; cola/broker (Redis/SQS); embedded checkout (P2 del brief); webhook de asistencia al webinar (P2 opcional); motor de reglas/DSL configurable; secrets-manager dedicado (env sufijado alcanza para v0).
+- ENTRA: dispatcher de fan-out por `orgKey/buKey`; connectors MailerLite / Hyros / Meta-CAPI (este último envolviendo lo existente); outbox durable con idempotencia + reintentos por cron; config code-first por creador; emisión de evento `compra` desde los webhooks y `registro` desde la ingesta.
+- NO ENTRA (anti-overshoot): **Palti / bot de WhatsApp** (lo maneja otro sistema); UI de admin para editar integraciones (es code-first, PR+deploy); connectors de proveedores no usados; cola/broker (Redis/SQS); embedded checkout (P2 del brief); webhook de asistencia al webinar (P2 opcional); motor de reglas/DSL configurable; secrets-manager dedicado (env sufijado alcanza para v0).
 
 ---
 
@@ -33,14 +34,14 @@ Si una historia no contribuye a esa frase, es un enabler técnico y vive en la D
 
 ### Lo que FALTA (el trabajo real)
 - **No hay evento de compra en el bus** ni punto único de fan-out.
-- **No hay outbox / delivery-log ni reintentos** — si MailerLite/Palti fallan, el lead/venta se pierde (el webhook ya terminó; el `Set` en memoria se va al reiniciar).
-- **No existe integración con MailerLite / Hyros / Palti** (grep: cero referencias fuera de docs; solo el pixel de Hyros client-side).
+- **No hay outbox / delivery-log ni reintentos** — si MailerLite/Hyros fallan, el lead/venta se pierde (el webhook ya terminó; el `Set` en memoria se va al reiniciar).
+- **No existe integración con MailerLite / Hyros** (grep: cero referencias fuera de docs; solo el pixel de Hyros client-side).
 - **El brief asume IDs/token de UNA cuenta** (la 2219743 de German) → hay que generalizar a resolución por creador.
 
 ### Verificado en vivo (MCP MailerLite, cuenta de German)
 - Cuenta `2219743` ✓; grupos `189628566065907406` (Registrantes, 0 subs) y `189880387420292276` (Compradores, 0 subs) existen con esos nombres ✓; los 6 campos (`name`, `estado`, `fuente`, `fecha_registro`=DATE, `cohorte`, `tier_compra`) existen ✓.
 - **Token = cuenta = creador.** Group IDs y field keys son **por-cuenta** (otra cuenta no los tiene). Upsert `POST /api/subscribers` es por email (idempotente); asignar a grupo dispara AUTO①; quitar de grupo es `DELETE /subscribers/{subscriber_id}/groups/{group_id}` (necesita el `subscriber_id`, no el email). Rate limit ~120 req/min **por cuenta** → throttle por token. NO tocar los grupos grandes preexistentes (`Desinflama 21`=2521 subs, etc.).
-- **Hyros y Palti son [CONFIRM]**: Hyros = API key por creador + eventos lead/purchase (endpoint exacto a confirmar en su panel). **Palti = DESCONOCIDO**: no hay API pública estándar documentada — hay que conseguir el contrato (endpoint/auth/payload, push vs pull) antes de implementar. **Posible bloqueante de P0.**
+- **Hyros es [CONFIRM]**: API key por creador + eventos lead/purchase (endpoint exacto a confirmar en su panel). MailerLite quedó completamente verificado.
 
 ---
 
@@ -58,7 +59,7 @@ Si una historia no contribuye a esa frase, es un enabler técnico y vive en la D
         │                                   ▲
         ▼                                   │ cron */1: reintenta pending/failed due
  connectorRegistry[target.connector].deliver(event, target, secrets)
-   mailerlite | palti | hyros | meta-capi
+   mailerlite | hyros | meta-capi
 ```
 
 ### Dos dueños por concern (separación clave)
@@ -91,7 +92,7 @@ CREATE TABLE IF NOT EXISTS marketing.integration_deliveries (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_key         text NOT NULL,
   bu_key          text NOT NULL,
-  connector       text NOT NULL,                  -- mailerlite | palti | hyros | meta-capi
+  connector       text NOT NULL,                  -- mailerlite | hyros | meta-capi
   event_type      text NOT NULL,                  -- registro | compra
   dedup_key       text NOT NULL,                  -- 'compra:whop:pay_123' | 'registro:lead:<uuid>'
   payload         jsonb NOT NULL,                 -- snapshot del evento
@@ -120,7 +121,7 @@ ALTER TABLE marketing.integration_deliveries ENABLE ROW LEVEL SECURITY;
 
 ---
 
-## ÉPICA A — Fan-out P0 del webinar: registrante → MailerLite + Palti (German)
+## ÉPICA A — Fan-out P0 del webinar: registrante → MailerLite (German)
 **Valor:** desbloquea el camino crítico registro→email+WhatsApp.
 
 **A1** — Como Sistema, quiero un `integration-dispatcher` que ante un evento resuelva los destinos habilitados de `orgKey/buKey` y entregue a cada connector, para tener un punto único de fan-out.
@@ -141,15 +142,11 @@ ALTER TABLE marketing.integration_deliveries ENABLE ROW LEVEL SECURITY;
 - **V:** un registro con fbp/fbc/eventId → la fila de outbox los contiene; el CAPI reintentado por cron sigue deduplicando con el Pixel (Events Manager).
 > Hallazgo del auditor: hoy fbp/fbc/eventId **no se persisten** (solo viven en el request, el inline CAPI los descarta). Sin A6, el dedupe del Lead CAPI se rompe — es el hueco más serio del plan y la razón #2 para el disparo imperativo.
 
-**A4** — Como Registrante, quiero llegar al bot de WhatsApp (Palti) con mi teléfono E.164, para recibir recordatorios del webinar. **🔴 FUERA DE P0 — bloqueada por el contrato de Palti (no hay API documentada). P0 se entrega sin Palti (A1/A2/A3/A5/A6).**
-- **CE:** `palti.deliver()` pasa `{telefono}`+`{nombre}` al registrarse; teléfono validado E.164 (+51…); el contrato real de Palti (endpoint/auth/payload) queda definido.
-- **V:** registro de prueba → entra al bot y recibe recordatorio (checklist del brief).
-
 **A5** — Como Dev, quiero `german-roz/main/integrations.ts` con destinos+IDs+fieldKeys y `secretRef` a env, para que el mapeo viva en código y los tokens en env.
 - **CE:** el archivo declara los 4 destinos con sus IDs/mapeos y `secretRef`; agregado en `orgs/index.ts`; cero secretos literales.
 - **V:** boot valida la config (ver E2); `git diff` muestra solo mapeo, nunca tokens.
 
-**Éxito A:** un registrante de prueba de German aterriza en MailerLite (0→1, AUTO①) y en Palti, vía el dispatcher genérico, sin IDs hardcodeados en el core.
+**Éxito A:** un registrante de prueba de German aterriza en MailerLite (0→1, AUTO①), vía el dispatcher genérico, sin IDs hardcodeados en el core.
 
 ---
 
@@ -182,7 +179,7 @@ ALTER TABLE marketing.integration_deliveries ENABLE ROW LEVEL SECURITY;
 
 ---
 
-## ÉPICA C — Fan-out P1 de compra: Whop → MailerLite (compradores) + Palti + supresión + tier
+## ÉPICA C — Fan-out P1 de compra: Whop → MailerLite (compradores) + supresión + tier
 **Valor:** cierra el camino compra→sistemas, reusando el `payment.succeeded` que ya persiste compras.
 
 **C1** — Como Sistema, quiero emitir `IntegrationEvent{type:'compra'}` desde el webhook tras persistir la compra, para enganchar el fan-out sin bloquear el CAPI.
@@ -198,11 +195,7 @@ ALTER TABLE marketing.integration_deliveries ENABLE ROW LEVEL SECURITY;
 - **CE:** el tier se resuelve del catalog (no se recalcula) — $67/$77/$87 por ventana — y se manda a MailerLite (`tier_compra`) + se guarda.
 - **V:** compras en las 3 ventanas → `tier_compra` correcto en MailerLite y DB.
 
-**C4** — Como Comprador, quiero Palti activado post-compra, para tener el canal oficial de consultas. **🔴 FUERA DE P0 — bloqueada por el contrato de Palti. La compra entrega MailerLite+tier+CAPI (C1/C2/C3/D) sin Palti.**
-- **CE:** `palti.deliver()` dispara el flujo "comprador" con teléfono+datos de acceso al confirmar pago.
-- **V:** compra de prueba → flujo comprador activado en Palti.
-
-**Éxito C:** compra de prueba (Whop) → grupo Compradores +1, quitado de Registrantes, `tier_compra` correcto, Palti activado.
+**Éxito C:** compra de prueba (Whop) → grupo Compradores +1, quitado de Registrantes, `tier_compra` correcto.
 
 ---
 
@@ -236,7 +229,7 @@ ALTER TABLE marketing.integration_deliveries ENABLE ROW LEVEL SECURITY;
 - **CE:** config inválida falla al boot con mensaje accionable (mismo criterio que la validación del catalog); un destino mailerlite sin groupId, o un `secretRef` sin env, se detecta.
 - **V:** fixtures inválidos fallan con mensaje claro; el válido bootea.
 
-**E3 (nueva, 🟠 P1) — Bootstrap de la cuenta de un creador.** Como Dev, quiero un script idempotente que cree/verifique en la cuenta MailerLite (y Hyros/Palti) del creador nuevo los **grupos y field keys** que su `integrations.ts` declara, para que "activar el creador N" sea realmente aditivo.
+**E3 (nueva, 🟠 P1) — Bootstrap de la cuenta de un creador.** Como Dev, quiero un script idempotente que cree/verifique en la cuenta MailerLite del creador nuevo los **grupos y field keys** que su `integrations.ts` declara, para que "activar el creador N" sea realmente aditivo.
 - **CE:** dado un `integrations.ts`, el script crea los grupos faltantes y los custom fields faltantes (vía `create_group`/`create_field`), idempotente (no duplica); reporta lo que ya existía.
 - **V:** correr el bootstrap contra una cuenta MailerLite limpia → grupos + campos creados; segunda corrida = no-op.
 > Hallazgo del auditor: las US asumían que los 6 campos y 2 grupos existen — verificado **solo** para la cuenta de German. Una cuenta nueva no los tiene → el upsert con `fields {cohorte, tier_compra}` inexistentes falla/ignora. Sin E3, "100% aditivo" no se cumple (habría trabajo manual por creador).
@@ -254,17 +247,16 @@ ALTER TABLE marketing.integration_deliveries ENABLE ROW LEVEL SECURITY;
 - **Replay:** script en `apps/admin/scripts/` o endpoint admin-token para re-encolar `dead` tras arreglar un connector.
 
 ## Decisiones pendientes (para el equipo — las del negocio/externas)
-1. **Contrato de Palti** (🔴 BLOQUEANTE de A4/C4, ya sacadas de P0): el brief solo dice "credenciales Palti" — no hay API pública documentada. Conseguir endpoint/auth/payload y si es push (llamamos) o pull (consumen nuestro webhook). **P0 y el resto se entregan sin Palti.**
-2. **Hyros** [CONFIRM]: endpoint/schema reales del panel del creador (para D1).
-3. **fbp/fbc/event_id en la landing:** confirmar que la landing los captura y los manda en `tracking.meta` del request de ingesta (A6 los snapshotea ahí — pero la landing debe enviarlos).
-4. **Matriz de errores reintentables vs permanentes** por connector; `max_attempts`/backoff cap; SLA para alertar `dead`.
-5. **Horizonte de creadores para env v0:** confirmar que env sufijado alcanza (decenas), con `backoffice.integration_credential` como upgrade path (3 condiciones) cuando se necesite rotar/editar sin deploy.
+1. **Hyros** [CONFIRM]: endpoint/schema reales del panel del creador (para D1).
+2. **fbp/fbc/event_id en la landing:** confirmar que la landing los captura y los manda en `tracking.meta` del request de ingesta (A6 los snapshotea ahí — pero la landing debe enviarlos).
+3. **Matriz de errores reintentables vs permanentes** por connector; `max_attempts`/backoff cap; SLA para alertar `dead`.
+4. **Horizonte de creadores para env v0:** confirmar que env sufijado alcanza (decenas), con `backoffice.integration_credential` como upgrade path (3 condiciones) cuando se necesite rotar/editar sin deploy.
 
 ## Resuelto (rev. 2026-06-10, auditoría adversarial)
 - **Punto de disparo:** llamada **imperativa** desde webhook/ingesta (no eventBus) — el bus es síncrono no-observable y no carga fbp/fbc/event_id. Ver Decisión de arquitectura.
 - **`dedup_key` del registro:** `registro:lead:<lead.id>` (el lead se persiste antes del dispatch).
 - **`Set` en memoria de Whop:** se mantiene como guarda de primer nivel; el outbox es la verdad durable.
-- **Palti fuera de P0:** A4/C4 ya no bloquean el lanzamiento.
+- **Palti / bot de WhatsApp:** FUERA de alcance (decisión de Negocio) — lo maneja otro sistema; A4/C4 eliminadas.
 - **5 huecos del auditor → US/CE nuevos:** A6 (persistir tracking), C2 (reconciliación de estado), A2 (rate-limit compartido), B2 (anti-race inline↔cron), B1 (first-payload-wins), B5 (PII/retención/métricas), E3 (bootstrap de cuenta).
 
 ## Referencias
@@ -275,7 +267,7 @@ ALTER TABLE marketing.integration_deliveries ENABLE ROW LEVEL SECURITY;
 | Grupo Compradores | `189880387420292276` (DI21-C2-Compradores) |
 | Campos custom | `name`, `estado` (lo setea AUTO①), `fuente`, `fecha_registro` (DATE), `cohorte`, `tier_compra` |
 | API base | `https://connect.mailerlite.com/api` |
-| Secretos (env, sufijo por org) | `MAILERLITE_TOKEN_*`, `HYROS_API_KEY_*`, `PALTI_*`, `META_PIXEL_ID_*`, `META_CAPI_TOKEN_*` |
+| Secretos (env, sufijo por org) | `MAILERLITE_TOKEN_*`, `HYROS_API_KEY_*`, `META_PIXEL_ID_*`, `META_CAPI_TOKEN_*` |
 
 ## Archivos clave (al implementar)
 - `apps/api/src/core/integrations/` (dispatcher, secrets, delivery-repository, connectors/) — NUEVO core agnóstico.
