@@ -115,10 +115,20 @@ export function HotmartCheckoutEmbed({
     const options = {
       offer: offerCode,
       prefilledInfo: { sck: purchaseEventId },
+      // Checkout minimalista (decisión de Negocio 2026-06-10): SOLO el
+      // formulario de tarjeta — se ocultan todos los métodos alternativos.
+      // Los CAMPOS del comprador (documento/dirección) se configuran en el
+      // panel de Hotmart, no aquí (Elements no los controla).
       visibilityOptions: {
         src,
         xcod,
         hideCouponOption: '1',
+        hidePayPal: '1',
+        hidePix: '1',
+        hideBillet: '1',
+        hideTransf: '1',
+        hidewallet: '1',
+        hideMultipleCards: '1',
       },
     };
 
