@@ -18,7 +18,7 @@ export async function DesinflamateCheckoutEmbedLoader() {
       initialSession={initialSession}
       theme="light"
       accentColor="orange"
-      backHref="/german-roz/lista-espera"
+      backHref="/german-roz/vsl-desinflamate"
       backLabel="← Volver"
     />
   );

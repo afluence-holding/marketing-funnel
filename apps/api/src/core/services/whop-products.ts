@@ -121,3 +121,22 @@ export function resolveWhopPurchaseProductByCohort(
 export function getAllWhopPurchasePlanIds(): string[] {
   return CATALOG.flatMap((product) => getWhopPlanIds(product));
 }
+
+/**
+ * Resolve the product (and tier price) for an incoming Hotmart offer code.
+ * Same catalog lookup as Whop — the cohort that OWNS the offer attributes
+ * the purchase (contentId/cohortCode correct across editions).
+ */
+export function resolveHotmartPurchaseProduct(
+  offerCode: string | undefined,
+): ResolvedWhopPurchaseProduct | null {
+  if (!offerCode) return null;
+  for (const catalogProduct of CATALOG) {
+    const hit = getCohortByCheckoutId(catalogProduct, offerCode);
+    if (!hit || hit.tier.checkoutRef.provider !== 'hotmart') continue;
+    const product = toPurchaseProduct(catalogProduct, hit.cohort);
+    if (!product) continue;
+    return { product, price: hit.tier.price };
+  }
+  return null;
+}
