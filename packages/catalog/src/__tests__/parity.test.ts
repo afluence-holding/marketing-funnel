@@ -5,7 +5,7 @@
  * extraction — if this test fails, the migration changed the sale.
  */
 import { describe, expect, it } from 'vitest';
-import { GERMAN_ROZ_MAIN, getProductByBu, getProductByKey } from '../index';
+import { GERMAN_ROZ_MAIN, getProductByBu, getProductByKey, resolveActiveTier } from '../index';
 
 describe('legacy parity — german-desinflamate (C2)', () => {
   const c2 = GERMAN_ROZ_MAIN.cohorts[0];
@@ -45,9 +45,10 @@ describe('legacy parity — german-desinflamate (C2)', () => {
     ]);
   });
 
-  it('sales period matches the legacy opensAt/closesAt', () => {
-    expect(c2.startsAt).toBe('2026-06-10T21:00:00-05:00');
-    expect(c2.endsAt).toBe('2026-06-30T23:59:59-05:00');
+  it('Whop cohort is PARKED (closed past edition) after the 2026-06-10 Hotmart switch', () => {
+    // Kept only so Whop plan_ids resolve refunds/CAPI of past Whop sales — its
+    // dates are nominal (a past day) so it never resolves as the active cohort.
+    expect(c2.endsAt).toBe('2026-06-09T23:59:59-05:00');
     expect(c2.timezone).toBe('America/Lima');
   });
 
@@ -59,5 +60,30 @@ describe('legacy parity — german-desinflamate (C2)', () => {
     expect(getProductByKey('german-desinflamate')).toBe(GERMAN_ROZ_MAIN);
     expect(getProductByBu('german-roz', 'main')).toBe(GERMAN_ROZ_MAIN);
     expect(getProductByKey('lucas-reto')).toBeNull(); // Lucas intentionally absent
+  });
+});
+
+describe('C2 live edition — Hotmart (switch 2026-06-10)', () => {
+  const live = GERMAN_ROZ_MAIN.cohorts[1];
+
+  it('is the Hotmart edition with the verified USD offer codes', () => {
+    expect(live.code).toBe('DI21-C2H');
+    expect(live.contentId).toBe('di21-c2'); // unified with Whop for Meta reporting
+    expect(live.startsAt).toBe('2026-06-10T00:00:00-05:00');
+    expect(live.endsAt).toBe('2026-06-30T23:59:59-05:00');
+    expect(live.tiers.map((t) => t.checkoutRef)).toEqual([
+      { provider: 'hotmart', offerCode: 'ymzf5qdj' },
+      { provider: 'hotmart', offerCode: '5kh9auq4' },
+      { provider: 'hotmart', offerCode: '3m2koch3' },
+    ]);
+    expect(live.tiers.map((t) => t.price)).toEqual([67, 77, 87]);
+  });
+
+  it('is the ACTIVE cohort that sells during the C2 window (via Hotmart)', () => {
+    const r = resolveActiveTier(GERMAN_ROZ_MAIN, new Date('2026-06-15T12:00:00-05:00'));
+    expect(r.cohort.code).toBe('DI21-C2H');
+    expect(r.resolutionSource).toBe('active');
+    expect(r.tier.price).toBe(67);
+    expect(r.tier.checkoutRef.provider).toBe('hotmart');
   });
 });
