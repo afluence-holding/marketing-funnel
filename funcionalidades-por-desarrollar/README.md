@@ -51,5 +51,7 @@ Mínimo obligatorio por funcionalidad: `USER-STORIES.md`.
 
 | Funcionalidad | Carpeta | Estado | Notas |
 |---|---|---|---|
-| Modularización de cohorts | [`modularizacion-cohorts/`](./modularizacion-cohorts/USER-STORIES.md) | 📝 Plan | Cohort como entidad de primera clase (agnóstico al proveedor). Dependencia de Hotmart. |
-| Migración checkout Whop → Hotmart (German Roz) | [`hotmart-embedded-checkout/`](./hotmart-embedded-checkout/USER-STORIES.md) | 📝 Plan | Reemplazo total de Whop por Hotmart en German; Lucas se mantiene en Whop. Depende de modularización de cohorts. |
+| Modularización de cohorts | [`modularizacion-cohorts/`](./modularizacion-cohorts/USER-STORIES.md) | ✅ Hecho | `packages/catalog` + `marketing.cohorts`/`purchases` en producción (PRs #77–#92). Cohort como entidad de primera clase. |
+| Migración checkout Whop → Hotmart (German Roz) | [`hotmart-embedded-checkout/`](./hotmart-embedded-checkout/USER-STORIES.md) | ✅ Hecho | German vende por Hotmart en producción (C2→Hotmart switch, #89); embed + webhook + CAPI verificados con compra real. Lucas en Whop. |
+
+> Pendientes de negocio (no de código): fechas/escalera de C3, Watch Paths del servicio web en Railway, UptimeRobot, refund de la compra de prueba. Ver el final de cada `USER-STORIES.md`.

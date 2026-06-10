@@ -1,6 +1,6 @@
 # Modularización de cohorts — User Stories
 
-**Estado:** 📝 Plan (rev. 2026-06-09 — reestructurado por épicas de valor; decisiones de Negocio incorporadas)
+**Estado:** ✅ HECHO — desplegado en producción 2026-06-10 (PRs #77–#92). `packages/catalog` + `marketing.cohorts`/`purchases` vivos; checkout provider-aware; CI + uptime monitor. Plan/épicas conservados abajo como registro.
 **Objetivo de negocio:** modelar el **cohort (periodo de venta) como entidad de primera clase**, para lanzar C3, C4… sin sobrescribir ni perder la configuración del cohort anterior, sin incoherencias de precio/fecha/contentId, y pudiendo **consultar las ventas de cada edición**.
 
 **Premisa de dominio (confirmada por Nico):** un **producto ES una Business Unit** (la organización puede tener múltiples productos = múltiples BUs), y un **cohort es el periodo de venta de ese producto/BU** (fechas + escalera de tiers + contentId). Jerarquía:
