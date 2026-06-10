@@ -141,6 +141,14 @@ Todas: `PAY_IN_FULL`, conversión de moneda ON (el comprador ve su moneda local;
 - **Fase 3 del plan Hotmart** (`funcionalidades-por-desarrollar/hotmart-embedded-checkout/`): el webhook NO usa esta API — usa el Postback v2.0.0 (header `X-HOTMART-HOTTOK`, ver brief §5). Esta API REST sirve para: validar offers/productos, reconciliación de ventas (sales/history vs `marketing.purchases`), y QA del spike.
 - **Futuro opcional:** `packages/hotmart-client` siguiendo el patrón de `packages/meta-ads` (token cacheado + retry en 401/429) si la reconciliación se vuelve recurrente.
 
+## 5b. Checkout Elements — personalización (verificado A/B headless, 2026-06-10)
+
+⚠️ **Los parámetros `hide*` NO funcionan en el checkout embebido.** Probado empíricamente: `pay.hotmart.com/elements?off=...` renderiza IDÉNTICO con y sin `hideCouponOption/hidePayPal/hidePix/hideBillet/hideTransf/hidewallet/hideMultipleCards/split` (esos params son del checkout clásico por URL, no de Elements). La lib SÍ reenvía los params al iframe (verificado en la URL del iframe) — es Hotmart quien los ignora en `/elements`.
+
+**Lo que SÍ controla la lib** (leído del source): `offer`, `locale`, `countryIsoCode` (fuerza país/moneda del render), `prefilledInfo` (email/nombre/doc/tel/sck — el `sck` validado round-trip), `visibilityOptions→query params` (solo honra src/xcod a efectos prácticos).
+
+**El checkout embebido se personaliza desde el PANEL** (por producto): métodos de pago por país (Mercado Pago, etc.), permitir cupones, cuotas/meses (parcelamiento), campos del comprador. El render además se geolocaliza: desde México muestra MXN+IVA+RFC+meses; desde Perú, soles. `countryIsoCode` permitiría fijar el país si algún día se quiere.
+
 ## 6. Pendientes
 - [x] ~~Resolver el 500 de Get Offers~~ → resuelto: el path requiere el **ucode**, no el id numérico (§3.3).
 - [ ] Confirmar params oficiales de sales/history y paginación cuando el WAF de docs lo permita.
