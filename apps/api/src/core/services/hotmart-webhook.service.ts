@@ -8,6 +8,7 @@ import {
   updatePurchaseStatus,
 } from './purchase-persistence.service';
 import { hasCapiCredentials, sendWhopPurchaseCapi } from './whop-purchase.service';
+import { dispatchIntegrationEvent } from '../integrations/dispatcher';
 
 /**
  * Hotmart webhook (Postback v2.0.0) — Fase 3 (producción).
@@ -218,6 +219,32 @@ export async function handleHotmartWebhookEvent(
     });
     return { received: true, event, transactionId };
   }
+
+  // --- Fan-out de integraciones (compra) — imperativo, no bloquea. MailerLite
+  // (mueve a Compradores + tier + saca de Registrantes) + Hyros. Se dispara ACÁ
+  // (antes del CAPI) para que MailerLite NO dependa de las credenciales Meta. El
+  // outbox es idempotente, así que un retry de Hotmart no re-entrega. German YA
+  // NO incluye meta-capi en su config (CAPI inline arriba) → sin doble-fire. ---
+  void dispatchIntegrationEvent({
+    type: 'compra',
+    orgKey: product.orgKey,
+    buKey: product.buKey,
+    dedupBase: `hotmart:${transactionId}`,
+    email,
+    firstName,
+    lastName,
+    cohortCode: product.cohortCode,
+    tier: price,
+    value: amount,
+    currency,
+    orderId: transactionId,
+    occurredAt: new Date(),
+  }).catch((error) => {
+    console.warn('[integrations] dispatch compra (hotmart) failed (non-blocking)', {
+      transactionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
 
   // CAPI-only (no hay pixel de respaldo): si faltan credenciales Meta, NO se
   // estampa capi_sent_at — el retry de Hotmart re-emitirá cuando se configuren,
