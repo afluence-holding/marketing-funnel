@@ -1,27 +1,34 @@
 /**
- * Generic Whop product registry + date-driven price ladder resolver.
+ * Whop product registry (web side) — THIN WRAPPER over the shared catalog.
+ *
+ * The price ladder, plan ids, sales dates and contentIds are defined ONCE in
+ * `@marketing-funnel/catalog` (same source the API reads — web and API can no
+ * longer diverge). This module only adds web-only presentation/config concerns
+ * (NEXT_PUBLIC pixel id, public base URL, routes, copy) and adapts the catalog
+ * to the shape the checkout/tracking components consume.
+ *
+ * Do NOT inline tiers/planIds/contentIds here — CI fails the build if you do.
  *
  * Shared by client and server (no server-only imports). `process.env.NEXT_PUBLIC_*`
- * values are inlined at build time, so this module is safe to import from both
- * the embed (client) and the checkout session creator (server).
- *
- * Each product maps to one or more Whop plans (one plan per price tier). The
- * active tier is resolved purely from the current date — a plan per tier means
- * the `plan_id` we send IS the price that gets charged (no coupon-application
- * risk).
+ * values are inlined at build time. Every consumer resolving prices by date
+ * must live on a `force-dynamic` route.
  */
+
+import {
+  getProductByKey,
+  resolveActiveCohort,
+  type BusinessUnitProduct,
+  type Cohort,
+  type CohortResolutionSource,
+  type Tier,
+} from '@marketing-funnel/catalog';
 
 export type WhopTier = {
   /** Whop plan id (plan_xxx). */
   planId: string;
   /** Base price in the product currency (major units, e.g. 67 for $67 USD). */
   price: number;
-  /**
-   * Tier is active while `now <= until` (inclusive). ISO 8601 string WITH
-   * timezone offset (e.g. `2026-06-16T23:59:59-05:00` for America/Lima).
-   * Omit on the final tier so it acts as the fallback once every dated tier
-   * has elapsed.
-   */
+  /** Tier is active while `now <= until` (inclusive). ISO 8601 with tz offset. */
   until?: string;
 };
 
@@ -54,19 +61,12 @@ export type WhopProductConfig = {
   title: string;
   /** One-line headline for the checkout card. */
   headline: string;
-  /** Date-driven price ladder; the last tier should omit `until` (fallback). */
+  /** Date-driven price ladder of the resolved cohort; last tier omits `until`. */
   tiers: WhopTier[];
-  /**
-   * Sales window (ISO 8601 WITH tz offset). Outside this window the checkout +
-   * VSL redirect to the matching path below. Omit either bound to leave that
-   * side open.
-   */
-  opensAt?: string;
-  closesAt?: string;
-  /** Where to send visitors before `opensAt` (e.g. webinar registration). */
-  beforeOpenPath?: string;
-  /** Where to send visitors after `closesAt` (e.g. waitlist for next edition). */
-  afterClosePath?: string;
+  /** Cohort (sales edition) this config was resolved for — `launch_ops.launch.code`. */
+  cohortCode: string;
+  /** How the cohort was resolved (`active` vs explicit fallback — never blocks the sale). */
+  cohortResolutionSource: CohortResolutionSource;
 };
 
 const GERMAN_PUBLIC_URL = (
@@ -74,57 +74,90 @@ const GERMAN_PUBLIC_URL = (
   'https://nutricion.germanroz.com'
 ).replace(/\/$/, '');
 
+type WebProductSettings = {
+  metaPixelId?: string;
+  publicBaseUrl: string;
+  checkoutPath: string;
+  graciasPath: string;
+  title: string;
+  headline: string;
+};
+
 /**
- * Registry of all embeddable Whop products. Add a new entry to expose an
- * embedded checkout for another org/BU — no other code changes required.
+ * Web-only presentation/config per product. NEXT_PUBLIC env reads must stay
+ * static property accesses so Next.js can inline them at build time.
  */
-export const WHOP_PRODUCTS: Record<string, WhopProductConfig> = {
+const WEB_PRODUCT_SETTINGS: Record<string, WebProductSettings> = {
   'german-desinflamate': {
-    key: 'german-desinflamate',
-    orgKey: 'german-roz',
-    buKey: 'main',
-    currency: 'USD',
-    country: 'pe',
-    timezone: 'America/Lima',
-    source: 'landing-german-roz-desinflamate',
-    contentIds: ['di21-c2'],
-    contentName: 'Reto Desinflámate 21 días',
-    contentCategory: 'reto-low-ticket',
-    contentType: 'product',
     metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_GERMAN_ROZ,
     publicBaseUrl: GERMAN_PUBLIC_URL,
     checkoutPath: '/german-roz/desinflamate/checkout',
     graciasPath: '/german-roz/desinflamate/gracias',
     title: 'Reto Desinflámate · 21 días',
     headline: 'COMIDA REAL, SIN DIETAS RESTRICTIVAS — 21 DÍAS CON GERMÁN ROZ.',
-    // Price ladder (America/Lima): 10–16 jun $67 · 17–23 jun $77 · 24–30 jun $87
-    tiers: [
-      { planId: 'plan_9hbxfopJ53A1q', price: 67, until: '2026-06-16T23:59:59-05:00' },
-      { planId: 'plan_H5qC30Wqrkuac', price: 77, until: '2026-06-23T23:59:59-05:00' },
-      { planId: 'plan_wFhRjp54MsvJm', price: 87 },
-    ],
-    // C2 sales window (America/Lima): opens when the 10-jun webinar closes,
-    // cart closes 30-jun 23:59. Before → webinar registration; after → waitlist.
-    opensAt: '2026-06-10T21:00:00-05:00',
-    closesAt: '2026-06-30T23:59:59-05:00',
-    beforeOpenPath: '/german-roz/webinar',
-    afterClosePath: '/german-roz/lista-espera',
   },
 };
 
-export function getWhopProduct(key: string): WhopProductConfig | null {
-  return WHOP_PRODUCTS[key] ?? null;
+function toWhopTier(tier: Tier): WhopTier | null {
+  if (tier.checkoutRef.provider !== 'whop') return null;
+  return { planId: tier.checkoutRef.planId, price: tier.price, until: tier.until };
 }
 
-/** Every plan id across all tiers — used for webhook plan matching. */
+function toProductConfig(
+  product: BusinessUnitProduct,
+  cohort: Cohort,
+  resolutionSource: CohortResolutionSource,
+): WhopProductConfig | null {
+  const settings = WEB_PRODUCT_SETTINGS[product.productKey];
+  if (!settings) return null;
+  const tiers = cohort.tiers
+    .map(toWhopTier)
+    .filter((tier): tier is WhopTier => tier !== null);
+  if (tiers.length === 0) return null;
+  return {
+    key: product.productKey,
+    orgKey: product.orgKey,
+    buKey: product.buKey,
+    currency: product.currency,
+    country: product.country,
+    timezone: cohort.timezone,
+    source: product.source,
+    contentIds: [cohort.contentId],
+    contentName: product.contentName,
+    contentCategory: product.contentCategory,
+    contentType: product.contentType,
+    tiers,
+    cohortCode: cohort.code,
+    cohortResolutionSource: resolutionSource,
+    ...settings,
+  };
+}
+
+/**
+ * Resolve a product config for `now` — the tiers/contentId belong to the
+ * cohort (sales edition) resolved by date. Resolution NEVER blocks the sale:
+ * outside any cohort period it explicitly falls back to the upcoming/latest
+ * edition (parity with the live behavior).
+ */
+export function getWhopProduct(
+  key: string,
+  now: Date = new Date(),
+): WhopProductConfig | null {
+  const product = getProductByKey(key);
+  if (!product) return null;
+  const { cohort, resolutionSource } = resolveActiveCohort(product, now);
+  return toProductConfig(product, cohort, resolutionSource);
+}
+
+/** Every plan id of the resolved cohort — used for webhook plan matching. */
 export function getWhopProductPlanIds(product: WhopProductConfig): string[] {
   return product.tiers.map((tier) => tier.planId);
 }
 
 /**
  * Resolve the active price tier for `now`. Returns the first tier whose `until`
- * is in the future; if every dated tier has elapsed, returns the final tier
- * (the one without `until`, or the last in the list as a safety net).
+ * is in the future (inclusive); if every dated tier has elapsed, returns the
+ * final tier (the one without `until`, or the last in the list as a safety net).
  */
 export function resolveWhopTier(
   product: WhopProductConfig,
@@ -137,39 +170,6 @@ export function resolveWhopTier(
     if (Number.isFinite(untilMs) && nowMs <= untilMs) return tier;
   }
   return product.tiers[product.tiers.length - 1];
-}
-
-export type WhopWindowState = 'before' | 'open' | 'closed';
-
-/** Resolve whether the cohort sales window is open for `now`. */
-export function getWhopWindowState(
-  product: WhopProductConfig,
-  now: Date = new Date(),
-): WhopWindowState {
-  const t = now.getTime();
-  if (product.opensAt) {
-    const opens = new Date(product.opensAt).getTime();
-    if (Number.isFinite(opens) && t < opens) return 'before';
-  }
-  if (product.closesAt) {
-    const closes = new Date(product.closesAt).getTime();
-    if (Number.isFinite(closes) && t > closes) return 'closed';
-  }
-  return 'open';
-}
-
-/**
- * Redirect path to use when the cohort window is NOT open (before/after), or
- * `null` when the window is open (or no redirect is configured for that side).
- */
-export function getWhopWindowRedirect(
-  product: WhopProductConfig,
-  now: Date = new Date(),
-): string | null {
-  const state = getWhopWindowState(product, now);
-  if (state === 'before') return product.beforeOpenPath ?? null;
-  if (state === 'closed') return product.afterClosePath ?? null;
-  return null;
 }
 
 export function getWhopProductRedirectUrl(product: WhopProductConfig): string {

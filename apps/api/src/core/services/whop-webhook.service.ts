@@ -5,11 +5,15 @@ import {
   sendLucasRetoPurchaseCapi,
 } from './lucas-reto-purchase.service';
 import { LUCAS_CAPI } from '../../orgs/lucas-con-lucas/main/tracking';
-import { resolveWhopPurchaseProduct } from './whop-products';
+import {
+  resolveWhopPurchaseProduct,
+  resolveWhopPurchaseProductByCohort,
+} from './whop-products';
 import {
   resolveWhopPurchaseValue,
   sendWhopPurchaseCapi,
 } from './whop-purchase.service';
+import { markPurchaseCapiSent, persistPurchase } from './purchase-persistence.service';
 
 const LUCAS_RETO_SOURCE = 'landing-lucas-con-lucas-reto';
 const DEFAULT_LUCAS_RETO_PLAN_ID = 'plan_aKOjfecUWLzFo';
@@ -272,29 +276,99 @@ export async function handleWhopWebhookEvent(
     return { handled: true, type: envelope.type, paymentId: payment.id };
   }
 
-  // ── Generic registry products (German DI21, etc.) ───────────────────────
-  const { product, price } = genericProduct!;
+  // ── Generic catalog products (German DI21, etc.) ────────────────────────
+  // Cohort attribution priority: 1) session metadata cohort_code, 2) the
+  // cohort that owns the plan id, 3) payment date. The plan-derived price is
+  // always the value fallback (it is what was actually charged).
+  const planResolved = genericProduct!;
+  let product = planResolved.product;
+  let cohortResolutionSource: 'metadata' | 'plan_id' = 'plan_id';
+
+  const metadataCohortCode = readString(metadata.cohort_code);
+  if (metadataCohortCode && metadataCohortCode !== product.cohortCode) {
+    const byCohort = resolveWhopPurchaseProductByCohort(
+      product.productKey,
+      metadataCohortCode,
+    );
+    if (byCohort && byCohort.cohortCode === metadataCohortCode) {
+      product = byCohort;
+      cohortResolutionSource = 'metadata';
+    } else {
+      console.warn('[whop-webhook] metadata cohort_code not in catalog — using plan cohort', {
+        paymentId: payment.id,
+        metadataCohortCode,
+        planCohortCode: planResolved.product.cohortCode,
+      });
+    }
+  } else if (metadataCohortCode) {
+    cohortResolutionSource = 'metadata';
+  }
+
   const eventId = metaEventId ?? `${product.productKey}-purchase.${payment.id}`;
   const currency = (payment.currency ?? product.currency).toUpperCase();
-  const value = resolveWhopPurchaseValue(extractAmount(payment), price);
+  const value = resolveWhopPurchaseValue(extractAmount(payment), planResolved.price);
 
-  await sendWhopPurchaseCapi({
-    product,
-    eventId,
-    orderId: payment.id,
-    email,
-    firstName,
-    lastName,
-    value,
+  // Durable idempotency + purchase record. INSERT wins exactly once across
+  // retries/restarts. A duplicate is only skipped when its CAPI was CONFIRMED
+  // sent (capi_sent_at) — a crash between insert and send re-emits on retry
+  // with the same deterministic event_id (Meta dedupes). 'unavailable' (DB
+  // down / table missing) degrades to the in-memory Set that already gated
+  // above — the CAPI emission is never blocked by the DB.
+  const persisted = await persistPurchase({
+    provider: 'whop',
+    externalId: payment.id,
+    productKey: product.productKey,
+    orgKey: product.orgKey,
+    buKey: product.buKey,
+    cohortCode: product.cohortCode,
+    planOrOfferId: planId,
+    amount: value,
     currency,
-    fbp: metaFbp,
-    fbc: metaFbc,
+    contentId: product.contentIds[0],
+    email,
+    metadata: { event_id: eventId, cohort_resolution: cohortResolutionSource },
   });
+  if (persisted.outcome === 'duplicate' && persisted.capiSent) {
+    console.info('[whop-webhook] duplicate payment (durable dedup) skipped', {
+      paymentId: payment.id,
+      cohortCode: product.cohortCode,
+    });
+    return { handled: true, type: envelope.type, paymentId: payment.id };
+  }
+
+  try {
+    await sendWhopPurchaseCapi({
+      product,
+      eventId,
+      orderId: payment.id,
+      email,
+      firstName,
+      lastName,
+      value,
+      currency,
+      fbp: metaFbp,
+      fbc: metaFbc,
+    });
+  } catch (error) {
+    // Free the in-memory guard so Whop's retry can re-attempt the send — the
+    // durable row stays capi_sent_at NULL, so the retry re-emits with the
+    // same deterministic event_id (Meta dedupes if this send half-landed).
+    processedPaymentIds.delete(payment.id);
+    throw error;
+  }
+
+  if (persisted.outcome !== 'unavailable') {
+    await markPurchaseCapiSent('whop', payment.id);
+  }
 
   console.info('[whop-webhook] Purchase CAPI sent', {
     paymentId: payment.id,
     productKey: product.productKey,
+    orgKey: product.orgKey,
     planId,
+    cohortCode: product.cohortCode,
+    cohortResolutionSource,
+    contentIds: product.contentIds,
     eventId,
     value,
     currency,

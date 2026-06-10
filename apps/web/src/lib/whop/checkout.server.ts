@@ -15,6 +15,8 @@ export type WhopServerSession = {
   purchaseEventId: string;
   value: number;
   currency: string;
+  /** Cohort (sales edition) the session was created for — drives attribution. */
+  cohortCode: string;
 };
 
 function createPurchaseEventId(productKey: string): string {
@@ -83,6 +85,7 @@ export async function createWhopCheckoutSessionServer(
       purchaseEventId,
       value: tier.price,
       currency: product.currency,
+      cohortCode: product.cohortCode,
     };
   } catch (err) {
     console.error('[whop-checkout.server] session error', err);
@@ -108,5 +111,7 @@ function buildSessionMetadata(
     source: product.source,
     product_key: product.key,
     plan_id: planId,
+    // Webhook attribution priority 1: the cohort this session sells.
+    cohort_code: product.cohortCode,
   };
 }

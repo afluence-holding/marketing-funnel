@@ -1,7 +1,7 @@
 'use client';
 
 import { WhopCheckoutEmbed, type AccentColor } from '@whop/checkout/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildMetaTrackingPayload } from '@/lib/tracking/meta-capi';
 import { getWhopProduct, getWhopProductGraciasUrl } from '@/lib/whop/products';
 import {
@@ -53,7 +53,10 @@ export function GenericWhopCheckoutEmbed({
   backHref,
   backLabel = '← Volver',
 }: Props) {
-  const product = getWhopProduct(productKey);
+  // Stable reference per mount: getWhopProduct resolves the cohort by date and
+  // returns a fresh object each call — without memo the effects below would
+  // re-run on every render.
+  const product = useMemo(() => getWhopProduct(productKey), [productKey]);
   const [session, setSession] = useState<SessionState>(() =>
     toInitialState(productKey, initialSession),
   );
@@ -63,7 +66,7 @@ export function GenericWhopCheckoutEmbed({
     if (!product) return;
     preloadWhopCheckoutModule();
     if (initialSession?.sessionId) {
-      cacheWhopSession(product.key, initialSession);
+      cacheWhopSession(product, initialSession);
     }
   }, [product, initialSession]);
 
@@ -72,7 +75,7 @@ export function GenericWhopCheckoutEmbed({
     if (session.status === 'ready') {
       if (!activated.current) {
         activated.current = true;
-        cacheWhopSession(product.key, session.session);
+        cacheWhopSession(product, session.session);
         persistCheckoutSession(product, session.session);
         trackWhopInitiateCheckout(product);
       }
@@ -88,7 +91,7 @@ export function GenericWhopCheckoutEmbed({
         const resolved =
           (initialSession?.sessionId && initialSession.purchaseEventId
             ? initialSession
-            : getCachedWhopSession(product.key)) ??
+            : getCachedWhopSession(product)) ??
           (await (async () => {
             const meta = buildMetaTrackingPayload(`${product.key}-checkout-bootstrap`);
             return requestWhopCheckoutSession(product.key, {
@@ -100,7 +103,7 @@ export function GenericWhopCheckoutEmbed({
         if (cancelled) return;
         if (!activated.current) {
           activated.current = true;
-          cacheWhopSession(product.key, resolved);
+          cacheWhopSession(product, resolved);
           persistCheckoutSession(product, resolved);
           trackWhopInitiateCheckout(product);
         }
@@ -154,7 +157,7 @@ export function GenericWhopCheckoutEmbed({
             void prefetchWhopCheckoutSession(product)
               .then((resolved) => {
                 activated.current = true;
-                cacheWhopSession(product.key, resolved);
+                cacheWhopSession(product, resolved);
                 persistCheckoutSession(product, resolved);
                 trackWhopInitiateCheckout(product);
                 setSession({ status: 'ready', session: resolved });
