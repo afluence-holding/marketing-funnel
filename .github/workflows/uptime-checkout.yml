@@ -1,0 +1,47 @@
+name: Uptime — checkout German (US-4.3)
+
+# Monitoreo del funnel de venta vivo (Hotmart acopla checkout↔página: si la
+# página cae, el checkout cae). NO hace rollback — solo avisa: un job en rojo
+# notifica a quien tenga las notificaciones del repo activadas. Para alertas
+# más ricas (SMS/Slack/5-min) complementar con UptimeRobot/Better Stack — ver
+# README de la fase 4 en funcionalidades-por-desarrollar/hotmart-embedded-checkout.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # cada ~10 min (mínimo práctico de GitHub Actions)
+  workflow_dispatch: {} # permite correrlo a mano
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout page responde 200 + contenido esperado
+        run: |
+          URL="https://nutricion.germanroz.com/german-roz/desinflamate/checkout"
+          body="$(curl -sS --max-time 20 -w '\n%{http_code}' "$URL?cb=$(date +%s)")"
+          code="$(printf '%s' "$body" | tail -n1)"
+          html="$(printf '%s' "$body" | sed '$d')"
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::Checkout devolvió HTTP $code (esperado 200)"; exit 1
+          fi
+          # Marcadores server-rendered: precio + el contenedor del embed + un
+          # proveedor reconocido. Si faltan, la página cargó rota.
+          for marker in 'checkout-price' 'inline_checkout' 'checkout-card'; do
+            if ! printf '%s' "$html" | grep -q "$marker"; then
+              echo "::error::Falta el marcador '$marker' en el checkout — página posiblemente rota"; exit 1
+            fi
+          done
+          if ! printf '%s' "$html" | grep -qE 'vía (Hotmart|Whop)'; then
+            echo "::error::No se detectó proveedor de pago (Hotmart/Whop) en el checkout"; exit 1
+          fi
+          echo "Checkout OK ($(printf '%s' "$html" | grep -oE 'vía (Hotmart|Whop)' | head -1))"
+
+      - name: API health responde 200
+        run: |
+          URL="https://marketing-funnelapi-production.up.railway.app/api/health"
+          code="$(curl -sS --max-time 20 -o /tmp/health.json -w '%{http_code}' "$URL")"
+          echo "HTTP $code · $(cat /tmp/health.json)"
+          if [ "$code" != "200" ]; then
+            echo "::error::API health devolvió HTTP $code"; exit 1
+          fi
