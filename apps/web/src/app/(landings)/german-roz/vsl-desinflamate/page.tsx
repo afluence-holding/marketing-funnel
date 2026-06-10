@@ -13,11 +13,13 @@ export const dynamic = 'force-dynamic';
 // ---------------------------------------------------------------------------
 // La VSL se sirve siempre (sin redirección por ventana de venta) y vende con la
 // escalera $67/$77/$87 vía el checkout embebido. El bundle compilado
-// (`vsl-desinflamate.html`) tiene el countdown (→30-jun) y el precio de
-// lanzamiento ($67) ya ajustados, y TODOS sus CTAs se redirigen en runtime al
-// checkout embebido (/german-roz/desinflamate/checkout) — ver vsl-tracker
-// (intercepta el click) y vsl-attribution (reescribe window.open/anchors a
-// Hotmart como defensa en profundidad y setea _fbc).
+// (`vsl-desinflamate.html`) tiene el countdown (→ flip 16-jun) y el precio de
+// lanzamiento ($67) ya ajustados. La redirección de CTAs se maneja en runtime
+// (ver vsl-tracker, intercepta el click en fase de captura): SOLO el botón de
+// compra final ("UNIRME A DESINFLAMARME EN 21 DÍAS") va al checkout embebido
+// (/german-roz/desinflamate/checkout); los CTAs de "unirse al reto" hacen scroll
+// a la sección de oferta. vsl-attribution reescribe window.open/anchors a Hotmart
+// (defensa en profundidad para el botón de compra) y setea _fbc.
 // ---------------------------------------------------------------------------
 
 /** WhatsApp Business del reto (Perú). Solo dígitos, sin +, para wa.me */
