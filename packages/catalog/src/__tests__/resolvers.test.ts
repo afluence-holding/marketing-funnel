@@ -15,6 +15,35 @@ import type { BusinessUnitProduct, Cohort } from '../types';
 
 const at = (iso: string) => new Date(iso);
 
+// Single-cohort Whop fixture for PURE RESOLVER LOGIC tests — decoupled from the
+// live catalog (which after the 2026-06-10 Hotmart switch sells C2 via Hotmart).
+// Mirrors the original C2 Whop edition (10–30 jun, $67/$77/$87).
+const C2_WHOP: BusinessUnitProduct = {
+  productKey: 'german-desinflamate',
+  orgKey: 'german-roz',
+  buKey: 'main',
+  currency: 'USD',
+  country: 'pe',
+  source: 'landing-german-roz-desinflamate',
+  contentName: 'Reto Desinflámate 21 días',
+  contentCategory: 'reto-low-ticket',
+  contentType: 'product',
+  cohorts: [
+    {
+      code: 'DI21-C2',
+      contentId: 'di21-c2',
+      startsAt: '2026-06-10T21:00:00-05:00',
+      endsAt: '2026-06-30T23:59:59-05:00',
+      timezone: 'America/Lima',
+      tiers: [
+        { price: 67, until: '2026-06-16T23:59:59-05:00', checkoutRef: { provider: 'whop', planId: 'plan_9hbxfopJ53A1q' } },
+        { price: 77, until: '2026-06-23T23:59:59-05:00', checkoutRef: { provider: 'whop', planId: 'plan_H5qC30Wqrkuac' } },
+        { price: 87, checkoutRef: { provider: 'whop', planId: 'plan_wFhRjp54MsvJm' } },
+      ],
+    },
+  ],
+};
+
 // Fictional C3 — proves launching a new cohort is purely additive (story B3):
 // appending it must not change any C2 resolution below.
 const C3: Cohort = {
@@ -30,34 +59,34 @@ const C3: Cohort = {
 };
 
 const WITH_C3: BusinessUnitProduct = {
-  ...GERMAN_ROZ_MAIN,
-  cohorts: [...GERMAN_ROZ_MAIN.cohorts, C3],
+  ...C2_WHOP,
+  cohorts: [...C2_WHOP.cohorts, C3],
 };
 
 describe('resolveActiveCohort', () => {
   it('is active inside the C2 period', () => {
-    const r = resolveActiveCohort(GERMAN_ROZ_MAIN, at('2026-06-15T12:00:00-05:00'));
+    const r = resolveActiveCohort(C2_WHOP, at('2026-06-15T12:00:00-05:00'));
     expect(r.cohort.code).toBe('DI21-C2');
     expect(r.resolutionSource).toBe('active');
   });
 
   it('is active on the exact open/close bounds (inclusive)', () => {
     expect(
-      resolveActiveCohort(GERMAN_ROZ_MAIN, at('2026-06-10T21:00:00-05:00')).resolutionSource,
+      resolveActiveCohort(C2_WHOP, at('2026-06-10T21:00:00-05:00')).resolutionSource,
     ).toBe('active');
     expect(
-      resolveActiveCohort(GERMAN_ROZ_MAIN, at('2026-06-30T23:59:59-05:00')).resolutionSource,
+      resolveActiveCohort(C2_WHOP, at('2026-06-30T23:59:59-05:00')).resolutionSource,
     ).toBe('active');
   });
 
   it('falls back to the upcoming cohort before the first start — still sellable', () => {
-    const r = resolveActiveCohort(GERMAN_ROZ_MAIN, at('2026-06-09T12:00:00-05:00'));
+    const r = resolveActiveCohort(C2_WHOP, at('2026-06-09T12:00:00-05:00'));
     expect(r.cohort.code).toBe('DI21-C2');
     expect(r.resolutionSource).toBe('fallback_upcoming');
   });
 
   it('falls back to the latest past cohort after close — still sellable', () => {
-    const r = resolveActiveCohort(GERMAN_ROZ_MAIN, at('2026-07-15T12:00:00-05:00'));
+    const r = resolveActiveCohort(C2_WHOP, at('2026-07-15T12:00:00-05:00'));
     expect(r.cohort.code).toBe('DI21-C2');
     expect(r.resolutionSource).toBe('fallback_latest');
   });
@@ -81,7 +110,7 @@ describe('resolveActiveCohort', () => {
       '2026-06-20T12:00:00-05:00',
       '2026-06-28T12:00:00-05:00',
     ]) {
-      const before = resolveActiveTier(GERMAN_ROZ_MAIN, at(iso));
+      const before = resolveActiveTier(C2_WHOP, at(iso));
       const after = resolveActiveTier(WITH_C3, at(iso));
       expect(after.cohort.code).toBe(before.cohort.code);
       expect(after.tier).toEqual(before.tier);
@@ -226,8 +255,8 @@ describe('hotmart tiers (US-1.1 — adapter parity)', () => {
     ],
   };
   const WITH_HOTMART: BusinessUnitProduct = {
-    ...GERMAN_ROZ_MAIN,
-    cohorts: [...GERMAN_ROZ_MAIN.cohorts, HOTMART_C4],
+    ...C2_WHOP,
+    cohorts: [...C2_WHOP.cohorts, HOTMART_C4],
   };
 
   it('resolves a hotmart cohort and tier by date like a whop one', () => {
@@ -256,12 +285,12 @@ describe('hotmart tiers (US-1.1 — adapter parity)', () => {
 
   it('reports the cohort provider', () => {
     expect(getCohortProvider(HOTMART_C4)).toBe('hotmart');
-    expect(getCohortProvider(GERMAN_ROZ_MAIN.cohorts[0])).toBe('whop');
+    expect(getCohortProvider(C2_WHOP.cohorts[0])).toBe('whop');
   });
 
   it('adding a hotmart cohort does not change any C2 resolution (additive)', () => {
     for (const iso of ['2026-06-15T12:00:00-05:00', '2026-06-28T12:00:00-05:00']) {
-      const before = resolveActiveTier(GERMAN_ROZ_MAIN, at(iso));
+      const before = resolveActiveTier(C2_WHOP, at(iso));
       const after = resolveActiveTier(WITH_HOTMART, at(iso));
       expect(after.cohort.code).toBe(before.cohort.code);
       expect(after.tier).toEqual(before.tier);
