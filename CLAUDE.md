@@ -57,6 +57,10 @@ migrations **additive and idempotent** (`CREATE ... IF NOT EXISTS`,
 - **Multi-tenant by directory**: Each org/BU gets its own directory under `orgs/`. A central registry (`orgs/index.ts`) aggregates all sequences, workflows, routing, and configs.
 - **Single deploy**: One API process serves all organizations.
 - **No queues (v0)**: Direct API calls for WhatsApp/Email/Calls. Queues planned for v1.
+- **Modular-by-creator integrations**: third-party fan-out (MailerLite/Hyros/Meta
+  CAPI) is a per-creator config registry over a shared dispatcher + durable outbox.
+  Activating a new creator is additive (one config file + env secrets). See
+  "Integrations Fan-out".
 - **Modular back-office**: `apps/admin` is a data-driven module hub. Each BU/tenant enables a set of modules (Campañas, Respuestas, Launch Ops, Grupos WhatsApp) via a registry. Admin writes go through Server Actions → repository → service-role Supabase client (no Express round-trip).
 
 ## Product Catalog & Cohorts (`packages/catalog`)
@@ -115,6 +119,39 @@ routed**: the active cohort's `checkoutRef.provider` decides which embed mounts 
   BOTH `META_PIXEL_ID_GERMAN_ROZ` and `META_CAPI_TOKEN_GERMAN_ROZ` (pixel id alone
   is not enough). Access delivery is handled by an **independent system outside
   this repo** — the webhook only tracks/persists, never grants/revokes access.
+
+## Integrations Fan-out (`apps/api/src/core/integrations`)
+
+A **modular-by-creator** fan-out layer that pushes business events (`registro`,
+`compra`) to each creator's own third-party tools (MailerLite, Hyros, Meta CAPI)
+**without** blocking the webhook/ingestion path. Activating a new creator is
+**purely additive**: one `integrations.ts` config file + its env secrets, no core
+or existing-creator edits. (See the onboarding runbook in
+`funcionalidades-por-desarrollar/integraciones-fanout/ONBOARDING-CREADOR.md`.)
+
+- **Dispatch is imperative** (NOT the eventBus, which is synchronous and doesn't
+  carry tracking PII): `dispatchIntegrationEvent(event)` is called from the
+  ingestion route (`registro`, `dedupBase: 'lead:<id>'`) and from BOTH purchase
+  webhooks (`compra`, `dedupBase: 'whop:<id>'` / `'hotmart:<txn>'`). Always
+  `void …catch()` — it can never throw into the webhook or alter the HTTP response.
+- **Config registry**: `core/integrations/registry.ts` aggregates per-creator
+  `BuIntegrationConfig`s keyed by `${orgKey}/${buKey}`. Each declares `targets[]`
+  (connector + `enabledFor` + `secretRef` + code-first mapping like MailerLite
+  group ids / field keys). **Tokens live in env (`secretRef`), never in code.**
+  `validateIntegrationConfigs` runs in CI and at boot (logs, doesn't crash a live API).
+- **Connectors** (`connectors/`): `mailerlite` (registro→Registrantes group;
+  compra→moves to Compradores + `tier_compra` + removes from Registrantes;
+  422→permanent, 429→retryable, no token→no-op, token-bucket rate-limited),
+  `hyros`, `meta-capi`. A creator that already fires CAPI **inline** (like German:
+  Lead in ingestion, Purchase in webhooks) deliberately **excludes** `meta-capi`
+  from its fan-out to avoid double-firing Purchase with a different `event_id`.
+- **Outbox = durable, exactly-once-per-target**: `marketing.integration_deliveries`
+  with `UNIQUE(connector, dedup_key)` + `ON CONFLICT DO NOTHING` (first-payload-wins).
+  An at-least-once webhook retry never re-delivers. Inline best-effort attempt only
+  when the row is newly `inserted`; the table is the source of truth.
+- **Crons**: `integration-delivery-retry` (every minute, exponential backoff,
+  exhausted → `dead`) and `integration-delivery-purge` (daily, drops PII payloads
+  older than 30 days). RLS deny-all (service-role only).
 
 ## Admin Back-Office (`apps/admin`)
 
@@ -204,6 +241,7 @@ Action handlers live in `apps/api/src/core/engine/action-handlers/`.
 - Dedicated landing tables for creators whose intake lives outside the CRM: e.g. `bukku_leads`, `mama_sin_caos_leads`, `caro_fitness_progress`
 - WhatsApp group rotation: `whatsapp_group_pools`, `whatsapp_groups`, `whatsapp_group_assignments`
 - Catalog/commerce runtime: `cohorts` (read-only mirror synced from `packages/catalog` on API boot — `cohort-sync.service.ts`), `purchases` (transaction record: snapshots of amount/currency/plan_or_offer_id/content_id, `cohort_code`, durable idempotency `UNIQUE(provider, external_id)`, `status`, `capi_sent_at`), `hotmart_webhook_events` (raw postback capture / audit)
+- Integrations fan-out outbox: `integration_deliveries` (one row per business-event × target; durable exactly-once-per-target via `UNIQUE(connector, dedup_key)`; `status` pending/delivered/failed/dead, `attempts`/`next_attempt_at` for backoff; PII payload purged at 30 days; RLS deny-all). See "Integrations Fan-out".
 
 **`meta_ops`** — Meta Ads dashboard (organizers, business_units with `slug`, campaigns, ad sets, insights). Populated by `packages/meta-ads`.
 
@@ -235,6 +273,8 @@ Env files at monorepo root: `.env` and `.env.local` (loaded by `packages/config`
 **Required:** `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `RESEND_API_KEY`
 
 **Optional (per integration):** `WHATSAPP_*`, `ELEVENLABS_*`
+
+**Integrations fan-out (per creator, `secretRef`→env):** `MAILERLITE_TOKEN_<ORG>`, `HYROS_API_KEY_<ORG>`, `META_PIXEL_ID_<ORG>` + `META_CAPI_TOKEN_<ORG>` (both needed; pixel id alone is not enough). Missing token = connector no-op (won't crash). Set in `.env`/`.env.local` (dev) AND Railway (prod).
 
 **Per-org config:** `PROJECT1_ORG_ID`, `PROJECT1_PIPELINE_ID`, `PROJECT1_STAGE_*` (loaded in org config files)
 
