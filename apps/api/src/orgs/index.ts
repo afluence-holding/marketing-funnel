@@ -47,6 +47,7 @@ import { workflows as germanRozWorkflows } from './german-roz/main/workflows';
 import { IDS as germanRozIDS } from './german-roz/main/config';
 import { routingEngine as germanRozRouting } from './german-roz/main/routing';
 import { whatsappGroupPools as germanRozWhatsappGroupPools } from './german-roz/main/whatsapp-groups';
+import { whatsappGroupPools as mamaSinCaosWhatsappGroupPools } from './mama-sin-caos/main/whatsapp-groups';
 
 // -- German Roz / Plan 90 Pro -------------------------------------------------
 import { sequences as germanRozPlan90ProSequences } from './german-roz/plan-90-pro/sequences';
@@ -77,6 +78,10 @@ import { sequences as caroFitnessSequences } from './caro-fitness/main/sequences
 import { workflows as caroFitnessWorkflows } from './caro-fitness/main/workflows';
 import { IDS as caroFitnessIDS } from './caro-fitness/main/config';
 import { routingEngine as caroFitnessRouting } from './caro-fitness/main/routing';
+import { sequences as mamaSinCaosSequences } from './mama-sin-caos/main/sequences';
+import { workflows as mamaSinCaosWorkflows } from './mama-sin-caos/main/workflows';
+import { IDS as mamaSinCaosIDS } from './mama-sin-caos/main/config';
+import { routingEngine as mamaSinCaosRouting } from './mama-sin-caos/main/routing';
 
 // -- Add new BUs here ---------------------------------------------------------
 
@@ -142,6 +147,14 @@ const businessUnits: BusinessUnitBinding[] = [
     organizationId: caroFitnessIDS.organizationId,
     routingEngine: caroFitnessRouting,
   },
+  {
+    // Org cosmética: su ingesta real vive en la tabla dedicada
+    // `mama_sin_caos_leads` (ruta /api/mama-sin-caos/ingest). routing → [].
+    orgKey: 'mama-sin-caos',
+    buKey: 'main',
+    organizationId: mamaSinCaosIDS.organizationId,
+    routingEngine: mamaSinCaosRouting,
+  },
 ];
 
 function makeBusinessUnitRegistryKey(orgKey: string, buKey: string) {
@@ -169,6 +182,7 @@ export const sequenceRegistry: Record<string, SequenceDef> = {
   ...santiInversorResearchSequences,
   ...recetasCamiSequences,
   ...caroFitnessSequences,
+  ...mamaSinCaosSequences,
 };
 
 export const workflowRegistry: Record<string, WorkflowDef> = {
@@ -182,6 +196,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
   ...santiInversorResearchWorkflows,
   ...recetasCamiWorkflows,
   ...caroFitnessWorkflows,
+  ...mamaSinCaosWorkflows,
 };
 
 /**
@@ -190,6 +205,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
  */
 export const whatsappGroupPoolRegistry: WhatsAppGroupPoolSeed[] = [
   ...germanRozWhatsappGroupPools,
+  ...mamaSinCaosWhatsappGroupPools,
 ];
 
 export const clickupRegistryByPipelineId: Record<string, ClickUpPipelineConfig> = {

@@ -9,3 +9,7 @@ export function getMamaSinCaosBackendBaseUrl() {
 }
 
 export const MAMA_SIN_CAOS_LEADS_API_PATH = '/api/mama-sin-caos/leads';
+
+// Ruta genérica de ingesta (org real → marketing.leads). La usa el landing de
+// diagnóstico (a diferencia de `lista-secreta`, que va a la tabla dedicada).
+export const MAMA_SIN_CAOS_INGEST_PATH = '/api/orgs/mama-sin-caos/bus/main/ingest';

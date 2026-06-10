@@ -13,6 +13,8 @@ import { IDS as recetasCamiIds } from '../../orgs/recetas-cami/main/config';
 import { routingEngine as recetasCamiRoutingEngine } from '../../orgs/recetas-cami/main/routing';
 import { IDS as caroFitnessIds } from '../../orgs/caro-fitness/main/config';
 import { routingEngine as caroFitnessRoutingEngine } from '../../orgs/caro-fitness/main/routing';
+import { IDS as mamaSinCaosIds } from '../../orgs/mama-sin-caos/main/config';
+import { routingEngine as mamaSinCaosRoutingEngine } from '../../orgs/mama-sin-caos/main/routing';
 
 interface IngestionTarget {
   organizationId: string;
@@ -45,6 +47,9 @@ const RECETAS_CAMI_SOURCES = new Set([
 ]);
 const CARO_FITNESS_SOURCES = new Set([
   'landing-caro-fitness-diagnostico',
+]);
+const MAMA_SIN_CAOS_SOURCES = new Set([
+  'landing-mama-sin-caos-diagnostico',
 ]);
 const BU1_SOURCE_PREFIX = 'landing-bu1-';
 const BU1_EXPLICIT_SOURCES = new Set([
@@ -103,6 +108,14 @@ export function resolveIngestionTargetBySource(rawSource?: string): IngestionTar
     return {
       organizationId: caroFitnessIds.organizationId,
       routingEngine: caroFitnessRoutingEngine,
+      businessUnit: 'main',
+    };
+  }
+
+  if (source && MAMA_SIN_CAOS_SOURCES.has(source)) {
+    return {
+      organizationId: mamaSinCaosIds.organizationId,
+      routingEngine: mamaSinCaosRoutingEngine,
       businessUnit: 'main',
     };
   }
