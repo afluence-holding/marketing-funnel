@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate';
 import { ingestLead } from '../services/ingestion.service';
 import { resolveIngestionTargetBySource } from '../services/ingestion-source-resolver.service';
 import { getBusinessUnitBinding } from '../../orgs';
+import { dispatchIntegrationEvent } from '../integrations/dispatcher';
 import { normalizePhoneAndGetTimezone } from '../utils/phone';
 import { moveStage } from '../services/lead-pipeline.service';
 import { saveCustomFieldValues } from '../services/custom-field.service';
@@ -563,6 +564,39 @@ router.post('/orgs/:orgKey/bus/:buKey/ingest', validate(ingestSchema), async (re
           });
         }
       }
+    }
+
+    // --- Fan-out de integraciones (registro) — imperativo, con el tracking del
+    // request a mano. Nunca bloquea ni lanza; durabilidad por el outbox. Solo
+    // dispara en leads nuevos (un re-update no es un registro nuevo). ---
+    if (result.isNew) {
+      void dispatchIntegrationEvent({
+        type: 'registro',
+        orgKey,
+        buKey,
+        dedupBase: `lead:${result.lead.id}`,
+        email: req.body.email,
+        phone: req.body.phone,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        source: source ?? undefined,
+        utm: req.body.utmData,
+        registeredOn: new Date().toISOString().slice(0, 10),
+        tracking: {
+          eventId,
+          fbp: req.body.tracking?.meta?.fbp,
+          fbc: req.body.tracking?.meta?.fbc,
+          clientIpAddress,
+          clientUserAgent: req.get('user-agent') ?? undefined,
+        },
+        occurredAt: new Date(),
+      }).catch((error) => {
+        console.warn('[integrations] dispatch registro failed (non-blocking)', {
+          orgKey,
+          buKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
 
     res.status(201).json({

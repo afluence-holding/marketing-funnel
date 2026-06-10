@@ -14,6 +14,7 @@ import {
   sendWhopPurchaseCapi,
 } from './whop-purchase.service';
 import { markPurchaseCapiSent, persistPurchase } from './purchase-persistence.service';
+import { dispatchIntegrationEvent } from '../integrations/dispatcher';
 
 const LUCAS_RETO_SOURCE = 'landing-lucas-con-lucas-reto';
 const DEFAULT_LUCAS_RETO_PLAN_ID = 'plan_aKOjfecUWLzFo';
@@ -360,6 +361,30 @@ export async function handleWhopWebhookEvent(
   if (persisted.outcome !== 'unavailable') {
     await markPurchaseCapiSent('whop', payment.id);
   }
+
+  // --- Fan-out de integraciones (compra) — imperativo, no bloquea. MailerLite
+  // (compradores + supresión + tier) + Hyros. Meta CAPI NO va por acá para
+  // German (ya se disparó arriba) para no doble-contar. ---
+  void dispatchIntegrationEvent({
+    type: 'compra',
+    orgKey: product.orgKey,
+    buKey: product.buKey,
+    dedupBase: `whop:${payment.id}`,
+    email,
+    firstName,
+    lastName,
+    cohortCode: product.cohortCode,
+    tier: planResolved.price,
+    value,
+    currency,
+    orderId: payment.id,
+    occurredAt: new Date(),
+  }).catch((error) => {
+    console.warn('[integrations] dispatch compra failed (non-blocking)', {
+      paymentId: payment.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
 
   console.info('[whop-webhook] Purchase CAPI sent', {
     paymentId: payment.id,
