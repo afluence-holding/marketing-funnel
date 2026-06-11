@@ -657,6 +657,7 @@ function prevQuestion(){ if(current>0){ current--; renderQuestion(); } else { sh
 
 /* ---------- CAPTURE ---------- */
 /* ---------- RESULT ---------- */
+function renderResult(){
 async function submitCapture(){
   const nombre=document.getElementById('in-nombre').value.trim();
   const email=document.getElementById('in-email').value.trim();
@@ -669,6 +670,7 @@ async function submitCapture(){
   if(nombre.length<1 || !emailOk) return;
 
   lead.nombre=nombre; lead.email=email; lead.wa=wa?(cc+' '+wa):'';
+  lead.whatsappInviteUrl=null;
   
   // Enviar lead al backend
   try {
@@ -696,7 +698,33 @@ async function submitCapture(){
     });
     
     if(!response.ok) throw new Error(`HTTP ${response.status}`);
-    console.log('✓ Lead ingested:', await response.json());
+    const ingestionResult = await response.json();
+    console.log('✓ Lead ingested:', ingestionResult);
+    
+    // Asignar grupo de WhatsApp si tiene teléfono
+    if(lead.wa && ingestionResult.lead?.id) {
+      try {
+        const groupResponse = await fetch('/api/orgs/mama-sin-caos/bus/main/whatsapp-group/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            poolKey: 'webinar-2026-06-23',
+            leadId: ingestionResult.lead.id,
+            phone: lead.wa,
+          })
+        });
+        
+        if(groupResponse.ok) {
+          const groupResult = await groupResponse.json();
+          lead.whatsappInviteUrl = groupResult.inviteUrl;
+          console.log('✓ WhatsApp group assigned:', groupResult.inviteUrl);
+        } else {
+          console.warn('⚠ WhatsApp assignment failed:', groupResponse.status);
+        }
+      } catch(err) {
+        console.error('✗ WhatsApp assignment error:', err.message);
+      }
+    }
   } catch(err) {
     console.error('✗ Ingestion failed:', err.message);
   }
@@ -704,14 +732,6 @@ async function submitCapture(){
   renderResult();
   show('result');
 }
-function computeResult(){
-  const scores={bombera:0,invisible:0,olla:0,gerente:0,culpa:0,piloto:0};
-  answers.forEach((ai,qi)=>{ if(ai!=null){ scores[QUESTIONS[qi].o[ai].a]++; } });
-  const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
-  return {key:sorted[0][0], second:sorted[1][0], scores, sorted};
-}
-
-function renderResult(){
   const r=computeResult();
   const A=ARCH[r.key];
   const hero=document.getElementById('resHero');
@@ -735,14 +755,15 @@ function renderResult(){
 
 const WHATSAPP_GROUP_URL = ''; // <<< Pega aquí el link de invitación al grupo de WhatsApp
 
+}
 function joinWhatsApp(){
-  if(!WHATSAPP_GROUP_URL){
-    alert('Todavía falta configurar el link del grupo de WhatsApp.');
+  const url = lead.whatsappInviteUrl || WHATSAPP_GROUP_URL;
+  if(!url){
+    alert('No hay link de WhatsApp disponible. Por favor, ingresa tu teléfono en el resultado.');
     return;
   }
-  /* >>> Aquí marcas la inscripción confirmada al webinar en tu CRM <<< */
   document.getElementById('webOk').style.display='block';
-  window.open(WHATSAPP_GROUP_URL,'_blank','noopener');
+  window.open(url,'_blank','noopener');
 }
 
 function calendarDate(value){
