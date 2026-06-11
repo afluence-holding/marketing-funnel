@@ -1,119 +1,110 @@
 'use client';
 
 /**
- * Franja-carrusel de video-testimonios — v4 (re-skin editorial DESINFLÁMATE).
+ * Franja de video-testimonios — v5 (video + reseña AL COSTADO, "menos videos más info").
  *
- * Mismo comportamiento performante de v3 (poster-first: 0 iframes hasta el click,
- * máx 1 video vivo), pero el DISEÑO matchea el VSL de German: editorial y cálido
- * (fondo claro, texto navy #303841, acento naranja #FF5722) en vez del look oscuro
- * "digital". Reusa las CSS vars de fuente del propio VSL (--font-display / --font-sans),
- * porque la franja se renderiza vía portal DENTRO del iframe del VSL.
+ * Layout: cada testimonio es una tarjeta ANCHA = video vertical (teléfono) a la
+ * izquierda + bloque de texto (nombre, edad, reseña) AL COSTADO. Pocos testimonios
+ * (los distintos, no una cinta de muchos), en una franja swipeable (scroll-snap).
+ * Performante: poster-first (0 iframes hasta el click, máx 1 video vivo); click
+ * afuera vuelve al poster. Diseño editorial DESINFLÁMATE (claro, navy, naranja),
+ * reusa las fonts del VSL (se renderiza vía portal dentro del iframe).
  */
 
 import { useEffect, useRef, useState } from 'react';
 
 type TestimonialVideo = {
-  id: string; // YouTube id (debe permitir inserción)
-  name: string; // nombre y apellido
-  age: number | null; // edad
-  review: string; // reseña corta
+  id: string; name: string; age: number | null; review: string;
 };
 
-// TODO(germán): reemplazar por testimonios reales embebibles (Shorts, 2–3 basta).
+// TODO(germán): reemplazar por testimonios reales embebibles (2–3 basta).
 const TESTIMONIAL_VIDEOS: TestimonialVideo[] = [
-  { id: 'MXugMSBXo4Y', name: 'Giulia Chiappe', age: null, review: 'Su experiencia con Desinflámate.' },
-  { id: 'aqz-KE-bpKQ', name: 'Testimonio demo', age: 38, review: 'Reseña de ejemplo — reemplazar por real.' },
-  { id: 'ScMzIvxBSi4', name: 'Testimonio demo', age: 45, review: 'Reseña de ejemplo — reemplazar por real.' },
+  { id: 'MXugMSBXo4Y', name: 'Giulia Chiappe', age: null, review: '"Bajé la hinchazón en la primera semana y por fin entendí qué me estaba inflamando. Comiendo rico, sin dietas imposibles."' },
+  { id: 'aqz-KE-bpKQ', name: 'Testimonio demo', age: 38, review: '"Reseña de ejemplo más larga — acá va el testimonio real de la alumna, con su resultado concreto y por qué recomienda el reto." (placeholder)' },
+  { id: 'ScMzIvxBSi4', name: 'Testimonio demo', age: 45, review: '"Reseña de ejemplo — reemplazar por el testimonio real, con espacio para más detalle ahora que hay menos videos." (placeholder)' },
 ];
 
-const REPEATS = 3;
 const ORANGE = '#FF5722';
 const NAVY = '#303841';
 const NAVY_SOFT = '#5a6470';
 const SANS = 'var(--font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif)';
 const DISPLAY = 'var(--font-display, var(--font-sans, Georgia, serif))';
 
-function poster(id: string): string {
-  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-}
-function embedSrc(id: string): string {
-  const p = new URLSearchParams({
-    autoplay: '1', playsinline: '1', rel: '0', modestbranding: '1', controls: '1',
-  });
-  return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
-}
+const poster = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+const embedSrc = (id: string) =>
+  `https://www.youtube-nocookie.com/embed/${id}?` +
+  new URLSearchParams({ autoplay: '1', playsinline: '1', rel: '0', modestbranding: '1', controls: '1' }).toString();
 
-function Slot({
-  video, slotKey, active, onSelect,
-}: {
-  video: TestimonialVideo; slotKey: string; active: boolean; onSelect: (k: string) => void;
-}) {
+function Card({
+  video, active, onSelect,
+}: { video: TestimonialVideo; active: boolean; onSelect: (id: string) => void }) {
   return (
-    <div
-      data-slot-key={slotKey}
-      onClick={() => onSelect(slotKey)}
-      style={{ flex: '0 0 auto', width: 208, cursor: 'pointer' }}
+    <article
+      data-slot-key={video.id}
+      onClick={() => onSelect(video.id)}
+      style={{
+        scrollSnapAlign: 'center', flex: '0 0 88%', maxWidth: 430,
+        display: 'flex', gap: 14, alignItems: 'stretch',
+        background: '#ffffff', border: '1px solid rgba(48,56,65,.08)',
+        borderRadius: 18, padding: 12, cursor: 'pointer',
+        boxShadow: active ? '0 16px 34px -14px rgba(255,87,34,.3)' : '0 12px 28px -16px rgba(48,56,65,.35)',
+        transition: 'box-shadow .25s',
+      }}
     >
+      {/* Video (teléfono vertical) */}
       <div
         style={{
-          position: 'relative', width: '100%', aspectRatio: '9 / 16',
-          borderRadius: 16, overflow: 'hidden', background: '#efe9e1',
-          border: active ? `2px solid ${ORANGE}` : '1px solid rgba(48,56,65,.08)',
-          boxShadow: active
-            ? '0 16px 34px -12px rgba(255,87,34,.35)'
-            : '0 10px 26px -12px rgba(48,56,65,.3)',
-          transition: 'box-shadow .25s, transform .25s, border-color .25s',
-          transform: active ? 'translateY(-2px)' : 'none',
+          position: 'relative', flex: '0 0 40%', maxWidth: 150, aspectRatio: '9 / 16',
+          borderRadius: 13, overflow: 'hidden', background: '#efe9e1', alignSelf: 'center',
+          boxShadow: active ? `0 0 0 2px ${ORANGE}` : 'none',
         }}
       >
         {active ? (
           <iframe
-            src={embedSrc(video.id)}
-            title={`Testimonio de ${video.name}`}
-            allow="autoplay; encrypted-media; fullscreen"
-            allowFullScreen
+            src={embedSrc(video.id)} title={`Testimonio de ${video.name}`}
+            allow="autoplay; encrypted-media; fullscreen" allowFullScreen
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
           />
         ) : (
           <>
-            <img
-              src={poster(video.id)} alt={`Testimonio de ${video.name}`} loading="lazy"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(48,56,65,.55) 100%)' }} />
-            <span
-              style={{
-                position: 'absolute', top: '44%', left: '50%', transform: 'translate(-50%,-50%)',
-                width: 52, height: 52, borderRadius: '50%', background: ORANGE,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 6px 16px rgba(255,87,34,.45)',
-              }}
-            >
-              <span style={{ width: 0, height: 0, borderTop: '9px solid transparent', borderBottom: '9px solid transparent', borderLeft: '15px solid #fff', marginLeft: 4 }} />
+            <img src={poster(video.id)} alt={`Testimonio de ${video.name}`} loading="lazy"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+            <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(48,56,65,.5) 100%)' }} />
+            <span style={{
+              position: 'absolute', top: '46%', left: '50%', transform: 'translate(-50%,-50%)',
+              width: 46, height: 46, borderRadius: '50%', background: ORANGE,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 5px 14px rgba(255,87,34,.45)',
+            }}>
+              <span style={{ width: 0, height: 0, borderTop: '8px solid transparent', borderBottom: '8px solid transparent', borderLeft: '13px solid #fff', marginLeft: 3 }} />
             </span>
           </>
         )}
       </div>
 
-      <div style={{ padding: '11px 2px 0', textAlign: 'left' }}>
-        <strong style={{ display: 'block', fontFamily: SANS, fontSize: 15, fontWeight: 700, color: NAVY }}>
+      {/* Texto AL COSTADO */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0, padding: '4px 2px' }}>
+        <span style={{ color: ORANGE, fontFamily: SANS, fontWeight: 800, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase' }}>
+          ★★★★★
+        </span>
+        <strong style={{ display: 'block', fontFamily: DISPLAY, fontSize: 18, fontWeight: 700, color: NAVY, margin: '4px 0 0', lineHeight: 1.15 }}>
           {video.name}{video.age ? `, ${video.age}` : ''}
         </strong>
-        <p style={{ margin: '3px 0 0', fontFamily: SANS, fontSize: 12.5, lineHeight: 1.4, color: NAVY_SOFT }}>
+        <p style={{ margin: '7px 0 0', fontFamily: SANS, fontSize: 13.5, lineHeight: 1.45, color: NAVY_SOFT }}>
           {video.review}
         </p>
+        {!active && (
+          <span style={{ marginTop: 10, color: ORANGE, fontFamily: SANS, fontSize: 12.5, fontWeight: 700 }}>
+            ▶ Ver testimonio
+          </span>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 
 export function TestimonialVideoCarousel() {
   const rootRef = useRef<HTMLElement>(null);
-  const [hoverPaused, setHoverPaused] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
-
-  const reel = Array.from({ length: REPEATS }, () => TESTIMONIAL_VIDEOS).flat();
-  const loop = [...reel, ...reel];
 
   useEffect(() => {
     if (!activeKey) return;
@@ -126,18 +117,16 @@ export function TestimonialVideoCarousel() {
     return () => doc.removeEventListener('click', onDocClick, true);
   }, [activeKey]);
 
-  const paused = hoverPaused || activeKey !== null;
-
   return (
     <section
       ref={rootRef}
       style={{
         background: 'linear-gradient(180deg,#ffffff 0%,#faf7f2 100%)',
-        padding: '44px 0 48px', overflow: 'hidden', fontFamily: SANS,
+        padding: '44px 0 46px', overflow: 'hidden', fontFamily: SANS,
         borderTop: '1px solid rgba(48,56,65,.06)',
       }}
     >
-      <div style={{ textAlign: 'center', marginBottom: 28, padding: '0 22px' }}>
+      <div style={{ textAlign: 'center', marginBottom: 26, padding: '0 22px' }}>
         <p style={{ color: ORANGE, fontFamily: SANS, fontWeight: 800, letterSpacing: '.16em', fontSize: 12, textTransform: 'uppercase', margin: 0 }}>
           Historias reales · en video
         </p>
@@ -146,42 +135,21 @@ export function TestimonialVideoCarousel() {
         </h2>
       </div>
 
-      <div
-        className="vsl-marquee"
-        style={{ maskImage: 'linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)', WebkitMaskImage: 'linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)' }}
-        onMouseEnter={() => setHoverPaused(true)}
-        onMouseLeave={() => setHoverPaused(false)}
-        onTouchStart={() => setHoverPaused(true)}
-      >
-        <div
-          className="vsl-marquee-track"
-          style={{ display: 'flex', gap: 16, width: 'max-content', padding: '6px 18px', animationPlayState: paused ? 'paused' : 'running' }}
-        >
-          {loop.map((v, i) => {
-            const slotKey = `${v.id}-${i}`;
-            return (
-              <Slot
-                key={slotKey} video={v} slotKey={slotKey}
-                active={activeKey === slotKey}
-                onSelect={(k) => setActiveKey((cur) => (cur === k ? null : k))}
-              />
-            );
-          })}
-        </div>
+      <div className="vsl-strip">
+        {TESTIMONIAL_VIDEOS.map((v) => (
+          <Card key={v.id} video={v} active={activeKey === v.id}
+            onSelect={(id) => setActiveKey((cur) => (cur === id ? null : id))} />
+        ))}
       </div>
 
-      <p style={{ textAlign: 'center', color: NAVY_SOFT, fontFamily: SANS, fontSize: 12.5, margin: '20px 22px 0' }}>
-        Tocá un video para reproducirlo con audio
+      <p style={{ textAlign: 'center', color: NAVY_SOFT, fontFamily: SANS, fontSize: 12.5, margin: '18px 22px 0' }}>
+        Deslizá para ver más · tocá el video para reproducirlo con audio
       </p>
 
       <style>{`
-        .vsl-marquee { width: 100%; }
-        .vsl-marquee-track { animation: vsl-scroll 52s linear infinite; will-change: transform; }
-        @keyframes vsl-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        @media (prefers-reduced-motion: reduce) {
-          .vsl-marquee-track { animation: none; }
-          .vsl-marquee { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        }
+        .vsl-strip { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory;
+          padding: 6px 18px 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .vsl-strip::-webkit-scrollbar { display: none; }
       `}</style>
     </section>
   );
