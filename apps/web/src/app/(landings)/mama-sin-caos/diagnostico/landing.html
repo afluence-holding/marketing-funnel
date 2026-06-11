@@ -656,7 +656,8 @@ function selectAnswer(i){
 function prevQuestion(){ if(current>0){ current--; renderQuestion(); } else { show('landing'); } }
 
 /* ---------- CAPTURE ---------- */
-function submitCapture(){
+/* ---------- RESULT ---------- */
+async function submitCapture(){
   const nombre=document.getElementById('in-nombre').value.trim();
   const email=document.getElementById('in-email').value.trim();
   const wa=document.getElementById('in-wa').value.trim();
@@ -668,13 +669,41 @@ function submitCapture(){
   if(nombre.length<1 || !emailOk) return;
 
   lead.nombre=nombre; lead.email=email; lead.wa=wa?(cc+' '+wa):'';
-  /* >>> Aquí conectas tu herramienta de email/CRM (MailerLite, ScoreApp, etc.)
-     enviando { lead, arquetipo: computeResult().key, scores } <<< */
+  
+  // Enviar lead al backend
+  try {
+    const result = computeResult();
+    const payload = {
+      email: lead.email,
+      firstName: lead.nombre,
+      phone: lead.wa || undefined,
+      source: 'landing-mama-sin-caos-diagnostico',
+      customFields: {
+        arquetipo: result.key,
+        whatsapp: lead.wa || '',
+      },
+      utmData: {
+        utm_source: new URLSearchParams(window.location.search).get('utm_source') || 'direct',
+        utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || 'landing',
+        utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign') || 'mama-sin-caos-diagnostico',
+      }
+    };
+    
+    const response = await fetch('/api/mama-sin-caos/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    console.log('✓ Lead ingested:', await response.json());
+  } catch(err) {
+    console.error('✗ Ingestion failed:', err.message);
+  }
+  
   renderResult();
   show('result');
 }
-
-/* ---------- RESULT ---------- */
 function computeResult(){
   const scores={bombera:0,invisible:0,olla:0,gerente:0,culpa:0,piloto:0};
   answers.forEach((ai,qi)=>{ if(ai!=null){ scores[QUESTIONS[qi].o[ai].a]++; } });
