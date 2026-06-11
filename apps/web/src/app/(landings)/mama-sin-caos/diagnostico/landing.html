@@ -830,6 +830,10 @@ function addWebinarToCalendar(){
     alert('Todavía falta configurar la fecha y hora exacta del webinar. Apenas esté lista, te enviaremos el recordatorio.');
     return;
   }
+  if(new Date(WEBINAR_EVENT.start) < new Date()){
+    alert('El webinar ya ha pasado. Próximamente abrirá un nuevo evento.');
+    return;
+  }
   const params = new URLSearchParams({
     action:'TEMPLATE',
     text:WEBINAR_EVENT.title,
