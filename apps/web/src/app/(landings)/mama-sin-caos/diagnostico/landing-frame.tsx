@@ -23,9 +23,11 @@ export default function LandingFrame({
       ) {
         setHeight((prev) => (Math.abs(prev - data.height!) > 1 ? data.height! : prev));
       }
-      // Al cambiar de pantalla dentro del iframe, subir el padre al tope del iframe.
+      // Al cambiar de pantalla dentro del iframe, subir el padre al tope del
+      // iframe de forma INSTANTÁNEA (sin animación) — así la transición es
+      // idéntica desde cualquier CTA (el de arriba y el de abajo).
       if (data.type === 'iframe-scroll-top' && ref.current) {
-        ref.current.scrollIntoView({ block: 'start' });
+        ref.current.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior });
       }
       if (data.type === 'iframe-height') applyPhotoMax();
     }
@@ -62,7 +64,18 @@ export default function LandingFrame({
       ref={ref}
       src={src}
       title={title}
-      style={{ width: '100%', height: `${height}px`, border: 'none', display: 'block' }}
+      // Prioridad mobile: el iframe se acota a ancho de teléfono y se centra, así
+      // el contenido siempre renderiza como mobile (las unidades vw del HTML son
+      // relativas al ancho del iframe). En desktop = misma vista mobile centrada;
+      // en mobile real = full width.
+      style={{
+        width: '100%',
+        maxWidth: '480px',
+        margin: '0 auto',
+        height: `${height}px`,
+        border: 'none',
+        display: 'block',
+      }}
     />
   );
 }
