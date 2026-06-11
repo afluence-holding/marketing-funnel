@@ -51,20 +51,20 @@
   .hero::after{content:"";position:absolute;right:-100px;top:140px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(193,103,68,.10),transparent 65%);pointer-events:none}
 
   /* masthead estilo revista */
-  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1.5px solid var(--espresso);margin-bottom:18px}
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1.5px solid var(--espresso);margin-bottom:34px}
   .masthead .mb{font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:.01em}
   .masthead .mb b{color:var(--clay-dark)}
   .masthead .mm{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--espresso-soft);font-weight:600;text-align:right;white-space:nowrap}
 
   .kick-hand{font-family:'Fraunces',serif;font-style:italic;font-size:17px;color:var(--clay-dark);font-weight:500;display:inline-block;margin-bottom:6px;letter-spacing:.01em}
-  h1.headline{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(38px,9.4vw,60px);line-height:1.0;letter-spacing:-.022em;margin:0 0 14px;color:var(--espresso)}
+  h1.headline{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(38px,9.4vw,60px);line-height:1.0;letter-spacing:-.022em;margin:0 0 22px;color:var(--espresso)}
   /* resaltador de marcador */
   .mark{position:relative;white-space:nowrap;font-style:italic}
   .mark::before{content:"";position:absolute;left:-5px;right:-5px;top:16%;bottom:4%;background:rgba(244,191,98,.62);transform:rotate(-1.3deg);z-index:-1;border-radius:3px}
-  .sub{font-size:clamp(17px,4.6vw,20px);color:var(--espresso-soft);max-width:31ch;margin:0 0 14px;line-height:1.45}
+  .sub{font-size:clamp(17px,4.6vw,20px);color:var(--espresso-soft);max-width:31ch;margin:0 0 26px;line-height:1.45}
 
   /* media: reel inclinado tipo polaroid */
-  .media-wrap{position:relative;margin:8px auto 16px;max-width:min(340px, calc(var(--photo-max, 200px) * 0.8))}
+  .media-wrap{position:relative;margin:12px auto 34px;max-width:340px}
   .media{width:100%;border-radius:8px;overflow:hidden;position:relative;aspect-ratio:4/5;background:linear-gradient(155deg,var(--sage-deep),var(--espresso));box-shadow:0 30px 60px -24px rgba(51,41,31,.62);display:flex;align-items:center;justify-content:center;border:10px solid #fff;transform:rotate(-1.2deg)}
   .media .tape{position:absolute;top:-16px;left:50%;transform:translateX(-50%) rotate(-3deg);background:rgba(244,191,98,.72);width:120px;height:30px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
   .media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 15%;display:block}
@@ -75,7 +75,7 @@
   .media .play:hover{transform:scale(1.07)}
   .media .play::after{content:"";margin-left:5px;border-style:solid;border-width:15px 0 15px 25px;border-color:transparent transparent transparent var(--clay)}
   .media .ph{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:rgba(255,255,255,.72);font-size:13px;letter-spacing:.03em}
-  .media-note{display:block;text-align:center;font-family:'Fraunces',serif;font-style:italic;font-size:15.5px;color:var(--clay-dark);margin:14px auto 0;max-width:260px;line-height:1.3}
+  .media-note{display:block;text-align:right;font-family:'Fraunces',serif;font-style:italic;font-size:15.5px;color:var(--clay-dark);margin:16px 10px 0 auto;max-width:230px;line-height:1.3}
 
   /* CTA */
   .cta-group{position:relative}
@@ -160,13 +160,13 @@
   .bar{height:7px;border-radius:100px;background:var(--sand);overflow:hidden}
   .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--clay),var(--rose));border-radius:100px;transition:width .4s cubic-bezier(.4,0,.2,1)}
 
-  .q-body{padding:20px 0 44px}
-  .q-count{font-size:13px;color:var(--clay-dark);font-weight:600;letter-spacing:.04em;margin-bottom:7px}
-  .q-text{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(24px,5.6vw,32px);line-height:1.18;margin-bottom:15px;letter-spacing:-.01em}
-  .options{display:flex;flex-direction:column;gap:9px}
+  .q-body{padding:38px 0 80px}
+  .q-count{font-size:13px;color:var(--clay-dark);font-weight:600;letter-spacing:.04em;margin-bottom:12px}
+  .q-text{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(24px,5.6vw,32px);line-height:1.18;margin-bottom:26px;letter-spacing:-.01em}
+  .options{display:flex;flex-direction:column;gap:12px}
   .opt{
     text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:14px;
-    padding:13px 16px;font-size:16px;color:var(--espresso);cursor:pointer;line-height:1.4;
+    padding:17px 18px;font-size:16px;color:var(--espresso);cursor:pointer;line-height:1.4;
     font-family:'DM Sans';transition:all .18s ease;display:flex;gap:13px;align-items:center;
   }
   .opt .mk{flex:0 0 22px;height:22px;border-radius:50%;border:2px solid var(--sand);transition:all .18s ease}
@@ -606,10 +606,6 @@ function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo({top:0,behavior:'instant'});
-  // Pedir al padre que suba al tope del iframe (si no, queda viendo el medio/abajo
-  // de la pantalla siguiente porque el iframe crece pero el padre no scrollea).
-  try{ parent.postMessage({type:'iframe-scroll-top'}, '*'); }catch(e){}
-  postHeight(); setTimeout(postHeight,120); setTimeout(postHeight,420);
 }
 function startQuiz(){ current=0; show('quiz'); renderQuestion(); }
 
@@ -659,17 +655,11 @@ function submitCapture(){
   document.getElementById('f-email').classList.toggle('invalid', !emailOk);
   if(nombre.length<1 || !emailOk) return;
 
-  const fullPhone = wa ? (cc + wa.replace(/\D/g,'')) : ''; // E.164 con +
   lead.nombre=nombre; lead.email=email; lead.wa=wa?(cc+' '+wa):'';
-
-  // Mostrar el resultado de inmediato (no bloquear por la red).
+  /* >>> Aquí conectas tu herramienta de email/CRM (MailerLite, ScoreApp, etc.)
+     enviando { lead, arquetipo: computeResult().key, scores } <<< */
   renderResult();
   show('result');
-
-  // Ingesta (org real → marketing.leads) + asignación de grupo de WhatsApp.
-  ingestLead(nombre, email, fullPhone)
-    .then(function(leadId){ if(fullPhone) return assignWhatsApp(leadId, fullPhone); })
-    .catch(function(){});
 }
 
 /* ---------- RESULT ---------- */
@@ -702,48 +692,7 @@ function renderResult(){
     : `Casi ninguna mamá es un solo tipo. Muchas mezclamos varios modos según el día — eso lo vemos en el webinar.`;
 }
 
-let WHATSAPP_GROUP_URL = ''; // se setea desde el assign de WhatsApp (rotación de grupos)
-
-/* ---------- INTEGRACIÓN (Afluence) ---------- */
-const INGEST_PATH = '/api/mama-sin-caos/diagnostico/ingest';
-const WA_ASSIGN_PATH = '/api/whatsapp-group/mama-sin-caos/main/assign';
-const WA_POOL_KEY = 'webinar-2026-06-23';
-const FORM_SOURCE = 'landing-mama-sin-caos-diagnostico';
-
-function getCookie(n){ const m=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)'); return m?decodeURIComponent(m.pop()):''; }
-function getUTM(){ const p=new URLSearchParams(location.search); const o={}; ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','fbclid'].forEach(k=>{const v=p.get(k); if(v)o[k]=v;}); return o; }
-function _uuid(){ return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);}); }
-
-async function ingestLead(nombre, email, fullPhone){
-  const r = computeResult();
-  const meta = { eventId: _uuid() };
-  const _fbp = getCookie('_fbp'); if(_fbp) meta.fbp = _fbp;
-  const _fbc = getCookie('_fbc'); if(_fbc) meta.fbc = _fbc;
-  const payload = {
-    firstName: nombre, email: email, phone: fullPhone || undefined,
-    source: FORM_SOURCE, channel: 'inbound',
-    customFields: {
-      creator: 'mama-sin-caos', event_type: 'webinar', landing: 'diagnostico',
-      arquetipo: r.key, arquetipo_secundario: r.second, scores: JSON.stringify(r.scores),
-    },
-    tracking: { meta },
-    utmData: getUTM(),
-  };
-  const res = await fetch(INGEST_PATH, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-  const data = await res.json().catch(()=>null);
-  return (data && ((data.lead && data.lead.id) || data.id)) || null;
-}
-
-async function assignWhatsApp(leadId, fullPhone){
-  try{
-    const res = await fetch(WA_ASSIGN_PATH, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ poolKey: WA_POOL_KEY, phone: fullPhone, leadId: leadId || undefined }) });
-    const data = await res.json().catch(()=>null);
-    const url = data && (data.inviteUrl || data.assignedWhatsAppUrl);
-    if(url) WHATSAPP_GROUP_URL = url;
-  }catch(e){}
-}
-
-function postHeight(){ try{ parent.postMessage({type:'iframe-height', height:document.documentElement.scrollHeight}, '*'); }catch(e){} }
+const WHATSAPP_GROUP_URL = ''; // <<< Pega aquí el link de invitación al grupo de WhatsApp
 
 function joinWhatsApp(){
   if(!WHATSAPP_GROUP_URL){
@@ -774,22 +723,6 @@ function addWebinarToCalendar(){
   });
   window.open(`https://calendar.google.com/calendar/render?${params.toString()}`,'_blank','noopener');
 }
-
-/* ---------- altura del iframe (resize del contenido) ---------- */
-window.addEventListener('load', postHeight);
-window.addEventListener('resize', postHeight);
-new ResizeObserver(postHeight).observe(document.body);
-
-/* ---------- alto real del viewport (del padre) → acota la foto del hero
-   para que el CTA quede sobre el fold en cualquier pantalla ---------- */
-window.addEventListener('message', function(e){
-  var d=e.data;
-  if(d && d.type==='viewport-height' && d.height>0){
-    var ph = Math.max(110, Math.min(320, d.height - 590));
-    document.documentElement.style.setProperty('--photo-max', ph+'px');
-    postHeight();
-  }
-});
 </script>
 </body>
 </html>
