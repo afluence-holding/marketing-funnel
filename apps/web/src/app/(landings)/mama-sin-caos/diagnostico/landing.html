@@ -541,6 +541,10 @@ const WEBINAR_EVENT = {
   location:'En vivo · Gratis',
   details:'En este webinar entiendes por qué reaccionas así y cómo empezar a salir del modo supervivencia.'
 };
+const INGEST_PATH = '/api/mama-sin-caos/diagnostico/ingest';
+const WA_ASSIGN_PATH = '/api/whatsapp-group/mama-sin-caos/main/assign';
+const WA_POOL_KEY = 'webinar-2026-06-23';
+const WHATSAPP_GROUP_URL = '__WHATSAPP_GROUP_URL__';
 
 /* ---------- DATA ---------- */
 const ARCH = {
@@ -742,7 +746,7 @@ async function submitCapture(){
       }
     };
 
-    const response = await fetch('/api/mama-sin-caos/leads', {
+    const response = await fetch(INGEST_PATH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -751,21 +755,21 @@ async function submitCapture(){
     if(!response.ok) throw new Error(`HTTP ${response.status}`);
     const ingestionResult = await response.json();
 
-    if(lead.wa && ingestionResult.lead?.id) {
+    if(lead.wa) {
       try {
-        const groupResponse = await fetch('/api/orgs/mama-sin-caos/bus/main/whatsapp-group/assign', {
+        const assignBody = { poolKey: WA_POOL_KEY, phone: lead.wa };
+        if(ingestionResult.lead?.id) assignBody.leadId = ingestionResult.lead.id;
+        const groupResponse = await fetch(WA_ASSIGN_PATH, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            poolKey: 'webinar-2026-06-23',
-            leadId: ingestionResult.lead.id,
-            phone: lead.wa,
-          })
+          body: JSON.stringify(assignBody)
         });
 
         if(groupResponse.ok) {
           const groupResult = await groupResponse.json();
-          lead.whatsappInviteUrl = groupResult.inviteUrl;
+          if(groupResult.ok && groupResult.inviteUrl) {
+            lead.whatsappInviteUrl = groupResult.inviteUrl;
+          }
         }
       } catch(err) {
         console.error('✗ WhatsApp assignment error:', err.message);
@@ -809,10 +813,9 @@ function renderResult(){
     : `Casi ninguna mamá es un solo tipo. Muchas mezclamos varios modos según el día — eso lo vemos en el webinar.`;
 }
 
-const WHATSAPP_GROUP_URL = ''; // <<< Pega aquí el link de invitación al grupo de WhatsApp
-
 function joinWhatsApp(){
-  const url = lead.whatsappInviteUrl || WHATSAPP_GROUP_URL;
+  const url = lead.whatsappInviteUrl
+    || (WHATSAPP_GROUP_URL && WHATSAPP_GROUP_URL.indexOf('__')===-1 ? WHATSAPP_GROUP_URL : '');
   if(!url){
     alert('No hay link de WhatsApp disponible. Por favor, ingresa tu teléfono en el resultado.');
     return;

@@ -14,6 +14,11 @@ async function loadHtml(): Promise<string> {
 }
 
 export async function GET() {
-  const html = await loadHtml();
+  let html = await loadHtml();
+  html = html.replace(
+    /__WHATSAPP_GROUP_URL__/g,
+    process.env.NEXT_PUBLIC_MAMA_SIN_CAOS_WHATSAPP_URL ??
+      'https://chat.whatsapp.com/LHSTlha7u9nATpQfDzxn4b',
+  );
   return landingHtmlResponse(html);
 }

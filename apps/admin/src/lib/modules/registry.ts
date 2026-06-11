@@ -40,7 +40,7 @@ const ENABLED: Record<string, AdminModuleId[]> = {
   // Creators whose landing intake lives outside the CRM (dedicated marketing
   // tables). Responses-only back office — no Meta campaigns dashboard.
   'bukku/main': ['responses'],
-  'mama-sin-caos/main': ['responses'],
+  'mama-sin-caos/main': ['responses', 'whatsapp-groups'],
   'caro-fitness/main': ['responses'],
 };
 
