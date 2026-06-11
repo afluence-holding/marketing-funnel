@@ -1,17 +1,13 @@
 'use client';
 
 /**
- * Franja-carrusel de video-testimonios — v3 TOPE DE LÍNEA (premium + performante).
+ * Franja-carrusel de video-testimonios — v4 (re-skin editorial DESINFLÁMATE).
  *
- * Cambio clave vs v2 (performance): NO se montan N iframes de YouTube en autoplay
- * (mataba el móvil). Cada slot muestra un POSTER liviano (thumbnail) con play; el
- * iframe de YouTube se monta SOLO al seleccionar un slot, y hay MÁXIMO 1 video vivo
- * a la vez. Click afuera → vuelve al poster (desmonta el iframe). Marquesina en loop
- * (ilusión de "muchos") que se pausa al hover/touch y mientras hay un video activo.
- *
- * Estilos INLINE + <style> propio a propósito: se inyecta vía portal DENTRO del
- * iframe srcDoc del VSL (que no hereda el Tailwind del parent).
- * Branding DESINFLÁMATE: naranja #FF5722, navy #303841.
+ * Mismo comportamiento performante de v3 (poster-first: 0 iframes hasta el click,
+ * máx 1 video vivo), pero el DISEÑO matchea el VSL de German: editorial y cálido
+ * (fondo claro, texto navy #303841, acento naranja #FF5722) en vez del look oscuro
+ * "digital". Reusa las CSS vars de fuente del propio VSL (--font-display / --font-sans),
+ * porque la franja se renderiza vía portal DENTRO del iframe del VSL.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -30,8 +26,12 @@ const TESTIMONIAL_VIDEOS: TestimonialVideo[] = [
   { id: 'ScMzIvxBSi4', name: 'Testimonio demo', age: 45, review: 'Reseña de ejemplo — reemplazar por real.' },
 ];
 
-const REPEATS = 3; // repeticiones en la cinta (ilusión de "muchos" con pocos clips).
+const REPEATS = 3;
 const ORANGE = '#FF5722';
+const NAVY = '#303841';
+const NAVY_SOFT = '#5a6470';
+const SANS = 'var(--font-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif)';
+const DISPLAY = 'var(--font-display, var(--font-sans, Georgia, serif))';
 
 function poster(id: string): string {
   return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
@@ -52,16 +52,18 @@ function Slot({
     <div
       data-slot-key={slotKey}
       onClick={() => onSelect(slotKey)}
-      style={{ flex: '0 0 auto', width: 212, cursor: 'pointer' }}
+      style={{ flex: '0 0 auto', width: 208, cursor: 'pointer' }}
     >
       <div
         style={{
           position: 'relative', width: '100%', aspectRatio: '9 / 16',
-          borderRadius: 18, overflow: 'hidden', background: '#0b0b0d',
+          borderRadius: 16, overflow: 'hidden', background: '#efe9e1',
+          border: active ? `2px solid ${ORANGE}` : '1px solid rgba(48,56,65,.08)',
           boxShadow: active
-            ? `0 0 0 3px ${ORANGE}, 0 18px 40px -12px rgba(0,0,0,.7)`
-            : '0 10px 30px -10px rgba(0,0,0,.55)',
-          transition: 'box-shadow .25s, transform .25s', transform: active ? 'translateY(-2px)' : 'none',
+            ? '0 16px 34px -12px rgba(255,87,34,.35)'
+            : '0 10px 26px -12px rgba(48,56,65,.3)',
+          transition: 'box-shadow .25s, transform .25s, border-color .25s',
+          transform: active ? 'translateY(-2px)' : 'none',
         }}
       >
         {active ? (
@@ -78,31 +80,26 @@ function Slot({
               src={poster(video.id)} alt={`Testimonio de ${video.name}`} loading="lazy"
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
             />
-            <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,.06) 45%,rgba(0,0,0,.72) 100%)' }} />
+            <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(48,56,65,.55) 100%)' }} />
             <span
               style={{
-                position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%,-50%)',
-                width: 56, height: 56, borderRadius: '50%', background: ORANGE,
+                position: 'absolute', top: '44%', left: '50%', transform: 'translate(-50%,-50%)',
+                width: 52, height: 52, borderRadius: '50%', background: ORANGE,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 6px 18px rgba(255,87,34,.55)',
+                boxShadow: '0 6px 16px rgba(255,87,34,.45)',
               }}
             >
-              <span style={{ width: 0, height: 0, borderTop: '10px solid transparent', borderBottom: '10px solid transparent', borderLeft: '16px solid #fff', marginLeft: 4 }} />
-            </span>
-            <span
-              style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,.55)', color: '#fff', fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 999 }}
-            >
-              ▶ Testimonio
+              <span style={{ width: 0, height: 0, borderTop: '9px solid transparent', borderBottom: '9px solid transparent', borderLeft: '15px solid #fff', marginLeft: 4 }} />
             </span>
           </>
         )}
       </div>
 
-      <div style={{ padding: '12px 2px 0', textAlign: 'left', color: '#fff' }}>
-        <strong style={{ display: 'block', fontSize: 15.5, fontWeight: 800, letterSpacing: '-.01em' }}>
+      <div style={{ padding: '11px 2px 0', textAlign: 'left' }}>
+        <strong style={{ display: 'block', fontFamily: SANS, fontSize: 15, fontWeight: 700, color: NAVY }}>
           {video.name}{video.age ? `, ${video.age}` : ''}
         </strong>
-        <p style={{ margin: '3px 0 0', fontSize: 13, lineHeight: 1.4, color: 'rgba(255,255,255,.78)' }}>
+        <p style={{ margin: '3px 0 0', fontFamily: SANS, fontSize: 12.5, lineHeight: 1.4, color: NAVY_SOFT }}>
           {video.review}
         </p>
       </div>
@@ -118,7 +115,6 @@ export function TestimonialVideoCarousel() {
   const reel = Array.from({ length: REPEATS }, () => TESTIMONIAL_VIDEOS).flat();
   const loop = [...reel, ...reel];
 
-  // Click FUERA del slot activo → desmonta el video (vuelve a poster) y reanuda.
   useEffect(() => {
     if (!activeKey) return;
     const doc = rootRef.current?.ownerDocument ?? document;
@@ -136,16 +132,16 @@ export function TestimonialVideoCarousel() {
     <section
       ref={rootRef}
       style={{
-        background: 'radial-gradient(120% 100% at 50% 0%, #1a1a20 0%, #0f0f12 70%)',
-        padding: '46px 0 52px', overflow: 'hidden',
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+        background: 'linear-gradient(180deg,#ffffff 0%,#faf7f2 100%)',
+        padding: '44px 0 48px', overflow: 'hidden', fontFamily: SANS,
+        borderTop: '1px solid rgba(48,56,65,.06)',
       }}
     >
-      <div style={{ textAlign: 'center', marginBottom: 30, padding: '0 22px' }}>
-        <p style={{ color: ORANGE, fontWeight: 800, letterSpacing: '.2em', fontSize: 12, textTransform: 'uppercase', margin: 0 }}>
+      <div style={{ textAlign: 'center', marginBottom: 28, padding: '0 22px' }}>
+        <p style={{ color: ORANGE, fontFamily: SANS, fontWeight: 800, letterSpacing: '.16em', fontSize: 12, textTransform: 'uppercase', margin: 0 }}>
           Historias reales · en video
         </p>
-        <h2 style={{ color: '#fff', fontSize: 27, fontWeight: 800, margin: '8px 0 0', letterSpacing: '-.02em' }}>
+        <h2 style={{ color: NAVY, fontFamily: DISPLAY, fontSize: 28, fontWeight: 700, margin: '8px auto 0', maxWidth: 320, lineHeight: 1.12 }}>
           Lo que dicen las que ya lo hicieron
         </h2>
       </div>
@@ -159,7 +155,7 @@ export function TestimonialVideoCarousel() {
       >
         <div
           className="vsl-marquee-track"
-          style={{ display: 'flex', gap: 18, width: 'max-content', padding: '0 18px', animationPlayState: paused ? 'paused' : 'running' }}
+          style={{ display: 'flex', gap: 16, width: 'max-content', padding: '6px 18px', animationPlayState: paused ? 'paused' : 'running' }}
         >
           {loop.map((v, i) => {
             const slotKey = `${v.id}-${i}`;
@@ -174,7 +170,7 @@ export function TestimonialVideoCarousel() {
         </div>
       </div>
 
-      <p style={{ textAlign: 'center', color: 'rgba(255,255,255,.5)', fontSize: 12.5, margin: '22px 22px 0' }}>
+      <p style={{ textAlign: 'center', color: NAVY_SOFT, fontFamily: SANS, fontSize: 12.5, margin: '20px 22px 0' }}>
         Tocá un video para reproducirlo con audio
       </p>
 
