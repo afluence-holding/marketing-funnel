@@ -43,7 +43,7 @@ function Card({
       data-slot-key={video.id}
       onClick={() => onSelect(video.id)}
       style={{
-        scrollSnapAlign: 'center', flex: '0 0 88%', maxWidth: 430,
+        scrollSnapAlign: 'center', flex: '0 0 86%', maxWidth: 380,
         display: 'flex', gap: 14, alignItems: 'stretch',
         background: '#ffffff', border: '1px solid rgba(48,56,65,.08)',
         borderRadius: 18, padding: 12, cursor: 'pointer',
@@ -148,8 +148,10 @@ export function TestimonialVideoCarousel() {
 
       <style>{`
         .vsl-strip { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory;
-          padding: 6px 18px 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+          justify-content: safe center; padding: 6px 0 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
         .vsl-strip::-webkit-scrollbar { display: none; }
+        /* Spacers que centran la primera/última tarjeta (peek simétrico). */
+        .vsl-strip::before, .vsl-strip::after { content: ''; flex: 0 0 7%; }
       `}</style>
     </section>
   );
