@@ -1,6 +1,6 @@
 'use client';
 
-import type { MatchupRow } from '@/lib/dashboard/dashboard-adapter';
+import type { MatchupRow } from '@/lib/campaigns/types';
 import {
   EmptyTableRow,
   SortableTh,

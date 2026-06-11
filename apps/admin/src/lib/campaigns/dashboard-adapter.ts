@@ -11,355 +11,60 @@
 import { supabaseAdminForSchema } from '@marketing-funnel/db';
 
 // =============================================================================
-// Types (public contract for the renderer)
+// Types (public contract for the renderer) — moved to ./types
 // =============================================================================
 
-export interface BuConfig {
-  objective: string;
-  event_type: string;
-  attribution: string;
-  landing_url: string;
-  campaign_code: string;
-  campaign_label: string;
-  /** IANA timezone for the BU — controls what "today" means in tiles/KPIs. Defaults to America/Lima. */
-  timezone?: string;
-  campaign_window: {
-    starts_on: string;
-    ends_on: string;
-    duration_days: number;
-    deadline_label: string;
-  };
-  phases: Array<{ key: string; label: string; day_start: number; day_end: number }>;
-  total_budget: number;
-  daily_budget: number;
-  cus_seed_size: number;
-  fatigue_thresholds: {
-    cus_daily_freq_watch: number;
-    cus_daily_freq_alert: number;
-    rmk_daily_freq_watch: number;
-    cartab_daily_freq_watch: number;
-    freq_6plus_healthy_max_pct: number;
-    freq_6plus_watch_max_pct: number;
-  };
-  link_ctr_target: number;
-  link_ctr_warn: number;
-  cpm_threshold: number;
-  click_to_lp_target: number;
-  /**
-   * Explicit Meta campaign id to pin the dashboard to a specific campaign
-   * entity for this BU. When present, skips the spend-based fallback and
-   * guarantees operators don't accidentally see stats from a test campaign.
-   */
-  campaign_meta_id?: string;
-}
+import type {
+  AdPerfRow,
+  AdSetRow,
+  AlertItem,
+  BuConfig,
+  BudgetBumpRow,
+  CusSaturationBlock,
+  DashboardData,
+  DashboardRange,
+  FrequencyScope,
+  FunnelStep,
+  HealthBreakdown,
+  HypothesisItem,
+  KpiCell,
+  KpiTargets,
+  LearningPhaseCard,
+  MatchupRow,
+  PriceTier,
+  RangePreset,
+  RecentPurchase,
+  RevenueTile,
+  TargetingBlock,
+  TrendPoint,
+  WatchSignalItem,
+} from './types';
 
-export interface KpiTargets {
-  target_cpa: number;
-  breakeven_cpa: number;
-  kill_cpa: number;
-  kill_window_days: number;
-  revenue_per_conv: number;
-  target_roas: number;
-  target_total_conversions: number;
-  /**
-   * Optional per-role breakeven overrides. Cart-abandon (CARTAB) ships at a
-   * tighter BE because its audience is post-purchase intent; we want the UI
-   * to reflect this without baking role-specific literals in the renderer.
-   */
-  breakeven_cpa_by_role?: Partial<Record<'CUS' | 'ASC' | 'RMK' | 'CARTAB' | 'INT', number>>;
-}
-
-export interface PriceTier {
-  label: string;
-  price: number;
-  currency: string;
-  starts_on: string;
-  ends_on: string | null;
-  cutover_time: string | null;
-  status: 'past' | 'current' | 'future';
-}
-
-export interface KpiCell {
-  label: string;
-  value: string;
-  tone: 'ok' | 'warn' | 'bad' | 'neutral';
-  sub?: string;
-}
-
-export interface AdSetRow {
-  id: string;
-  role: string;                      // CUS / ASC / RMK / CARTAB
-  name_subtitle: string;             // "Seed + Advantage+"
-  temperature_label: string;
-  status: 'ACTIVE' | 'PAUSED' | string;
-  daily_budget: number;
-  spend: number;
-  purchases: number;
-  cpa: number | null;
-  breakeven_cpa: number;             // effective BE for this role (override-aware)
-  margin_per_sale: number | null;    // BE_CPA - CPA (null when no purchases)
-  roas: number | null;               // revenue_tier / spend (tier-valued revenue)
-  roas_target: number;               // target ROAS from kpi_targets (for UI chip)
-  link_ctr: number;
-  reach: number;
-  freq_daily_7d: number | null;      // avg daily freq (7d); null when no freq data
-  freq_lifetime: number | null;      // cumulative freq; null when no data
-}
-
-export interface LearningPhaseCard {
-  adset_id: string;
-  role: string;
-  label: string;                     // "${role} — ${temperature_label}"
-  purchases_7d: number;
-  target_exits: number;              // 50
-  progress_pct: number;
-  gap: number;
-  eta_days: number | null;
-  eta_date: string | null;
-  last_edit_ago: string;             // human label
-  last_edit_recent: boolean;         // <24h triggers reset badge
-  spend_7d: number;
-  cpa_7d: number | null;
-  status: 'active' | 'paused' | 'inactive';
-  early_winner: boolean;
-  note: string;
-  status_label: string;              // LEARNING (implícito) / LEARNING (edit reset)
-  // Semantic bucket used by the UI to pick colour. Keeps the render layer
-  // dumb: the adapter owns the rules, the card just maps bucket → badge.
-  // Precedence when computing the bucket:
-  //   paused          → status === 'paused'
-  //   inactive        → status === 'inactive'   (spent nothing in 7d)
-  //   early_winner    → ≥5 purchases 7d AND CPA ≤ breakeven
-  //   edit_reset      → recent edit (<24h) AND delivering
-  //   learning        → default, still below the 50/7d exit target
-  state: 'paused' | 'inactive' | 'early_winner' | 'edit_reset' | 'learning';
-}
-
-export interface RecentPurchase {
-  date: string;
-  purchases: number;
-  adset_role: string;
-  ad_name: string;
-  temperature_label: string;
-  spend_day: number;
-  cpa_day: number | null;
-  cpa_target: number;
-  cpa_breakeven: number;
-  cpa_kill: number;
-}
-
-/**
- * One row in the "Recent Budget Bumps" table — a single change to an ACTIVE
- * ad set's daily_budget, projected with the human-readable ad-set name and
- * role for display. `direction` lets the UI render an arrow + colour without
- * recomputing the sign on the client.
- */
-export interface BudgetBumpRow {
-  ad_set_id: string;
-  ad_set_name: string;
-  role: string;
-  prev_budget: number | null;
-  new_budget: number;
-  delta_amount: number;            // new - (prev ?? 0)
-  delta_pct: number | null;        // null for INITIAL or prev=0
-  direction: 'UP' | 'DOWN' | 'INITIAL';
-  changed_at: string;              // ISO timestamp
-  detected_via: 'pull' | 'manual_refresh' | 'backfill';
-}
-
-export interface TargetingBlock {
-  id: string;
-  role: string;
-  name: string;                      // "D21_CUS_Suscriptores-NoCompradores_$25"
-  temperature_label: string;
-  budget_line: string;               // "$320/day · OFFSITE_CONVERSIONS · IMPRESSIONS"
-  rows: Array<{ label: string; value: string }>;
-}
-
-export interface CusSaturationBlock {
-  reach_vs_seed: { reach: number; seed: number; multiplier: number };
-  freq_7d: { value: number | null; peak_day: number | null; lifetime: number | null; days: number };
-  link_ctr: number;
-  advantage_plus_status: 'EXPANDING' | 'STABLE' | 'COOLING';
-}
-
-export interface TrendPoint {
-  date: string;
-  spend: number;
-  purchases: number;
-  ctr: number;
-  cpm: number;
-}
-
-export interface FunnelStep {
-  label: string;
-  value: number;
-  conv_pct_from_prev: number | null;   // null for first step
-  drop_pct_from_prev: number | null;
-}
-
-export interface AdPerfRow {
-  id: string;
-  name: string;
-  adset_role: string;
-  adset_name: string;
-  format: 'VID' | 'IMG';
-  wave: 'W1' | 'W2' | 'W3';
-  manual_status: string;                // Winner / Watch / Dead / Active / Testing
-  status_dot: 'winner' | 'watch' | 'dead' | 'testing' | 'active';
-  spend: number;
-  impressions: number;
-  reach: number;
-  link_clicks: number;
-  link_ctr: number;
-  lp_views: number;
-  purchases: number;
-  cpa: number | null;
-  pct_of_budget: number;
-}
-
-export interface MatchupRow {
-  label: string;
-  video_ctr: number;
-  static_ctr: number;
-  video_purchases: number;
-  static_purchases: number;
-  early_winner: string;
-}
-
-export interface FrequencyScope {
-  scope: string;              // TOTAL / CUS / ASC / RMK / CARTAB
-  reach: number;
-  avg_freq: number;
-  buckets: {
-    b1: number;
-    b23: number;
-    b45: number;
-    b610: number;
-    b1120: number;
-    b21plus: number;
-  };
-  pct_6plus: number;
-  status: 'HEALTHY' | 'WATCH' | 'FATIGUE';
-}
-
-export interface AlertItem {
-  type: string;
-  severity: 'green' | 'yellow' | 'red' | 'blue';
-  message: string;
-}
-
-export interface HypothesisItem {
-  code: string;
-  statement: string;
-  current_reading: string;
-  success_criteria: string;
-  status: 'testing' | 'validated' | 'rejected';
-}
-
-export interface WatchSignalItem {
-  label: string;
-  threshold: string;
-  current: string;
-  status: 'ok' | 'watch' | 'breach';
-  action: string;
-}
-
-export interface RevenueTile {
-  label: string;
-  date_range: string;
-  amount: number;
-  sub: string;
-  color: 'ok' | 'accent' | 'warn';
-}
-
-export interface HealthBreakdown {
-  label: string;
-  score: number;
-  tone: 'ok' | 'warn' | 'bad';
-  weight?: number;                   // percentage weight in total score (0-100)
-  sub?: string;                      // short human-readable detail
-}
-
-export type RangePreset = '7d' | '30d' | '90d' | 'campaign' | 'custom';
-
-export interface DashboardRange {
-  start: string;                     // YYYY-MM-DD (inclusive)
-  end: string;                       // YYYY-MM-DD (inclusive)
-  preset: RangePreset;
-  label: string;                     // UI-friendly label (e.g. "Últimos 30 días")
-  days: number;                      // number of days in the range (inclusive)
-}
-
-export interface DashboardData {
-  bu: {
-    id: string;
-    organizer_slug: string;
-    bu_slug: string;
-    name: string;
-    config: BuConfig;
-    kpi_targets: KpiTargets;
-  };
-  header: {
-    report_date: string;                 // "2026-04-22"
-    campaign_code: string;
-    campaign_label: string;
-    day_index: number;                   // 15
-    total_days: number;                  // 19
-    adset_summary: string;               // "ABO (CUS $320 ACT + ASC $30 PAUSED + ...)"
-    freshness_utc: string;               // "14:11 UTC"
-    status_badge: string;                // "SCALING"
-    health_label: string;                // "HEALTHY (90)"
-  };
-  progress: {
-    day_index: number;
-    total_days: number;
-    spend_so_far: number;
-    total_budget: number;
-    progress_pct: number;                // by day (matches blueprint 15/19 = 78.9%)
-    progress_pct_budget: number;         // by spend vs total_budget (side metric)
-    current_phase_key: string;           // scaling
-    phases: BuConfig['phases'];
-  };
-  health: {
-    score: number;
-    label: string;                       // HEALTHY / WATCH / CRITICAL
-    tone: 'ok' | 'warn' | 'bad';
-    breakdown: HealthBreakdown[];
-  };
-  campaign_config: Array<{ label: string; value: string; full_row?: boolean }>;
-  price_tiers: PriceTier[];
-  revenue_tiles: RevenueTile[];
-  /**
-   * Last 5 calendar days immediately prior to the report date. Ordered from
-   * most recent (index 0) to oldest (index 4). Each tile mirrors the HOY
-   * card styling so operators can spot day-over-day momentum at a glance.
-   */
-  recent_daily_tiles: RevenueTile[];
-  revenue_footer: string;
-  kpis: KpiCell[];
-  ad_sets: AdSetRow[];
-  learning_cards: LearningPhaseCard[];
-  recent_purchases: RecentPurchase[];
-  /**
-   * Last 30 days of daily_budget changes on ACTIVE ad sets, newest first.
-   * Sourced from `meta_ops.ad_set_budget_history` (populated by the pull job
-   * diff and a one-shot Activity Log backfill). Operators use this to spot
-   * recent pacing decisions when explaining day-over-day swings.
-   */
-  budget_bumps: BudgetBumpRow[];
-  targeting_blocks: TargetingBlock[];
-  cus_saturation: CusSaturationBlock;
-  trend: TrendPoint[];
-  funnel: FunnelStep[];
-  ad_performance: AdPerfRow[];
-  matchups: MatchupRow[];
-  frequency: FrequencyScope[];
-  alerts: AlertItem[];
-  hypotheses: HypothesisItem[];
-  watch_signals: WatchSignalItem[];
-  range: DashboardRange;
-}
+export type {
+  AdPerfRow,
+  AdSetRow,
+  AlertItem,
+  BuConfig,
+  BudgetBumpRow,
+  CusSaturationBlock,
+  DashboardData,
+  DashboardRange,
+  FrequencyScope,
+  FunnelStep,
+  HealthBreakdown,
+  HypothesisItem,
+  KpiCell,
+  KpiTargets,
+  LearningPhaseCard,
+  MatchupRow,
+  PriceTier,
+  RangePreset,
+  RecentPurchase,
+  RevenueTile,
+  TargetingBlock,
+  TrendPoint,
+  WatchSignalItem,
+};
 
 // =============================================================================
 // Loader
@@ -369,8 +74,10 @@ interface Money { (n: number): string }
 const money: Money = (n: number) => {
   const sign = n < 0 ? '-' : '';
   const abs = Math.abs(n);
-  const fixed = abs < 10 ? abs.toFixed(3) : abs.toFixed(2);
-  return `${sign}$${fixed}`;
+  // Always 2 decimals: 3 decimals on sub-$10 amounts ($4.519) read as
+  // thousands separators for Spanish-speaking operators and were false
+  // precision anyway.
+  return `${sign}$${abs.toFixed(2)}`;
 };
 const num = (n: number) => new Intl.NumberFormat('en-US').format(Math.round(n));
 const pct = (n: number, digits = 2) => `${n.toFixed(digits)}%`;
@@ -498,19 +205,21 @@ export async function loadDashboard(params: {
   const meta = supabaseAdminForSchema('meta_ops');
 
   // ---------- 1. Organizer + BU ----------
-  const { data: org } = await meta
+  const { data: org, error: orgError } = await meta
     .from('organizers')
     .select('id, slug')
     .eq('slug', params.organizerSlug)
     .maybeSingle();
+  if (orgError) throw new Error(`organizers query failed: ${orgError.message}`);
   if (!org) throw new Error(`Organizer not found: ${params.organizerSlug}`);
 
-  const { data: bu } = await meta
+  const { data: bu, error: buError } = await meta
     .from('business_units')
     .select('id, slug, name, config, kpi_targets')
     .eq('organizer_id', org.id)
     .eq('slug', params.buSlug)
     .maybeSingle();
+  if (buError) throw new Error(`business_units query failed: ${buError.message}`);
   if (!bu) throw new Error(`BU not found: ${params.buSlug}`);
 
   const config = bu.config as BuConfig;
@@ -542,23 +251,40 @@ export async function loadDashboard(params: {
     .select('label, price, currency, starts_on, ends_on, cutover_time, display_order')
     .eq('business_unit_id', buId)
     .order('display_order', { ascending: true });
-  const price_tiers: PriceTier[] = (tiers ?? []).map((t: AnyRow) => {
-    const start = new Date(t.starts_on as string);
-    const end   = t.ends_on ? new Date(t.ends_on as string) : null;
-    const today = new Date(reportDate);
-    let status: PriceTier['status'] = 'future';
-    if (end && end < today) status = 'past';
-    else if (start <= today && (!end || end >= today)) status = 'current';
-    return { ...(t as Omit<PriceTier, 'status'>), status };
-  });
-  const currentTier = price_tiers.find(t => t.status === 'current') ?? price_tiers[price_tiers.length - 1];
+  // The table is per-BU and accumulates every past edition's ladder (April C1
+  // + June C2, …). Only tiers overlapping the current campaign_window belong
+  // on this dashboard — otherwise the strip shows a past edition as if it
+  // were the live one.
+  const cwStart = config.campaign_window.starts_on;
+  const cwEnd   = config.campaign_window.ends_on ?? null;
+  const price_tiers: PriceTier[] = (tiers ?? [])
+    .filter((t: AnyRow) => {
+      const tStart = t.starts_on as string;
+      const tEnd   = (t.ends_on as string | null) ?? null;
+      return (cwEnd == null || tStart <= cwEnd) && (tEnd == null || tEnd >= cwStart);
+    })
+    .map((t: AnyRow) => {
+      const start = new Date(t.starts_on as string);
+      const end   = t.ends_on ? new Date(t.ends_on as string) : null;
+      const today = new Date(reportDate);
+      let status: PriceTier['status'] = 'future';
+      if (end && end < today) status = 'past';
+      else if (start <= today && (!end || end >= today)) status = 'current';
+      return { ...(t as Omit<PriceTier, 'status'>), status };
+    });
+  // No silent fallback to the last (expired) tier: when no tier covers
+  // reportDate, currentTier is null and the UI must degrade visibly instead
+  // of claiming a stale price is the "tier actual".
+  const currentTier: PriceTier | null = price_tiers.find(t => t.status === 'current') ?? null;
 
-  // Tier-based price for any ISO date (for revenue valuation downstream).
-  // Declared early so adset ROAS (Fix #1) and learning card math can reuse it.
-  const priceForDate = (isoDate: string): number => {
-    const t = price_tiers.find(tt => isoDate >= tt.starts_on && (!tt.ends_on || isoDate <= tt.ends_on));
-    return t?.price ?? kpi.revenue_per_conv;
-  };
+  // Tier (and tier-based price) for any ISO date — used for revenue valuation
+  // downstream. Declared early so adset ROAS (Fix #1) and learning card math
+  // can reuse it. priceForDate keeps the revenue_per_conv fallback, but subs
+  // must not label that fallback as a vigent tier (use tierForDate to check).
+  const tierForDate = (isoDate: string): PriceTier | null =>
+    price_tiers.find(tt => isoDate >= tt.starts_on && (!tt.ends_on || isoDate <= tt.ends_on)) ?? null;
+  const priceForDate = (isoDate: string): number =>
+    tierForDate(isoDate)?.price ?? kpi.revenue_per_conv;
 
   // ---------- 3. Campaign entity + daily trend ----------
   // Fix C1: resolve the campaign to render in this order:
@@ -737,11 +463,18 @@ export async function loadDashboard(params: {
     });
 
   // ---------- 4. Ad sets + lifetime metrics ----------
-  const { data: adsetRows } = await meta
+  // Scope ad sets to the resolved campaign (ad_sets.campaign_id holds the
+  // Meta campaign id; idx_ad_sets_campaign). The table accumulates every
+  // edition's ad sets for the BU — stale rows from a paused past campaign
+  // can keep status=ACTIVE and used to inflate adset_summary, the pacing
+  // denominator, learning cards, targeting blocks and CUS saturation.
+  const scopedCampaignMetaId = campEntity?.meta_id ?? null;
+  let adsetQuery = meta
     .from('ad_sets')
     .select('id, name, status, daily_budget, role, temperature_label, updated_time')
-    .eq('business_unit_id', buId)
-    .order('daily_budget', { ascending: false });
+    .eq('business_unit_id', buId);
+  if (scopedCampaignMetaId) adsetQuery = adsetQuery.eq('campaign_id', scopedCampaignMetaId);
+  const { data: adsetRows } = await adsetQuery.order('daily_budget', { ascending: false });
 
   interface AdsetAgg {
     spend: number;
@@ -848,6 +581,19 @@ export async function loadDashboard(params: {
     CARTAB: 'Cart-Abandon 180d (Hottest)',
   };
 
+  // Ad sets without a seeded `role` (e.g. new editions never backfilled) show
+  // a trimmed ad-set name instead of an unreadable '—'. We never invent roles.
+  const shortName = (name: string): string => {
+    const n = name.trim();
+    return n.length > 12 ? `${n.slice(0, 12)}…` : n;
+  };
+  const roleOrName = (role: unknown, name: unknown): string => {
+    const r = typeof role === 'string' ? role.trim() : '';
+    if (r) return r;
+    const n = typeof name === 'string' ? name.trim() : '';
+    return n ? shortName(n) : '—';
+  };
+
   // Fix C5: compute 7d freq per adset from real per-day frequency values
   // (impressions-weighted avg of meta_insights.frequency restricted to the
   // 7d window). The previous implementation collapsed the 7d value to the
@@ -896,7 +642,7 @@ export async function loadDashboard(params: {
     // purchase_value Meta echoes back, which subreports vs our own DB.
     const revenueTier = m?.revenue_tier ?? 0;
     const roas = spend > 0 && revenueTier > 0 ? revenueTier / spend : null;
-    const role = (s.role as string) ?? '—';
+    const role = roleOrName(s.role, s.name);
     const be = resolveBreakevenForRole(role);
     return {
       id: s.id as string,
@@ -1056,11 +802,14 @@ export async function loadDashboard(params: {
   });
 
   // ---------- 7. Targeting blocks ----------
-  const { data: adsetFull } = await meta
+  // Same campaign scoping as section 4 — otherwise past-edition ad sets show
+  // their targeting as if they were part of the live campaign.
+  let adsetFullQuery = meta
     .from('ad_sets')
     .select('id, name, status, daily_budget, optimization_goal, billing_event, targeting, role, temperature_label')
-    .eq('business_unit_id', buId)
-    .order('daily_budget', { ascending: false });
+    .eq('business_unit_id', buId);
+  if (scopedCampaignMetaId) adsetFullQuery = adsetFullQuery.eq('campaign_id', scopedCampaignMetaId);
+  const { data: adsetFull } = await adsetFullQuery.order('daily_budget', { ascending: false });
   const targeting_blocks: TargetingBlock[] = ((adsetFull ?? []) as AnyRow[]).map(s => {
     const t = (s.targeting ?? {}) as AnyRow;
     const demo = t.demographics ?? {};
@@ -1102,7 +851,7 @@ export async function loadDashboard(params: {
     if (t.devices?.length) rows.push({ label: 'Devices', value: (t.devices as string[]).join(', ') });
     return {
       id: s.id as string,
-      role: (s.role as string) ?? '—',
+      role: roleOrName(s.role, s.name),
       name: s.name as string,
       temperature_label: (s.temperature_label as string) ?? '',
       budget_line: `$${s.daily_budget}/day · ${s.optimization_goal ?? ''} · ${s.billing_event ?? ''}`.trim(),
@@ -1155,7 +904,7 @@ export async function loadDashboard(params: {
   // budget-bumps table) without re-querying the ad_sets table.
   const adsetStatusById = new Map<string, string>();
   for (const s of (adsetRows ?? []) as AnyRow[]) {
-    adsetRoleById.set(s.id as string, (s.role as string) ?? '—');
+    adsetRoleById.set(s.id as string, roleOrName(s.role, s.name));
     adsetNameById.set(s.id as string, (s.name as string) ?? '—');
     adsetBudgetById.set(s.id as string, Number(s.daily_budget) || 0);
     adsetStatusById.set(s.id as string, (s.status as string) ?? 'UNKNOWN');
@@ -1343,7 +1092,12 @@ export async function loadDashboard(params: {
   };
 
   const adPerfRows: AdPerfRow[] = [];
-  for (const a of (adMeta ?? []) as AnyRow[]) {
+  // When the dashboard is scoped to a campaign, only render ads that belong
+  // to that campaign's ad sets (same root-cause fix as section 4).
+  const adMetaScoped = ((adMeta ?? []) as AnyRow[]).filter(
+    a => !scopedCampaignMetaId || adsetNameById.has(a.ad_set_id as string),
+  );
+  for (const a of adMetaScoped) {
     // `ads.id` IS the Meta ad id, so we look up the entity row by it.
     const entityId = adEntityMetaToId.get(a.id as string);
     const agg = entityId ? adAggByEntityId.get(entityId) : undefined;
@@ -1438,15 +1192,28 @@ export async function loadDashboard(params: {
   // scoped to this BU (the table has FK to meta_entities which is
   // organization-spanning). Fix #5: the date is report-driven and falls back
   // to the latest available date in the table when no row exists for today.
-  const entityMetaMap = new Map<string, string>();
+  const entityInfoById = new Map<string, { meta_id: string; name: string; entity_type: string }>();
   const buEntityIds: string[] = [];
   {
     const { data: entAll } = await meta
       .from('meta_entities')
-      .select('id, meta_id')
+      .select('id, meta_id, name, entity_type')
       .eq('business_unit_id', buId);
     for (const e of (entAll ?? []) as AnyRow[]) {
-      entityMetaMap.set(e.id as string, e.meta_id as string);
+      const info = {
+        meta_id: e.meta_id as string,
+        name: (e.name as string) ?? '',
+        entity_type: (e.entity_type as string) ?? '',
+      };
+      // Scope the frequency snapshot to the resolved campaign + its ad sets;
+      // otherwise the latest-date fallback can resurface a past edition's
+      // rows and present them as current.
+      if (scopedCampaignMetaId) {
+        const isCampaign = info.entity_type === 'campaign' && info.meta_id === scopedCampaignMetaId;
+        const isOwnAdset = info.entity_type === 'adset' && adsetRoleById.has(info.meta_id);
+        if (!isCampaign && !isOwnAdset) continue;
+      }
+      entityInfoById.set(e.id as string, info);
       buEntityIds.push(e.id as string);
     }
   }
@@ -1483,10 +1250,17 @@ export async function loadDashboard(params: {
         .eq('date', freqDate)
         .in('entity_id', buEntityIds)
     : { data: [] as AnyRow[] };
-  const scopeLabel: Record<string, string> = {
-    'DI21-2026-Q2': 'TOTAL', 'di21_cus': 'CUS', 'di21_asc': 'ASC', 'di21_rmk': 'RMK', 'di21_cartab': 'CARTAB',
+  // Scope label derived from the real entity (no fixture id map): the
+  // campaign row is 'TOTAL'; ad-set rows show their role (or trimmed name
+  // when no role is seeded), so the operator can tell rows apart.
+  const scopeForEntity = (entityId: string): string => {
+    const info = entityInfoById.get(entityId);
+    if (!info) return '—';
+    if (info.entity_type === 'campaign') return 'TOTAL';
+    const adsetScope = adsetRoleById.get(info.meta_id);
+    if (adsetScope) return adsetScope;
+    return info.name ? shortName(info.name) : '—';
   };
-  const scopeOrder = ['TOTAL', 'CUS', 'ASC', 'RMK', 'CARTAB'];
   const frequency: FrequencyScope[] = ((freqRowsRaw ?? []) as AnyRow[])
     .map(r => {
       const b1  = Number(r.bucket_1) || 0;
@@ -1502,7 +1276,7 @@ export async function loadDashboard(params: {
       if (pct6 > config.fatigue_thresholds.freq_6plus_watch_max_pct) st = 'FATIGUE';
       else if (pct6 > config.fatigue_thresholds.freq_6plus_healthy_max_pct) st = 'WATCH';
       return {
-        scope: scopeLabel[entityMetaMap.get(r.entity_id as string) ?? ''] ?? '—',
+        scope: scopeForEntity(r.entity_id as string),
         reach: Number(r.reach) || 0,
         avg_freq: Number(r.avg_frequency) || 0,
         buckets: {
@@ -1517,13 +1291,25 @@ export async function loadDashboard(params: {
         status: st,
       };
     })
-    .sort((a, b) => scopeOrder.indexOf(a.scope) - scopeOrder.indexOf(b.scope));
+    .sort((a, b) => {
+      const at = a.scope === 'TOTAL' ? 0 : 1;
+      const bt = b.scope === 'TOTAL' ? 0 : 1;
+      if (at !== bt) return at - bt;
+      return a.scope.localeCompare(b.scope);
+    });
+
+  // alerts / hypotheses / watch_signals are per-BU tables with NO campaign
+  // column: rows seeded for a past edition (e.g. April's C1) used to render
+  // as if they were current. Filter to rows created/updated within the
+  // current campaign_window — empty is better than stale.
+  const narrativeCutoff = config.campaign_window.starts_on;
 
   const { data: alertRows } = await meta
     .from('alerts')
     .select('alert_type, severity, message, created_at')
     .eq('business_unit_id', buId)
     .eq('status', 'active')
+    .gte('created_at', narrativeCutoff)
     .order('created_at', { ascending: true });
   const alerts: AlertItem[] = ((alertRows ?? []) as AnyRow[]).map(r => ({
     type: r.alert_type as string,
@@ -1535,6 +1321,7 @@ export async function loadDashboard(params: {
     .from('hypotheses')
     .select('code, statement, current_reading, success_criteria, status, display_order')
     .eq('business_unit_id', buId)
+    .gte('updated_at', narrativeCutoff)
     .order('display_order', { ascending: true });
   const hypotheses: HypothesisItem[] = ((hypRows ?? []) as AnyRow[]).map(r => ({
     code: r.code as string,
@@ -1548,6 +1335,7 @@ export async function loadDashboard(params: {
     .from('watch_signals')
     .select('signal_label, threshold_display, current_display, status, action_if_breached, display_order')
     .eq('business_unit_id', buId)
+    .gte('updated_at', narrativeCutoff)
     .order('display_order', { ascending: true });
   const watch_signals: WatchSignalItem[] = ((sigRows ?? []) as AnyRow[]).map(r => ({
     label: r.signal_label as string,
@@ -1558,7 +1346,14 @@ export async function loadDashboard(params: {
   }));
 
   // ---------- 10. Header + progress + health ----------
-  const dayIndex = diffDays(config.campaign_window.starts_on, reportDate);
+  // Cap day_index at the campaign duration so a finished campaign never reads
+  // "Day 25 of 23". When reportDate is past ends_on the campaign is ENDED —
+  // the phase fallback must not keep selling a green "SCALING" badge.
+  const totalDays = config.campaign_window.duration_days;
+  const dayIndexRaw = diffDays(config.campaign_window.starts_on, reportDate);
+  const dayIndex = totalDays > 0 ? Math.min(dayIndexRaw, totalDays) : dayIndexRaw;
+  const campaignEnded =
+    !!config.campaign_window.ends_on && reportDate > config.campaign_window.ends_on;
   const currentPhase = config.phases.find(p => dayIndex >= p.day_start && dayIndex <= p.day_end)
     ?? config.phases[config.phases.length - 1];
 
@@ -1570,7 +1365,8 @@ export async function loadDashboard(params: {
     .join(' + ');
 
   // ---------- Campaign config strip ----------
-  const priceNow = currentTier?.price ?? kpi.revenue_per_conv;
+  // No tier covering reportDate → show '—' honestly instead of resurrecting
+  // the last expired tier as if it were the live price.
   const campaign_config: DashboardData['campaign_config'] = [
     { label: 'Objective',   value: config.objective },
     { label: 'Event',       value: config.event_type },
@@ -1579,7 +1375,7 @@ export async function loadDashboard(params: {
     { label: 'Breakeven',   value: `$${kpi.breakeven_cpa}` },
     { label: 'Kill CPA',    value: `$${kpi.kill_cpa} (${kpi.kill_window_days}d)` },
     { label: 'Attribution', value: config.attribution === '7d_click' ? '7d Click' : config.attribution },
-    { label: 'Price',       value: `$${priceNow}` },
+    { label: 'Price',       value: currentTier ? `$${currentTier.price}` : '— (sin tier vigente)' },
     { label: 'Landing',     value: config.landing_url, full_row: true },
   ];
 
@@ -1599,31 +1395,35 @@ export async function loadDashboard(params: {
   const totalSpendCampaign   = totalMetrics.spend;
   const totalRevenue         = totalMetrics.revenue_tier;
 
+  // Revenue is an estimate: purchases attributed by the Meta pixel, valued at
+  // the price tier of the day they occurred. Subs say so explicitly, and the
+  // "tier actual" claim only appears when a tier really covers the date.
+  const todayTier = tierForDate(reportDate);
   const revenue_tiles: RevenueTile[] = [
     {
       label: `Hoy · ${reportDate}`, date_range: '', amount: todayRevenue,
-      sub: `${todayPurchases} compras × $${priceForDate(reportDate)} (tier actual)`,
+      sub: `${todayPurchases} compras (pixel Meta) × $${priceForDate(reportDate)}${todayTier ? ' (tier del día)' : ' (sin tier vigente — fallback)'}`,
       color: 'ok',
     },
     {
       label: range.label,
       date_range: `${range.start} → ${range.end}`,
       amount: rangeRevenue,
-      sub: `${rangePurchases} compras · spend ${money(rangeSpend)} · ROAS ${rangeSpend > 0 ? (rangeRevenue / rangeSpend).toFixed(2) : '0'}x`,
+      sub: `${rangePurchases} compras (pixel × tier) · spend ${money(rangeSpend)} · ROAS ${rangeSpend > 0 ? (rangeRevenue / rangeSpend).toFixed(2) : '0'}x`,
       color: 'accent',
     },
     {
       label: `Total campaña (desde ${config.campaign_window.starts_on.slice(5).replace('-', '/')})`,
       date_range: '', amount: totalRevenue,
-      sub: `${totalPurchases} compras · spend ${money(totalSpendCampaign)} · ROAS ${totalSpendCampaign > 0 ? (totalRevenue / totalSpendCampaign).toFixed(2) : '0'}x`,
+      sub: `${totalPurchases} compras (pixel × tier) · spend ${money(totalSpendCampaign)} · ROAS ${totalSpendCampaign > 0 ? (totalRevenue / totalSpendCampaign).toFixed(2) : '0'}x`,
       color: 'warn',
     },
   ];
-  const revenue_footer =
-    `Cada compra se valoriza al precio del día en que ocurrió: ${price_tiers.map((t, i) => {
-      const range = t.ends_on ? `${t.starts_on.slice(5)}${i === price_tiers.length - 1 ? '' : ''}` : t.starts_on.slice(5);
-      return `$${t.price} ${i === 0 ? 'hasta' : 'del'} ${range}${t.ends_on ? '–' + t.ends_on.slice(5) : ''}`;
-    }).join(', ')}.`;
+  const revenue_footer = price_tiers.length
+    ? `Cada compra (pixel Meta) se valoriza al tier vigente el día en que ocurrió: ${price_tiers
+        .map(t => `$${t.price} ${t.ends_on ? `del ${t.starts_on.slice(5)} al ${t.ends_on.slice(5)}` : `desde ${t.starts_on.slice(5)}`}`)
+        .join(', ')}.`
+    : `Sin tiers de precio para esta campaña: las compras (pixel Meta) se valorizan al fallback $${kpi.revenue_per_conv}/conv.`;
 
   // ---------- Recent 5 days (per-day revenue tiles, mirrors HOY card) ----------
   // Anchor = reportDate - 1 (yesterday) so the HOY tile above stays the sole
@@ -1640,6 +1440,7 @@ export async function loadDashboard(params: {
     const row = insightsByDate.get(iso);
     const purchases = Number(row?.purchases ?? 0);
     const spend     = Number(row?.spend ?? 0);
+    const dayTier   = tierForDate(iso);
     const price     = priceForDate(iso);
     const revenue   = purchases * price;
     const roas      = spend > 0 ? revenue / spend : 0;
@@ -1647,7 +1448,7 @@ export async function loadDashboard(params: {
       label: `${iso}`,
       date_range: iso,
       amount: revenue,
-      sub: `${purchases} compras × $${price} · spend ${money(spend)}${spend > 0 ? ` · ROAS ${roas.toFixed(2)}x` : ''}`,
+      sub: `${purchases} compras (pixel) × $${price}${dayTier ? '' : ' (fallback)'} · spend ${money(spend)}${spend > 0 ? ` · ROAS ${roas.toFixed(2)}x` : ''}`,
       color: 'ok',
     });
   }
@@ -1686,21 +1487,25 @@ export async function loadDashboard(params: {
     },
     {
       label: 'CPA (Purchase)', value: money(cpa), tone: cpa <= kpi.target_cpa ? 'ok' : cpa <= kpi.breakeven_cpa ? 'warn' : 'bad',
-      sub: `Breakeven tier $${priceNow}: $${kpi.breakeven_cpa} | Kill: >$${kpi.kill_cpa}`,
+      sub: currentTier
+        ? `Breakeven tier $${currentTier.price}: $${kpi.breakeven_cpa} | Kill: >$${kpi.kill_cpa}`
+        : `Breakeven: $${kpi.breakeven_cpa} | Kill: >$${kpi.kill_cpa} · sin tier vigente`,
     },
     {
-      label: `Reach (${rangeShort})`, value: num(rangeReach), tone: 'neutral',
+      // Meta no expone unique reach acumulado vía insights diarios: este
+      // valor es el MAX de reach diario en la ventana — el label lo dice.
+      label: `Reach pico diario (${rangeShort})`, value: num(rangeReach), tone: 'neutral',
       sub: ad_sets.map(s => `${s.role}: ${num(s.reach)}`).join(' · '),
     },
     {
-      label: 'Reach 7d', value: num(((campInsights ?? []) as AnyRow[])
+      label: 'Reach pico diario (7d)', value: num(((campInsights ?? []) as AnyRow[])
         .filter(r => (r.date as string) >= sevenAgoStr && (r.date as string) <= reportDate)
         .reduce((m, r) => Math.max(m, Number(r.reach) || 0), 0)), tone: 'neutral',
       sub: cusRow?.freq_daily_7d != null ? `Freq 7d (CUS): ${cusRow.freq_daily_7d.toFixed(2)}` : 'Freq 7d: —',
     },
     {
       label: 'ROAS (Est.)', value: `${roasEst.toFixed(1)}x`, tone: roasEst >= kpi.target_roas ? 'ok' : 'warn',
-      sub: `${rangePurchases}p blended @ ${money(rangeRevenue / Math.max(1, rangePurchases))} = ${money(rangeRevenue)}`,
+      sub: `${rangePurchases}p pixel × tier @ ${money(rangeRevenue / Math.max(1, rangePurchases))} = ${money(rangeRevenue)}`,
     },
     {
       label: 'Link CTR', value: pct(linkCtrPct, 2), tone: linkCtrPct >= config.link_ctr_target ? 'ok' : linkCtrPct >= config.link_ctr_warn ? 'warn' : 'bad',
@@ -1726,7 +1531,9 @@ export async function loadDashboard(params: {
       };
     })(),
     {
-      label: 'Purchases', value: String(rangePurchases), tone: 'ok',
+      // No threshold defined for raw purchase volume → neutral, not a
+      // hardcoded green that conveys nothing.
+      label: 'Purchases', value: String(rangePurchases), tone: 'neutral',
       sub: `${todayPurchases} today · ${rangeShort}`,
     },
     {
@@ -1742,7 +1549,9 @@ export async function loadDashboard(params: {
       sub: `${num(Number(todayRow?.impressions ?? 0))} today`,
     },
     {
-      label: 'CPC', value: money(cpc), tone: 'ok',
+      // No CPC threshold in config/kpi_targets → neutral instead of a
+      // hardcoded green.
+      label: 'CPC', value: money(cpc), tone: 'neutral',
       sub: 'Link CPC',
     },
   ];
@@ -1916,9 +1725,10 @@ export async function loadDashboard(params: {
 
   // ---------- freshness_utc (Fix #7) ----------
   // Surface the last time /api/refresh was triggered for this BU. We read the
-  // most recent row across users (the table is keyed by user_id + bu). If no
-  // row exists yet (fresh BU), fall back to "now" so the badge still renders.
-  let freshnessUtc = '—';
+  // most recent row across users (the table is keyed by user_id + bu).
+  // Include the date (an HH:mm alone reads as "today" even when the last pull
+  // is days old) and never fabricate a timestamp when no pull is recorded.
+  let freshnessUtc = 'sin registro de pull';
   {
     const { data: refresh } = await meta
       .from('refresh_rate_limit')
@@ -1928,9 +1738,8 @@ export async function loadDashboard(params: {
       .limit(1);
     const last = refresh && refresh.length > 0 ? (refresh[0].last_refresh_at as string) : null;
     if (last) {
-      freshnessUtc = `${new Date(last).toISOString().slice(11, 16)} UTC`;
-    } else {
-      freshnessUtc = `${new Date().toISOString().slice(11, 16)} UTC`;
+      const iso = new Date(last).toISOString();
+      freshnessUtc = `${iso.slice(5, 10)} ${iso.slice(11, 16)} UTC`;
     }
   }
 
@@ -1951,7 +1760,10 @@ export async function loadDashboard(params: {
       total_days: config.campaign_window.duration_days,
       adset_summary: `ABO (${adsetSummary})`,
       freshness_utc: freshnessUtc,
-      status_badge: currentPhase.key === 'scaling' ? 'SCALING' : currentPhase.label.toUpperCase(),
+      status_badge: campaignEnded
+        ? 'ENDED'
+        : currentPhase.key === 'scaling' ? 'SCALING' : currentPhase.label.toUpperCase(),
+      campaign_ended: campaignEnded,
       health_label: `${health.label} (${health.score})`,
     },
     progress: {
@@ -1969,7 +1781,7 @@ export async function loadDashboard(params: {
       progress_pct_budget: config.total_budget > 0
         ? (totalSpendCampaign / config.total_budget) * 100
         : 0,
-      current_phase_key: currentPhase.key,
+      current_phase_key: campaignEnded ? 'ended' : currentPhase.key,
       phases: config.phases,
     },
     health,
@@ -1990,6 +1802,7 @@ export async function loadDashboard(params: {
     ad_performance,
     matchups,
     frequency,
+    frequency_snapshot_date: freqDate,
     alerts,
     hypotheses,
     watch_signals,
