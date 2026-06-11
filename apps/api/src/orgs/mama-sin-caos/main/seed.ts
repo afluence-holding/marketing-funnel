@@ -48,6 +48,30 @@ async function seed() {
       console.log(`Business Unit (created): ${bu.id}  (${bu.name})`);
     }
 
+    // Custom field definitions del diagnóstico. Sin esto, el `arquetipo` que envía
+    // el landing se descarta en la ingesta (saveCustomFieldValues exige definición).
+    const CUSTOM_FIELDS: Array<{ field_key: string; field_label: string; field_type: string }> = [
+      { field_key: 'arquetipo', field_label: 'Arquetipo', field_type: 'text' },
+    ];
+    for (const field of CUSTOM_FIELDS) {
+      const existingDef = await client.query(
+        `SELECT id FROM marketing.custom_field_definitions
+         WHERE organization_id = $1 AND entity_type = 'lead' AND field_key = $2 LIMIT 1`,
+        [org.id, field.field_key],
+      );
+      if (existingDef.rows[0]) {
+        console.log(`Custom field (existing): ${field.field_key}`);
+      } else {
+        await client.query(
+          `INSERT INTO marketing.custom_field_definitions
+             (organization_id, entity_type, field_key, field_label, field_type, required)
+           VALUES ($1, 'lead', $2, $3, $4, false)`,
+          [org.id, field.field_key, field.field_label, field.field_type],
+        );
+        console.log(`Custom field (created): ${field.field_key}`);
+      }
+    }
+
     console.log('\n========================================');
     console.log('Copia esto a tu .env / .env.local:');
     console.log('========================================\n');
