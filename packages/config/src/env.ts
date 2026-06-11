@@ -42,7 +42,12 @@ const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
   console.error('Invalid environment variables:', parsed.error.flatten().fieldErrors);
-  process.exit(1);
+  // Throw instead of process.exit(1): inside a Next.js render worker an exit
+  // kills the whole worker pool and surfaces as an opaque 500 ("Jest worker
+  // encountered N child process exceptions") with no mention of env vars.
+  throw new Error(
+    `Invalid environment variables: ${Object.keys(parsed.error.flatten().fieldErrors).join(', ')}`
+  );
 }
 
 export const env = parsed.data;
