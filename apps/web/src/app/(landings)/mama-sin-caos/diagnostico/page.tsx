@@ -17,10 +17,14 @@ export default function MamaSinCaosDiagnosticoPage() {
   return (
     <>
       <LandingConfig metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_MAMA_SIN_CAOS} />
-      <LandingFrame
-        src="/mama-sin-caos/diagnostico/raw"
-        title="Mamá Sin Caos — Diagnóstico"
-      />
+      {/* Fondo crema de la marca: en desktop la vista mobile (480px) queda
+          centrada sobre crema, no sobre el fondo negro del documento. */}
+      <div style={{ backgroundColor: '#FAF4EC', minHeight: '100vh' }}>
+        <LandingFrame
+          src="/mama-sin-caos/diagnostico/raw"
+          title="Mamá Sin Caos — Diagnóstico"
+        />
+      </div>
     </>
   );
 }
