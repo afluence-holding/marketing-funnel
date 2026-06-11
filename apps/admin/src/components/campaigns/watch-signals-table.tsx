@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { WatchSignalItem } from '@/lib/dashboard/dashboard-adapter';
+import type { WatchSignalItem } from '@/lib/campaigns/types';
 import {
   EmptyTableRow,
   FilterBar,

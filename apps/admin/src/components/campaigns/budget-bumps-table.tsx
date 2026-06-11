@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { BudgetBumpRow } from '@/lib/dashboard/dashboard-adapter';
+import type { BudgetBumpRow } from '@/lib/campaigns/types';
 import {
   EmptyTableRow,
   FilterBar,

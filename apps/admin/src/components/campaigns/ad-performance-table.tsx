@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { AdPerfRow } from '@/lib/dashboard/dashboard-adapter';
+import type { AdPerfRow } from '@/lib/campaigns/types';
 import {
   EmptyTableRow,
   FilterBar,

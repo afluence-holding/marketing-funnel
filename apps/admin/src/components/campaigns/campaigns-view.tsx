@@ -1,0 +1,1402 @@
+/**
+ * Campaigns module — view orchestrator.
+ *
+ * Server Component that renders the full BU campaign dashboard from a
+ * preloaded DashboardData payload. All section components were extracted
+ * verbatim from the former monolithic app/[organizer]/[bu]/page.tsx.
+ */
+
+import type {
+  AlertItem,
+  DashboardData,
+  FrequencyScope,
+  FunnelStep,
+  HealthBreakdown,
+  HypothesisItem,
+  KpiCell,
+  LearningPhaseCard,
+  PriceTier,
+  RevenueTile,
+  TargetingBlock,
+  TrendPoint,
+} from '@/lib/campaigns/types';
+import type { BuOption } from '@/lib/dashboard/bu-options';
+import { BuSelector } from '@/components/bu-selector';
+import { CtrCpmChart, SpendPurchasesChart } from './trends-chart';
+import { RefreshButton } from './refresh-button';
+import { DateRangeFilter } from './date-range-filter';
+import { ZoomableChart } from './zoomable-chart';
+import { AdPerformanceTable } from './ad-performance-table';
+import { AdSetTable } from './ad-set-table';
+import { BudgetBumpsTable } from './budget-bumps-table';
+import { RecentPurchasesTable } from './recent-purchases-table';
+import { MatchupsTable } from './matchups-table';
+import { WatchSignalsTable } from './watch-signals-table';
+
+// ---------------------------------------------------------------------------
+// Helpers & constants
+// ---------------------------------------------------------------------------
+
+const ROLE_COLOR: Record<string, string> = {
+  CUS: 'var(--color-warning)',
+  ASC: 'var(--color-accent)',
+  RMK: 'var(--color-success)',
+  CARTAB: 'var(--color-critical)',
+};
+
+const TONE_COLOR: Record<'ok' | 'warn' | 'bad' | 'neutral', string> = {
+  ok: 'var(--color-success)',
+  warn: 'var(--color-warning)',
+  bad: 'var(--color-critical)',
+  neutral: 'var(--color-text-primary)',
+};
+
+const FREQ_COLORS = {
+  b1: '#22c55e',
+  b23: '#84cc16',
+  b45: '#eab308',
+  b610: '#f97316',
+  b1120: '#ef4444',
+  b21plus: '#991b1b',
+} as const;
+
+const FREQ_STATUS_COLOR: Record<FrequencyScope['status'], string> = {
+  HEALTHY: '#22c55e',
+  WATCH: '#eab308',
+  FATIGUE: '#ef4444',
+};
+
+function fmtMoney2(n: number): string {
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  return `${sign}$${abs.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function fmtInt(n: number): string {
+  return new Intl.NumberFormat('en-US').format(Math.round(n));
+}
+
+function fmtPct(n: number, digits = 2): string {
+  return `${n.toFixed(digits)}%`;
+}
+
+function addDaysYmd(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function phaseLabel(
+  phase: { label: string; day_start: number; day_end: number },
+  totalDays: number
+): string {
+  const tail =
+    phase.day_end >= totalDays
+      ? `D${phase.day_start}+`
+      : `D${phase.day_start}-${phase.day_end}`;
+  return `${phase.label} (${tail})`;
+}
+
+// ---------------------------------------------------------------------------
+// View orchestrator
+// ---------------------------------------------------------------------------
+
+export function CampaignsView({
+  data,
+  organizerSlug,
+  buSlug,
+  buOptions,
+  currentPath,
+}: {
+  data: DashboardData;
+  organizerSlug: string;
+  buSlug: string;
+  buOptions: BuOption[];
+  currentPath: string;
+}) {
+  return (
+    <>
+      <Header
+        data={data}
+        organizerSlug={organizerSlug}
+        buSlug={buSlug}
+        buOptions={buOptions}
+        currentPath={currentPath}
+      />
+      <ProgressBar data={data} />
+      <HealthAndConfig data={data} />
+      <PriceAndRevenueSection
+        tiers={data.price_tiers}
+        tiles={data.revenue_tiles}
+        footer={data.revenue_footer}
+      />
+      <TrendsSection trend={data.trend} />
+      <RecentDailyRevenueSection tiles={data.recent_daily_tiles} />
+      <KpisSection kpis={data.kpis} />
+      <AdSetTable
+        rows={data.ad_sets}
+        fatigueThresholds={data.bu.config.fatigue_thresholds}
+      />
+      <BudgetBumpsTable rows={data.budget_bumps} />
+      <LearningPhaseSection cards={data.learning_cards} />
+      <RecentPurchasesTable rows={data.recent_purchases} />
+      <TargetingSection blocks={data.targeting_blocks} />
+      <CusSaturationSection data={data} />
+      <FunnelSection steps={data.funnel} />
+      <AdPerformanceTable
+        rows={data.ad_performance}
+        linkCtrTarget={data.bu.config.link_ctr_target}
+        linkCtrWarn={data.bu.config.link_ctr_warn}
+      />
+      <MatchupsTable rows={data.matchups} />
+      <FrequencySection
+        scopes={data.frequency}
+        snapshotDate={data.frequency_snapshot_date}
+        reportDate={data.header.report_date}
+      />
+      <AlertsSection alerts={data.alerts} />
+      <HypothesesSection items={data.hypotheses} />
+      <WatchSignalsTable items={data.watch_signals} />
+      <Footer reportDate={data.header.report_date} />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 1. Header
+// ---------------------------------------------------------------------------
+
+function Header({
+  data,
+  organizerSlug,
+  buSlug,
+  buOptions,
+  currentPath,
+}: {
+  data: DashboardData;
+  organizerSlug: string;
+  buSlug: string;
+  buOptions: BuOption[];
+  currentPath: string;
+}) {
+  const { header } = data;
+  const statusClass = header.campaign_ended
+    ? 'badge-gray' // terminal state: campaign window is over (badge = 'ENDED')
+    : header.status_badge.toLowerCase() === 'scaling'
+    ? 'badge-success'
+    : 'badge-warning';
+  const healthClass =
+    data.health.tone === 'ok'
+      ? 'badge-success'
+      : data.health.tone === 'warn'
+      ? 'badge-warning'
+      : 'badge-critical';
+  return (
+    <div className="report-header">
+      <div>
+        <h1>
+          {header.campaign_code} — {header.campaign_label}
+        </h1>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginTop: 4,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span className="date-label">
+            Report: {header.report_date} · Day {header.day_index} of{' '}
+            {header.total_days} · {header.adset_summary}
+          </span>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              color: 'var(--color-text-secondary)',
+              padding: '2px 8px',
+              border: '1px solid var(--color-border)',
+              borderRadius: 4,
+            }}
+            title={`KPIs, trends, ad sets & funnel respetan este rango. Learning cards, Health Score y Total campaña se mantienen fijos.`}
+          >
+            Rango: {data.range.label} · {data.range.start} → {data.range.end} ({data.range.days}d)
+          </span>
+          <span className="freshness">
+            <span className="freshness-dot" /> Data pulled {header.freshness_utc}
+          </span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <BuSelector options={buOptions} currentPath={currentPath} />
+        <DateRangeFilter
+          currentPreset={data.range.preset}
+          currentStart={data.range.start}
+          currentEnd={data.range.end}
+          currentLabel={data.range.label}
+        />
+        <RefreshButton organizerSlug={organizerSlug} buSlug={buSlug} />
+        <span className={`badge ${statusClass}`}>{header.status_badge}</span>
+        <span className={`badge ${healthClass}`}>{header.health_label}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 2. Progress bar
+// ---------------------------------------------------------------------------
+
+function ProgressBar({ data }: { data: DashboardData }) {
+  const { progress } = data;
+  return (
+    <div className="section">
+      <div className="card" style={{ padding: 16 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+            Campaign Progress
+          </span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+            Day {progress.day_index} / {progress.total_days} · $
+            {progress.spend_so_far.toFixed(2)} / ${fmtInt(progress.total_budget)}
+          </span>
+        </div>
+        <div className="phase-bar">
+          <div
+            className="phase-fill"
+            style={{
+              width: `${Math.min(100, Math.max(0, progress.progress_pct)).toFixed(1)}%`,
+              background: 'var(--color-accent)',
+            }}
+          />
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '0.65rem',
+            color: 'var(--color-text-secondary)',
+            marginTop: 4,
+          }}
+        >
+          {progress.phases.map(p => {
+            const active = p.key === progress.current_phase_key;
+            return (
+              <span
+                key={p.key}
+                style={
+                  active
+                    ? { fontWeight: 700, color: 'var(--color-accent)' }
+                    : undefined
+                }
+              >
+                {phaseLabel(p, progress.total_days)}
+                {active ? ' ◄' : ''}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 3. Health gauge + Campaign config
+// ---------------------------------------------------------------------------
+
+function HealthAndConfig({ data }: { data: DashboardData }) {
+  return (
+    <div className="grid-2" style={{ marginBottom: 24 }}>
+      <HealthGaugeCard health={data.health} />
+      <CampaignConfigCard config={data.campaign_config} />
+    </div>
+  );
+}
+
+function HealthGaugeCard({
+  health,
+}: {
+  health: DashboardData['health'];
+}) {
+  const dasharray = 188.5;
+  const offset = dasharray * (1 - health.score / 100);
+  const strokeColor = TONE_COLOR[health.tone];
+  return (
+    <div className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: 24 }}>
+      <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <svg width="120" height="75" viewBox="0 0 160 100">
+          <path
+            d="M 20 90 A 60 60 0 0 1 140 90"
+            fill="none"
+            stroke="var(--color-border)"
+            strokeWidth="12"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 20 90 A 60 60 0 0 1 140 90"
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeDasharray={dasharray}
+            strokeDashoffset={offset}
+          />
+          <text
+            x="80"
+            y="80"
+            textAnchor="middle"
+            fill="var(--color-text-primary)"
+            fontSize="28"
+            fontWeight="bold"
+          >
+            {health.score}
+          </text>
+        </svg>
+        <span className="gauge-label" style={{ color: strokeColor }}>
+          {health.label}
+        </span>
+      </div>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 8 }}>
+          Health Score Breakdown{' '}
+          <span
+            style={{
+              fontSize: '0.65rem',
+              fontWeight: 400,
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            (
+            {health.breakdown
+              .map(b => `${b.label} ${b.weight ?? 0}%`)
+              .join(' · ')}
+            )
+          </span>
+        </p>
+        <div className="health-breakdown">
+          {health.breakdown.map((b: HealthBreakdown) => (
+            <div className="health-item" key={b.label}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>{b.label}</span>
+              <span style={{ fontWeight: 600, color: TONE_COLOR[b.tone] }}>
+                {b.score}/100
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CampaignConfigCard({
+  config,
+}: {
+  config: DashboardData['campaign_config'];
+}) {
+  return (
+    <div className="card">
+      <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 12 }}>
+        Campaign Config
+      </p>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 8,
+          fontSize: '0.8rem',
+        }}
+      >
+        {config.map(row => (
+          <div
+            key={row.label}
+            style={row.full_row ? { gridColumn: 'span 2' } : undefined}
+          >
+            <span style={{ color: 'var(--color-text-secondary)' }}>{row.label}:</span>{' '}
+            {row.value}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 4. Price tier schedule
+// ---------------------------------------------------------------------------
+
+/**
+ * Price tiers + revenue tiles share the same "pricing + money" mental model,
+ * so collapsing them into a single horizontal row (instead of two sections)
+ * saves ~160px of vertical real estate. Compact revenue tiles (1.25rem money,
+ * shrunk padding) sit on the same baseline as tier chips, separated by a
+ * vertical divider. Wraps on narrow viewports to avoid clipping.
+ */
+function PriceAndRevenueSection({
+  tiers,
+  tiles,
+  footer,
+}: {
+  tiers: PriceTier[];
+  tiles: RevenueTile[];
+  footer: string;
+}) {
+  return (
+    <div className="section">
+      <div className="section-title">Price Tier & Revenue</div>
+      <div className="card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 16,
+            alignItems: 'stretch',
+            flexWrap: 'wrap',
+          }}
+        >
+          {tiers.map((t, i) => (
+            <TierAndArrow key={`${t.label}-${i}`} tier={t} isLast={i === tiers.length - 1} />
+          ))}
+
+          <div
+            style={{
+              width: 1,
+              background: 'var(--color-border)',
+              alignSelf: 'stretch',
+              margin: '0 8px',
+            }}
+            aria-hidden="true"
+          />
+
+          {tiles.map((tile, i) => (
+            <RevenueTileView key={i} tile={tile} />
+          ))}
+        </div>
+        <div
+          style={{
+            marginTop: 12,
+            fontSize: '0.7rem',
+            color: 'var(--color-text-secondary)',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 10,
+          }}
+        >
+          {footer}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TierAndArrow({ tier, isLast }: { tier: PriceTier; isLast: boolean }) {
+  const isCurrent = tier.status === 'current';
+  const color = isCurrent ? 'var(--color-success)' : 'var(--color-text-secondary)';
+  const borderColor = isCurrent ? 'var(--color-success)' : 'var(--color-text-secondary)';
+  const dateRange = tier.ends_on
+    ? `${tier.starts_on.slice(5)}-${tier.ends_on.slice(5)}`
+    : tier.starts_on.slice(5);
+  return (
+    <>
+      <div
+        style={{
+          textAlign: 'center',
+          padding: '10px 14px',
+          background: 'var(--color-bg-hover)',
+          borderRadius: 8,
+          border: `2px solid ${borderColor}`,
+          minWidth: 96,
+        }}
+      >
+        <div style={{ fontSize: '0.62rem', color: 'var(--color-text-secondary)', letterSpacing: '0.05em' }}>
+          {tier.status.toUpperCase()}
+        </div>
+        <div style={{ fontSize: '1.25rem', fontWeight: 700, color, lineHeight: 1.15, marginTop: 2 }}>
+          ${tier.price}
+        </div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
+          {formatTierDateRange(tier)}
+        </div>
+      </div>
+      {!isLast && (
+        <div style={{ color: 'var(--color-text-secondary)', alignSelf: 'center' }}>→</div>
+      )}
+    </>
+  );
+}
+
+function formatTierDateRange(tier: PriceTier): string {
+  const start = formatMonthDay(tier.starts_on);
+  if (!tier.ends_on) return start;
+  return `${start}-${formatMonthDay(tier.ends_on)}`;
+}
+
+function formatMonthDay(ymd: string): string {
+  const [, m, d] = ymd.split('-');
+  const month = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ][Number(m) - 1];
+  return `${month} ${d}`;
+}
+
+// ---------------------------------------------------------------------------
+// 5. Revenue tile (consumed by PriceAndRevenueSection)
+// ---------------------------------------------------------------------------
+
+function RevenueTileView({ tile }: { tile: RevenueTile }) {
+  const color =
+    tile.color === 'ok'
+      ? 'var(--color-success)'
+      : tile.color === 'accent'
+      ? 'var(--color-accent)'
+      : 'var(--color-warning)';
+  return (
+    <div
+      style={{
+        padding: '10px 14px',
+        background: 'var(--color-bg-hover)',
+        borderRadius: 8,
+        borderLeft: `3px solid ${color}`,
+        minWidth: 150,
+        flex: '1 1 150px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '0.62rem',
+          color: 'var(--color-text-secondary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}
+      >
+        {tile.label}
+      </div>
+      <div
+        style={{
+          fontSize: '1.25rem',
+          fontWeight: 700,
+          color,
+          marginTop: 2,
+          lineHeight: 1.15,
+        }}
+      >
+        {fmtMoney2(tile.amount)}
+      </div>
+      <div
+        style={{
+          fontSize: '0.65rem',
+          color: 'var(--color-text-secondary)',
+          marginTop: 2,
+        }}
+      >
+        {tile.sub}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 5b. Recent daily revenue (last 5 days, newest → oldest, left → right)
+// ---------------------------------------------------------------------------
+
+function RecentDailyRevenueSection({ tiles }: { tiles: RevenueTile[] }) {
+  if (!tiles || tiles.length === 0) return null;
+  return (
+    <div className="section">
+      <div className="section-title">Revenue Diario — últimos 5 días</div>
+      <div className="card">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: 12,
+          }}
+        >
+          {tiles.map((tile, i) => (
+            <RevenueTileView key={i} tile={tile} />
+          ))}
+        </div>
+        <div
+          style={{
+            marginTop: 10,
+            fontSize: '0.7rem',
+            color: 'var(--color-text-secondary)',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 8,
+          }}
+        >
+          De más reciente (izquierda) a más antiguo (derecha). Cada día se
+          valoriza al tier de precio vigente en esa fecha.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 6. KPIs
+// ---------------------------------------------------------------------------
+
+function KpisSection({ kpis }: { kpis: KpiCell[] }) {
+  return (
+    <div className="section">
+      <div className="section-title">KPIs</div>
+      <div className="kpi-grid">
+        {kpis.map((k, i) => (
+          <div className="card" key={i}>
+            <div className="kpi-label">{k.label}</div>
+            <div className="kpi-value" style={{ color: TONE_COLOR[k.tone] }}>
+              {k.value}
+            </div>
+            {k.sub ? (
+              <div
+                style={{
+                  fontSize: '0.7rem',
+                  color: 'var(--color-text-secondary)',
+                  marginTop: 4,
+                }}
+              >
+                {k.sub}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 8. Learning phase status
+// ---------------------------------------------------------------------------
+
+function LearningPhaseSection({ cards }: { cards: LearningPhaseCard[] }) {
+  return (
+    <div className="section">
+      <div className="section-title">
+        Learning Phase Status{' '}
+        <span
+          style={{
+            fontSize: '0.7rem',
+            fontWeight: 400,
+            color: 'var(--color-text-secondary)',
+            textTransform: 'none',
+            letterSpacing: 0,
+          }}
+        >
+          — señal de salida del algoritmo de Meta
+        </span>
+      </div>
+      <div
+        className="grid-2"
+        style={{ gridTemplateColumns: '1fr 1fr', marginBottom: 8 }}
+      >
+        {cards.map(c => (
+          <LearningCard key={c.adset_id} card={c} />
+        ))}
+      </div>
+      <div
+        className="card"
+        style={{
+          padding: '10px 14px',
+          fontSize: '0.7rem',
+          color: 'var(--color-text-secondary)',
+          display: 'grid',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <span className="badge badge-green">EARLY WINNER</span>
+          <span style={{ lineHeight: '22px' }}>≥5 compras 7d · CPA ≤ breakeven</span>
+          <span className="badge badge-yellow">LEARNING</span>
+          <span style={{ lineHeight: '22px' }}>delivering, &lt;50 compras 7d</span>
+          <span className="badge badge-orange">EDIT RESET</span>
+          <span style={{ lineHeight: '22px' }}>edit &lt;24h · probable reset</span>
+          <span className="badge badge-gray">PAUSED</span>
+          <span style={{ lineHeight: '22px' }}>no delivering por decisión</span>
+          <span className="badge badge-red">INACTIVE</span>
+          <span style={{ lineHeight: '22px' }}>ACTIVE en Meta pero sin spend 7d</span>
+        </div>
+        <div>
+          Meta exige 50 eventos de conversión / 7d para salir de learning. Si un
+          adset está en LEARNING LIMITED explícito = hay un problema
+          (budget/señal/audience). Edits significativos reinician learning (regla
+          1-edit-por-24h para conservar ciclo). Signals:{' '}
+          <code>learning_stage_info</code> + purchases 7d +{' '}
+          <code>updated_time</code>.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Maps each learning state to its visual theme. Keeping it as a lookup
+// table (vs. branching inline) makes the legend easy to read and the
+// design trivially extensible if we add more states later.
+const LEARNING_STATE_STYLE: Record<
+  LearningPhaseCard['state'],
+  { badge: string; accent: string; fill: string; dim: boolean }
+> = {
+  paused:       { badge: 'badge-gray',    accent: 'var(--color-text-secondary)', fill: 'var(--color-text-secondary)', dim: true  },
+  inactive:     { badge: 'badge-red',     accent: 'var(--color-critical)',       fill: 'var(--color-critical)',       dim: true  },
+  early_winner: { badge: 'badge-green',   accent: 'var(--color-success)',        fill: 'var(--color-success)',        dim: false },
+  edit_reset:   { badge: 'badge-orange',  accent: '#f97316',                     fill: '#f97316',                     dim: false },
+  learning:     { badge: 'badge-yellow',  accent: 'var(--color-warning)',        fill: 'var(--color-warning)',        dim: false },
+};
+
+function LearningCard({ card }: { card: LearningPhaseCard }) {
+  const roleColor = ROLE_COLOR[card.role] ?? 'var(--color-text-secondary)';
+  const theme = LEARNING_STATE_STYLE[card.state];
+  const pct = Math.min(100, Math.max(0, card.progress_pct));
+  const etaLine = card.eta_days != null && card.eta_date
+    ? `Gap ${card.gap} compras · ~${card.eta_days}d al ritmo actual (${(card.purchases_7d / 7).toFixed(1)}/d) → sale ~${card.eta_date}`
+    : `Gap ${card.gap} compras · sin compras 7d → timeline no calculable`;
+  return (
+    <div
+      className="card"
+      style={{
+        borderTop: `3px solid ${roleColor}`,
+        borderLeft: `3px solid ${theme.accent}`,
+        opacity: theme.dim ? 0.72 : 1,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 10,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: roleColor }}>
+            {card.role}
+          </div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+            Adset learning phase
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <span className={`badge ${theme.badge}`}>{card.status_label}</span>
+        </div>
+      </div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+        Progreso hacia exit ({card.target_exits} compras / 7d)
+      </div>
+      <div className="pacing-bar">
+        <div
+          className="pacing-fill"
+          style={{ width: `${pct.toFixed(1)}%`, background: theme.fill }}
+        />
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '0.7rem',
+          color: 'var(--color-text-secondary)',
+          marginTop: 4,
+        }}
+      >
+        <span>
+          {card.purchases_7d}/{card.target_exits} compras 7d
+        </span>
+        <span>{pct.toFixed(0)}%</span>
+      </div>
+      <div
+        style={{
+          marginTop: 10,
+          fontSize: '0.78rem',
+          color: 'var(--color-text-primary)',
+        }}
+      >
+        {etaLine}
+      </div>
+      <div
+        style={{
+          marginTop: 8,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 6,
+          fontSize: '0.7rem',
+        }}
+      >
+        <div>
+          <span style={{ color: 'var(--color-text-secondary)' }}>Último edit:</span>{' '}
+          {card.last_edit_ago}
+        </div>
+        <div>
+          <span style={{ color: 'var(--color-text-secondary)' }}>Spend 7d:</span>{' '}
+          ${card.spend_7d}
+        </div>
+      </div>
+      <div
+        style={{
+          marginTop: 8,
+          fontSize: '0.72rem',
+          color: 'var(--color-text-secondary)',
+          fontStyle: 'italic',
+        }}
+      >
+        {card.note}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 10. Targeting blocks
+// ---------------------------------------------------------------------------
+
+function TargetingSection({ blocks }: { blocks: TargetingBlock[] }) {
+  return (
+    <div className="section">
+      <div className="section-title">Audiencias Configuradas por Ad Set</div>
+      <div className="grid-3">
+        {blocks.map(b => (
+          <TargetingCard key={b.id} block={b} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TargetingCard({ block }: { block: TargetingBlock }) {
+  const roleColor = ROLE_COLOR[block.role] ?? 'var(--color-text-secondary)';
+  return (
+    <div className="card" style={{ borderTop: `3px solid ${roleColor}` }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 10,
+          gap: 8,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: roleColor }}>
+            {block.role}
+          </div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+            {block.name}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '0.7rem', color: roleColor, fontWeight: 700 }}>
+            {block.temperature_label}
+          </div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+            {block.budget_line}
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        {block.rows.map((row, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '140px 1fr',
+              gap: 8,
+              padding: '6px 0',
+              borderBottom: '1px solid var(--color-border)',
+              fontSize: '0.78rem',
+            }}
+          >
+            <span style={{ color: 'var(--color-text-secondary)' }}>{row.label}</span>
+            <span style={{ color: 'var(--color-text-primary)' }}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 11. CUS Saturation
+// ---------------------------------------------------------------------------
+
+function CusSaturationSection({ data }: { data: DashboardData }) {
+  const s = data.cus_saturation;
+  const thresholds = data.bu.config.fatigue_thresholds;
+  const ctrColor =
+    s.link_ctr >= data.bu.config.link_ctr_target
+      ? 'var(--color-success)'
+      : s.link_ctr >= data.bu.config.link_ctr_warn
+      ? 'var(--color-warning)'
+      : 'var(--color-critical)';
+  const freqColor =
+    s.freq_7d.value == null || s.freq_7d.value < thresholds.cus_daily_freq_watch
+      ? 'var(--color-success)'
+      : s.freq_7d.value < thresholds.cus_daily_freq_alert
+      ? 'var(--color-warning)'
+      : 'var(--color-critical)';
+
+  // Reach as % of the seed audience, clamped to 0-100 for the bar width.
+  // ≥100% (reach beyond the seed) = healthy expansion; partial = warning;
+  // 0 = no delivery.
+  const seedPct =
+    s.reach_vs_seed.seed > 0
+      ? Math.min(
+          100,
+          Math.max(0, (s.reach_vs_seed.reach / s.reach_vs_seed.seed) * 100)
+        )
+      : 0;
+  const reachColor =
+    s.reach_vs_seed.reach <= 0
+      ? 'var(--color-text-secondary)'
+      : seedPct >= 100
+      ? 'var(--color-success)'
+      : 'var(--color-warning)';
+
+  return (
+    <div className="section">
+      <div className="section-title">CUS Saturation Monitor</div>
+      <div className="card">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
+          <div>
+            <div className="kpi-label">Reach vs Seed</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: reachColor }}>
+              {fmtInt(s.reach_vs_seed.reach)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+              {s.reach_vs_seed.multiplier.toFixed(1)}x of{' '}
+              {fmtInt(s.reach_vs_seed.seed)} seed
+            </div>
+            <div className="pacing-bar">
+              <div
+                className="pacing-fill"
+                style={{ width: `${seedPct.toFixed(1)}%`, background: reachColor }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="kpi-label">CUS Daily Freq (7d avg)</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: freqColor }}>
+              {s.freq_7d.value == null ? '—' : s.freq_7d.value.toFixed(2)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+              Peak día: {s.freq_7d.peak_day == null ? '—' : s.freq_7d.peak_day.toFixed(2)} · Lifetime:{' '}
+              {s.freq_7d.lifetime == null ? '—' : s.freq_7d.lifetime.toFixed(2)} ({s.freq_7d.days}d)
+            </div>
+            <div
+              style={{
+                fontSize: '0.65rem',
+                color: 'var(--color-text-secondary)',
+                marginTop: 2,
+              }}
+            >
+              Watch &gt;{thresholds.cus_daily_freq_watch.toFixed(1)} · Alert &gt;
+              {thresholds.cus_daily_freq_alert.toFixed(1)}
+            </div>
+          </div>
+          <div>
+            <div className="kpi-label">CUS Link CTR</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: ctrColor }}>
+              {fmtPct(s.link_ctr, 2)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+              Target ≥{fmtPct(data.bu.config.link_ctr_target, 1)} · Warn &lt;
+              {fmtPct(data.bu.config.link_ctr_warn, 1)}
+            </div>
+          </div>
+          <div>
+            {/* Meta's API does not expose an Advantage+ expansion status —
+                render an honest placeholder instead of a hardcoded value. */}
+            <div className="kpi-label">Advantage+ Status</div>
+            <div
+              style={{
+                fontSize: '1.2rem',
+                fontWeight: 700,
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              —
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+              No medido por la API
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 12. Trends
+// ---------------------------------------------------------------------------
+
+function TrendsSection({ trend }: { trend: TrendPoint[] }) {
+  return (
+    <div className="section">
+      <div className="section-title">Trends</div>
+      <div className="grid-2">
+        <div className="card">
+          <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 12 }}>
+            Spend + Purchases
+          </p>
+          <div className="chart-container">
+            <ZoomableChart title="Spend + Purchases" subtitle="Trend daily">
+              <SpendPurchasesChart trend={trend} />
+            </ZoomableChart>
+          </div>
+        </div>
+        <div className="card">
+          <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 12 }}>
+            CTR + CPM
+          </p>
+          <div className="chart-container">
+            <ZoomableChart title="CTR + CPM" subtitle="Trend daily">
+              <CtrCpmChart trend={trend} />
+            </ZoomableChart>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 13. Funnel
+// ---------------------------------------------------------------------------
+
+function FunnelSection({ steps }: { steps: FunnelStep[] }) {
+  const firstValue = steps[0]?.value ?? 0;
+  const last = steps[steps.length - 1];
+  const lpToCheckout = steps.length >= 4 ? steps[3].conv_pct_from_prev : null;
+  const checkoutToPurchase = last?.conv_pct_from_prev ?? null;
+  return (
+    <div className="section">
+      <div className="section-title">Funnel Analysis</div>
+      <div className="card">
+        <div className="funnel">
+          {steps.map((step, i) => {
+            // Funnel magnitudes usually span 3-4 orders of magnitude (661k
+            // impressions → 144 purchases). A linear scale against the top
+            // of funnel collapses every downstream stage to <2% width, which
+            // visually tells you nothing. A square-root scale preserves the
+            // decreasing order while keeping every bar legibly sized, so the
+            // user can actually compare step-to-step delivery at a glance.
+            const widthPct =
+              i === 0
+                ? 100
+                : firstValue > 0 && step.value > 0
+                ? Math.max(6, Math.sqrt(step.value / firstValue) * 100)
+                : 0;
+            const opacity = 1 - (i * 0.6) / Math.max(1, steps.length - 1);
+            const showDrop =
+              step.conv_pct_from_prev != null && step.value > 0;
+            return (
+              <div className="funnel-step" key={step.label}>
+                <span className="funnel-label">{step.label}</span>
+                <div className="funnel-bar-bg">
+                  <div
+                    className="funnel-bar"
+                    style={{
+                      width: `${widthPct.toFixed(1)}%`,
+                      background: 'var(--color-accent)',
+                      opacity,
+                    }}
+                  >
+                    {fmtInt(step.value)}
+                  </div>
+                </div>
+                <span className="funnel-value">{fmtInt(step.value)}</span>
+                <span className="funnel-drop">
+                  {showDrop
+                    ? `${fmtPct(step.conv_pct_from_prev!, 1)} conv | ${fmtPct(
+                        step.drop_pct_from_prev ?? 0,
+                        1
+                      )} drop`
+                    : ''}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div
+          style={{
+            marginTop: 16,
+            paddingTop: 12,
+            borderTop: '1px solid var(--color-border)',
+            fontSize: '0.8rem',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          <strong style={{ color: 'var(--color-text-primary)' }}>Key Rates:</strong>{' '}
+          LP Views to Checkout: {lpToCheckout != null ? fmtPct(lpToCheckout, 1) : '—'}{' '}
+          conversion. Checkout to Purchase:{' '}
+          {checkoutToPurchase != null ? fmtPct(checkoutToPurchase, 1) : '—'}.
+          <span style={{ display: 'block', marginTop: 4, fontSize: '0.7rem' }}>
+            Nota: ancho de barras en escala √, no proporcional — exagera los
+            pasos bajos para que sean legibles.
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 14. Ad Performance → moved to `./ad-performance-table` (client
+// component with per-column sorting). The server page only renders the
+// wrapper via <AdPerformanceTable ... /> at the top of this file.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// 16. Frequency distribution
+// ---------------------------------------------------------------------------
+
+function FrequencySection({
+  scopes,
+  snapshotDate,
+  reportDate,
+}: {
+  scopes: FrequencyScope[];
+  snapshotDate: string | null;
+  reportDate: string;
+}) {
+  // The data is a single-day snapshot of the daily frequency breakdown —
+  // NOT a rolling 7d window. Title with the snapshot date and flag
+  // staleness when the adapter fell back to an older pull.
+  const dateLabel =
+    snapshotDate == null ? 'sin datos' : `snapshot del ${snapshotDate}`;
+  const isStale = snapshotDate != null && snapshotDate !== reportDate;
+  const bars = (
+    <div>
+      {scopes.map((scope, i) => (
+        <FrequencyBar key={`${scope.scope}-${i}`} scope={scope} />
+      ))}
+    </div>
+  );
+  return (
+    <div className="section">
+      <div className="section-title">
+        Frequency Distribution ({dateLabel})
+        {isStale ? (
+          <span
+            className="badge badge-yellow"
+            style={{ marginLeft: 8, verticalAlign: 'middle' }}
+          >
+            STALE · sin pull del {reportDate}
+          </span>
+        ) : null}
+      </div>
+      <div className="card">
+        <div
+          style={{
+            fontSize: '0.8rem',
+            color: 'var(--color-text-secondary)',
+            marginBottom: 14,
+          }}
+        >
+          % del reach por cantidad de impressions vistas (snapshot diario, no
+          ventana 7d). Zona saludable: mayoría en 1-3. Zona de fatigue: reach
+          acumulado en 6+ impressions supera ~15-25%.
+        </div>
+        <ZoomableChart
+          title="Frequency Distribution"
+          subtitle={`${dateLabel} · click para ampliar`}
+        >
+          {bars}
+        </ZoomableChart>
+        <div style={{ overflowX: 'auto', marginTop: 18 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Scope</th>
+                <th>Reach</th>
+                <th>Avg Freq</th>
+                <th>1x</th>
+                <th>2-3x</th>
+                <th>4-5x</th>
+                <th>6-10x</th>
+                <th>11-20x</th>
+                <th>21+x</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scopes.map((scope, i) => (
+                <tr key={`${scope.scope}-${i}`}>
+                  <td style={{ fontWeight: 700 }}>{scope.scope}</td>
+                  <td>{fmtInt(scope.reach)}</td>
+                  <td>{scope.avg_freq.toFixed(2)}</td>
+                  <td style={{ color: FREQ_COLORS.b1, fontWeight: 600 }}>
+                    {fmtPct(scope.buckets.b1, 1)}
+                  </td>
+                  <td style={{ color: FREQ_COLORS.b23, fontWeight: 600 }}>
+                    {fmtPct(scope.buckets.b23, 1)}
+                  </td>
+                  <td style={{ color: FREQ_COLORS.b45, fontWeight: 600 }}>
+                    {fmtPct(scope.buckets.b45, 1)}
+                  </td>
+                  <td style={{ color: FREQ_COLORS.b610, fontWeight: 600 }}>
+                    {fmtPct(scope.buckets.b610, 1)}
+                  </td>
+                  <td style={{ color: FREQ_COLORS.b1120, fontWeight: 600 }}>
+                    {fmtPct(scope.buckets.b1120, 1)}
+                  </td>
+                  <td style={{ color: FREQ_COLORS.b21plus, fontWeight: 600 }}>
+                    {fmtPct(scope.buckets.b21plus, 1)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FrequencyBar({ scope }: { scope: FrequencyScope }) {
+  const statusColor = FREQ_STATUS_COLOR[scope.status];
+  const segments: Array<{
+    key: keyof typeof FREQ_COLORS;
+    label: string;
+    pct: number;
+  }> = [
+    { key: 'b1', label: '1', pct: scope.buckets.b1 },
+    { key: 'b23', label: '2-3', pct: scope.buckets.b23 },
+    { key: 'b45', label: '4-5', pct: scope.buckets.b45 },
+    { key: 'b610', label: '6-10', pct: scope.buckets.b610 },
+    { key: 'b1120', label: '11-20', pct: scope.buckets.b1120 },
+    { key: 'b21plus', label: '21+', pct: scope.buckets.b21plus },
+  ];
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 4,
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+          {scope.scope}{' '}
+          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>
+            · reach {fmtInt(scope.reach)} · avg freq {scope.avg_freq.toFixed(2)}
+          </span>
+        </div>
+        <div style={{ fontSize: '0.75rem' }}>
+          <span style={{ color: 'var(--color-text-secondary)' }}>6+ impressions:</span>{' '}
+          <span style={{ color: statusColor, fontWeight: 700 }}>
+            {fmtPct(scope.pct_6plus, 1)} · {scope.status}
+          </span>
+        </div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          height: 26,
+          borderRadius: 4,
+          overflow: 'hidden',
+          background: 'var(--color-bg-hover)',
+        }}
+      >
+        {segments
+          .filter(seg => seg.pct > 0)
+          .map(seg => (
+            <div
+              key={seg.key}
+              style={{
+                width: `${seg.pct}%`,
+                background: FREQ_COLORS[seg.key],
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#0a0a1a',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+              }}
+              title={`${seg.label} imp: ${seg.pct.toFixed(1)}%`}
+            >
+              {seg.pct >= 7 ? seg.label : ''}
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 17. Threshold alerts
+// ---------------------------------------------------------------------------
+
+function AlertsSection({ alerts }: { alerts: AlertItem[] }) {
+  return (
+    <div className="section">
+      <div className="section-title">Threshold Alerts</div>
+      <div className="alerts-list">
+        {alerts.map((a, i) => (
+          <div key={i} className={`card card-alert card-alert-${a.severity}`}>
+            <span className="alert-type">{a.type}</span>
+            <span className="alert-msg">{a.message}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 18. Hypotheses
+// ---------------------------------------------------------------------------
+
+function HypothesesSection({ items }: { items: HypothesisItem[] }) {
+  return (
+    <div className="section">
+      <div className="section-title">Hypothesis Tracking</div>
+      <div className="grid-3">
+        {items.map(h => {
+          const style =
+            h.status === 'validated'
+              ? { background: 'rgba(34,197,94,0.15)', color: 'var(--color-success)' }
+              : h.status === 'rejected'
+              ? { background: 'rgba(239,68,68,0.15)', color: 'var(--color-critical)' }
+              : { background: 'rgba(59,130,246,0.15)', color: 'var(--color-accent)' };
+          return (
+            <div key={h.code} className="card hypothesis-card">
+              <div className="hyp-id">{h.code}</div>
+              <div className="hyp-statement">{h.statement}</div>
+              <div className="hyp-meta">
+                <strong>Current:</strong> {h.current_reading}
+              </div>
+              <div className="hyp-meta">
+                <strong>Success:</strong> {h.success_criteria}
+              </div>
+              <div className="hyp-status" style={style}>
+                {h.status.toUpperCase()}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 20. Footer
+// ---------------------------------------------------------------------------
+
+function Footer({ reportDate }: { reportDate: string }) {
+  return (
+    <div className="footer">
+      <span>Generated by Afluence Campaign Monitor · Data: Meta API + Supabase</span>
+      <span>Next report: {addDaysYmd(reportDate, 1)}</span>
+    </div>
+  );
+}

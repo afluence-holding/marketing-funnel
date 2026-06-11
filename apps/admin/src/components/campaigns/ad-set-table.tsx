@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { AdSetRow } from '@/lib/dashboard/dashboard-adapter';
+import type { AdSetRow, BuConfig } from '@/lib/campaigns/types';
 import {
   EmptyTableRow,
   FilterBar,
@@ -79,7 +79,22 @@ const STATUS_OPTIONS = [
   { key: 'PAUSED', label: 'Paused' },
 ];
 
-export function AdSetTable({ rows }: { rows: AdSetRow[] }) {
+type FatigueThresholds = BuConfig['fatigue_thresholds'];
+
+/** Watch threshold for the Freq 7d column, resolved by ad-set role. */
+function freqWatchThreshold(role: string, t: FatigueThresholds): number {
+  if (role === 'RMK') return t.rmk_daily_freq_watch;
+  if (role === 'CARTAB') return t.cartab_daily_freq_watch;
+  return t.cus_daily_freq_watch;
+}
+
+export function AdSetTable({
+  rows,
+  fatigueThresholds,
+}: {
+  rows: AdSetRow[];
+  fatigueThresholds: FatigueThresholds;
+}) {
   const { state: sort, toggle: toggleSort, clear: clearSort } = useTableSort<SortKey>();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
@@ -165,7 +180,9 @@ export function AdSetTable({ rows }: { rows: AdSetRow[] }) {
             {sorted.length === 0 ? (
               <EmptyTableRow colSpan={COLUMNS.length} />
             ) : (
-              sorted.map(r => <AdSetRowView key={r.id} row={r} />)
+              sorted.map(r => (
+                <AdSetRowView key={r.id} row={r} fatigueThresholds={fatigueThresholds} />
+              ))
             )}
           </tbody>
         </table>
@@ -187,7 +204,13 @@ export function AdSetTable({ rows }: { rows: AdSetRow[] }) {
   );
 }
 
-function AdSetRowView({ row }: { row: AdSetRow }) {
+function AdSetRowView({
+  row,
+  fatigueThresholds,
+}: {
+  row: AdSetRow;
+  fatigueThresholds: FatigueThresholds;
+}) {
   const statusBadge =
     row.status === 'ACTIVE'
       ? 'badge-green'
@@ -209,16 +232,16 @@ function AdSetRowView({ row }: { row: AdSetRow }) {
       ? 'var(--color-success)'
       : 'var(--color-critical)';
 
-  const roasValue = row.roas ?? 0;
   const roasColor =
     row.roas == null
       ? 'var(--color-text-secondary)'
-      : roasValue >= row.roas_target
+      : row.roas >= row.roas_target
       ? 'var(--color-success)'
       : 'var(--color-warning)';
 
+  const freqWatch = freqWatchThreshold(row.role, fatigueThresholds);
   const freqWatchColor =
-    row.freq_daily_7d == null || row.freq_daily_7d < 3
+    row.freq_daily_7d == null || row.freq_daily_7d < freqWatch
       ? 'var(--color-success)'
       : 'var(--color-warning)';
 
@@ -247,7 +270,9 @@ function AdSetRowView({ row }: { row: AdSetRow }) {
           ? '—'
           : `${row.margin_per_sale >= 0 ? '+' : ''}${fmtMoney2(row.margin_per_sale)}`}
       </td>
-      <td style={{ textAlign: 'right', color: roasColor }}>{roasValue.toFixed(1)}x</td>
+      <td style={{ textAlign: 'right', color: roasColor }}>
+        {row.roas == null ? '—' : `${row.roas.toFixed(1)}x`}
+      </td>
       <td style={{ textAlign: 'right' }}>{fmtPct(row.link_ctr, 2)}</td>
       <td style={{ textAlign: 'right' }}>{fmtInt(row.reach)}</td>
       <td style={{ textAlign: 'right' }}>

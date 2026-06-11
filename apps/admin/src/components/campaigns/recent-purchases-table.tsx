@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { RecentPurchase } from '@/lib/dashboard/dashboard-adapter';
+import type { RecentPurchase } from '@/lib/campaigns/types';
 import {
   EmptyTableRow,
   FilterBar,
