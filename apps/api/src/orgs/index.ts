@@ -78,6 +78,7 @@ import { sequences as caroFitnessSequences } from './caro-fitness/main/sequences
 import { workflows as caroFitnessWorkflows } from './caro-fitness/main/workflows';
 import { IDS as caroFitnessIDS } from './caro-fitness/main/config';
 import { routingEngine as caroFitnessRouting } from './caro-fitness/main/routing';
+import { whatsappGroupPools as caroFitnessWhatsappGroupPools } from './caro-fitness/main/whatsapp-groups';
 import { sequences as mamaSinCaosSequences } from './mama-sin-caos/main/sequences';
 import { workflows as mamaSinCaosWorkflows } from './mama-sin-caos/main/workflows';
 import { IDS as mamaSinCaosIDS } from './mama-sin-caos/main/config';
@@ -206,6 +207,7 @@ export const workflowRegistry: Record<string, WorkflowDef> = {
 export const whatsappGroupPoolRegistry: WhatsAppGroupPoolSeed[] = [
   ...germanRozWhatsappGroupPools,
   ...mamaSinCaosWhatsappGroupPools,
+  ...caroFitnessWhatsappGroupPools,
 ];
 
 export const clickupRegistryByPipelineId: Record<string, ClickUpPipelineConfig> = {

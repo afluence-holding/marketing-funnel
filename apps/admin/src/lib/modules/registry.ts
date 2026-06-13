@@ -41,7 +41,7 @@ const ENABLED: Record<string, AdminModuleId[]> = {
   // tables). Responses-only back office — no Meta campaigns dashboard.
   'bukku/main': ['responses'],
   'mama-sin-caos/main': ['responses', 'whatsapp-groups'],
-  'caro-fitness/main': ['responses'],
+  'caro-fitness/main': ['responses', 'whatsapp-groups'],
 };
 
 export function enabledModules(organizer: string, bu: string): AdminModule[] {

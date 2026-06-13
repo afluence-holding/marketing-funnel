@@ -123,7 +123,7 @@
   <span class="badge">Regalo por registrarte</span>
   <p class="vip-line">Eres de las <strong>primeras 6,000 personas</strong> que hicieron el diagnóstico: tienes <strong>acceso VIP a los grupos de WhatsApp</strong>, con contenido exclusivo que no llega por correo.</p>
 
-  <a class="btn-wa" href="__WHATSAPP_GROUP_URL__">
+  <a class="btn-wa" id="btn-wa" href="#" onclick="return joinWhatsApp(event)">
     <span class="dot"></span>
     Entrar al grupo VIP
   </a>
@@ -134,6 +134,93 @@
   <div class="sig">Nos vemos el domingo — Caro</div>
   <div class="small">Carolina Manrique · Train Like A Pro</div>
 </footer>
+
+<script>
+const WA_ASSIGN_PATH = '/api/whatsapp-group/caro-fitness/main/assign';
+const WA_POOL_KEY = 'webinar-vip';
+const WA_INVITE_KEY = 'caro_fitness_wa_invite';
+const WA_PHONE_KEY = 'caro_fitness_phone';
+const WHATSAPP_FALLBACK = '__WHATSAPP_GROUP_URL__';
+
+let assignedWhatsAppUrl = '';
+
+function getPhoneFromContext() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('phone') || params.get('tel') || params.get('wa') || '';
+    if (fromUrl.trim()) return fromUrl.trim();
+    const stored = sessionStorage.getItem(WA_PHONE_KEY);
+    if (stored && stored.trim()) return stored.trim();
+  } catch (_) {}
+  return '';
+}
+
+async function assignWhatsAppGroup() {
+  if (assignedWhatsAppUrl) return assignedWhatsAppUrl;
+
+  try {
+    const cached = sessionStorage.getItem(WA_INVITE_KEY);
+    if (cached) {
+      assignedWhatsAppUrl = cached;
+      return cached;
+    }
+  } catch (_) {}
+
+  try {
+    const body = { poolKey: WA_POOL_KEY };
+    const phone = getPhoneFromContext();
+    if (phone) body.phone = phone;
+
+    const res = await fetch(WA_ASSIGN_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) return fallbackUrl();
+
+    const data = await res.json();
+    if (data && data.ok && data.inviteUrl) {
+      assignedWhatsAppUrl = data.inviteUrl;
+      try {
+        sessionStorage.setItem(WA_INVITE_KEY, data.inviteUrl);
+      } catch (_) {}
+      return data.inviteUrl;
+    }
+  } catch (err) {
+    console.error('[caro-fitness] whatsapp assign error', err);
+  }
+
+  return fallbackUrl();
+}
+
+function fallbackUrl() {
+  if (WHATSAPP_FALLBACK && WHATSAPP_FALLBACK !== '#' && WHATSAPP_FALLBACK.indexOf('__') === -1) {
+    return WHATSAPP_FALLBACK;
+  }
+  return '';
+}
+
+async function joinWhatsApp(event) {
+  if (event) event.preventDefault();
+  const url = await assignWhatsAppGroup();
+  if (!url) {
+    alert('No hay link de WhatsApp disponible en este momento. Intenta de nuevo en unos minutos.');
+    return false;
+  }
+  window.open(url, '_blank', 'noopener');
+  return false;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  assignWhatsAppGroup().then(function (url) {
+    if (url) {
+      var btn = document.getElementById('btn-wa');
+      if (btn) btn.setAttribute('href', url);
+    }
+  });
+});
+</script>
 
 </body>
 </html>

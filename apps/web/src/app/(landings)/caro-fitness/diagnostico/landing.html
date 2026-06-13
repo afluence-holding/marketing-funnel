@@ -772,6 +772,7 @@ async function submitLead(){
     return;
   }
   saveProgressNow({status:'completed',quizStep:'results'});
+  try{sessionStorage.setItem('caro_fitness_phone',getFullPhone());}catch(_){}
   next();
 }
 function goWebinar(){
