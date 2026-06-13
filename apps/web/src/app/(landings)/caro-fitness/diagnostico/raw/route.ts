@@ -18,7 +18,7 @@ async function loadHtml(): Promise<string> {
   );
   html = html.replace(
     /__WEBINAR_DATE__/g,
-    process.env.NEXT_PUBLIC_CARO_FITNESS_WEBINAR_DATE ?? '14 de Junio · [HORA]',
+    process.env.NEXT_PUBLIC_CARO_FITNESS_WEBINAR_DATE ?? 'domingo 14 de junio · 8 pm PE',
   );
   return html;
 }

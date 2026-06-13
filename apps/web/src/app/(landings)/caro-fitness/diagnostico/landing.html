@@ -550,6 +550,9 @@ function buildProgressAnswers(){
   ['sexo','objetivo','edad','peso','frecuencia','tipo','proteina','sueno','frustracion'].forEach((key)=>{
     if(data[key]!=null&&data[key]!=='')answers[key]=toStr(data[key]);
   });
+  answers.registro_origen='diagnostico';
+  answers.completo_diagnostico=(flow[idx]==='results')?'si':'no';
+  answers.webinar_registrado='no';
   return answers;
 }
 function buildProgressPayload(overrides){
@@ -729,6 +732,9 @@ function buildIngestPayload(results){
     phone:getFullPhone(),
     customFields:{
       landing:'diagnostico',
+      registro_origen:'diagnostico',
+      completo_diagnostico:'si',
+      webinar_registrado:'no',
       country_code:toStr(data.countryCode),
       country:toStr(data.country),
       whatsapp_local:toStr(data.whatsapp),
@@ -771,8 +777,11 @@ async function submitLead(){
     leadErrorEl.style.display='block';
     return;
   }
-  saveProgressNow({status:'completed',quizStep:'results'});
-  try{sessionStorage.setItem('caro_fitness_phone',getFullPhone());}catch(_){}
+  saveProgressNow({status:'completed',quizStep:'results',answers:Object.assign(buildProgressAnswers(),{completo_diagnostico:'si'})});
+  try{
+    sessionStorage.setItem('caro_fitness_phone',getFullPhone());
+    sessionStorage.setItem('caro_fitness_diagnostico_completed','1');
+  }catch(_){}
   next();
 }
 function goWebinar(){

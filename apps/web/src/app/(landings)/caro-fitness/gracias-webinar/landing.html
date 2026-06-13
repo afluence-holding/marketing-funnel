@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Estás dentro · Train Like A Pro</title>
-<meta name="description" content="Gracias por registrarte al webinar de Train Like A Pro. Entra al grupo VIP de WhatsApp.">
+<meta name="description" content="Regístrate al webinar de Train Like A Pro. Clase en vivo gratis con Carolina Manrique.">
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,7 +30,13 @@
   }
 
   header { padding: clamp(10px, 1.8vh, 16px) 24px 0; text-align: center; }
-  header img { width: clamp(110px, 12vw, 135px); height: auto; }
+  header img {
+    width: clamp(140px, 18vw, 200px);
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    mix-blend-mode: screen;
+  }
 
   main {
     flex: 1;
@@ -39,6 +45,9 @@
     text-align: center;
     padding: clamp(14px, 2.5vh, 26px) 24px 18px;
   }
+
+  .view { width: 100%; display: flex; flex-direction: column; align-items: center; }
+  .view.hidden { display: none; }
 
   .eyebrow {
     display: inline-flex; align-items: center; gap: 10px;
@@ -63,8 +72,124 @@
     max-width: 480px;
     font-size: clamp(14.5px, 1.9vh, 16px);
     margin-top: clamp(10px, 1.8vh, 16px);
+    line-height: 1.55;
   }
   .sub strong { color: var(--cream); font-weight: 600; }
+
+  .webinar-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: clamp(14px, 2.2vh, 22px);
+    padding: 8px 16px; border: 1px solid var(--taupe-deep);
+    border-radius: 999px; font-size: 12px; font-weight: 500;
+    color: var(--cream);
+  }
+  .webinar-pill svg { width: 15px; height: 15px; stroke: var(--taupe); fill: none; stroke-width: 1.6; }
+
+  .form-card {
+    width: min(100%, 420px);
+    margin-top: clamp(20px, 3vh, 30px);
+    text-align: left;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-size: 10px; font-weight: 600;
+    letter-spacing: .22em; text-transform: uppercase;
+    color: var(--taupe-deep); margin-bottom: 7px;
+  }
+  .field input, .field select {
+    width: 100%; background: rgba(244,237,229,.06);
+    border: 1px solid rgba(203,191,176,.35);
+    border-radius: 10px; color: var(--cream);
+    font-family: var(--sans); font-size: 15px;
+    padding: 13px 14px; outline: none;
+    transition: border-color .2s ease;
+  }
+  .field select option,
+  .field select optgroup {
+    background: #f4ede5;
+    color: #2a2018;
+  }
+  .field input::placeholder { color: var(--taupe-deep); }
+  .field input:focus, .field select:focus { border-color: var(--taupe); }
+  .field select { cursor: pointer; color-scheme: dark; }
+  .phone-wrap {
+    display: flex; gap: 8px;
+    align-items: stretch;
+  }
+  .country-select { flex: 0 0 108px; position: relative; }
+  .country-select-btn {
+    width: 100%; min-height: 48px;
+    background: rgba(244,237,229,.06);
+    border: 1px solid rgba(203,191,176,.35);
+    border-radius: 10px; color: var(--cream);
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    padding: 13px 28px 13px 12px; text-align: left;
+    cursor: pointer; outline: none;
+    transition: border-color .2s ease;
+  }
+  .country-select-btn:focus,
+  .country-select-btn[aria-expanded="true"] {
+    border-color: var(--taupe);
+  }
+  .country-select::after {
+    content: '▾';
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--taupe-deep);
+    pointer-events: none; font-size: 11px;
+    transition: transform .2s ease;
+  }
+  .country-select:has(.country-select-menu.open)::after {
+    transform: translateY(-50%) rotate(180deg);
+  }
+  .country-select-menu {
+    display: none;
+    position: absolute; left: 0; right: 0;
+    bottom: calc(100% + 6px);
+    top: auto;
+    z-index: 30;
+    background: #f4ede5;
+    border: 1px solid rgba(203,191,176,.8);
+    border-radius: 10px;
+    box-shadow: 0 -12px 36px rgba(0,0,0,.35);
+  }
+  .country-select-menu.open { display: block; }
+  .country-select-menu button {
+    display: block; width: 100%;
+    border: 0; background: transparent;
+    color: #2a2018; font-family: var(--sans);
+    font-size: 13px; font-weight: 500;
+    text-align: left; padding: 9px 12px;
+    cursor: pointer;
+  }
+  .country-select-menu button:hover,
+  .country-select-menu button:focus,
+  .country-select-menu button.active {
+    background: #e8ddd2;
+    outline: none;
+  }
+  .phone-wrap input { flex: 1; min-width: 0; }
+
+  .btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; margin-top: 6px;
+    background: var(--cream); color: var(--espresso);
+    font-size: 13px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase;
+    padding: clamp(15px, 2.2vh, 18px) 24px;
+    border: none; border-radius: 12px; cursor: pointer;
+    transition: transform .25s ease, box-shadow .25s ease, opacity .2s;
+  }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+  .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+  .form-error {
+    margin-top: 12px; font-size: 13px; color: #e8a090;
+    text-align: center; display: none;
+  }
+  .form-disclaimer {
+    margin-top: 14px; font-size: 11.5px; color: var(--taupe-deep);
+    text-align: center; line-height: 1.5;
+  }
 
   .badge {
     display: inline-block;
@@ -79,21 +204,33 @@
     max-width: 500px;
     font-size: clamp(14.5px, 1.9vh, 16px);
     margin-top: clamp(10px, 1.6vh, 14px);
+    line-height: 1.55;
   }
   .vip-line strong { color: var(--cream); font-weight: 600; }
 
-  .btn-wa {
-    display: inline-flex; align-items: center; gap: 12px;
-    background: var(--cream); color: var(--espresso);
-    font-size: 13.5px; font-weight: 600;
-    letter-spacing: .16em; text-transform: uppercase;
-    padding: clamp(15px, 2.2vh, 19px) clamp(32px, 5vw, 44px);
-    border-radius: 12px; text-decoration: none;
-    margin-top: clamp(20px, 3.2vh, 32px);
-    transition: transform .25s ease, box-shadow .25s ease;
+  .actions {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(16px, 2.5vh, 22px); width: 100%;
+    margin-top: clamp(20px, 3.2vh, 28px);
   }
-  .btn-wa:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0,0,0,.4); }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--wa); animation: pulse 1.8s infinite; }
+  .calendar-group {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; width: 100%;
+  }
+
+  .btn-wa, .btn-cal {
+    display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+    font-size: 13px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase;
+    padding: clamp(15px, 2.2vh, 19px) clamp(28px, 5vw, 40px);
+    border-radius: 12px; text-decoration: none;
+    transition: transform .25s ease, box-shadow .25s ease;
+    width: min(100%, 360px);
+    background: var(--cream); color: var(--espresso);
+    border: none;
+  }
+  .btn-wa:hover, .btn-cal:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0,0,0,.4); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--wa); animation: pulse 1.8s infinite; flex-shrink: 0; }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(37,211,102,.45); }
     70% { box-shadow: 0 0 0 12px rgba(37,211,102,0); }
@@ -116,33 +253,461 @@
 </header>
 
 <main>
-  <div class="eyebrow"><span class="check">✓</span> Registro confirmado</div>
-  <h1>Gracias por registrarte<br>al webinar</h1>
-  <p class="sub">Tu lugar está guardado — <strong>este domingo 8 pm PE, en vivo, 1 hora.</strong></p>
+  <!-- Vista registro -->
+  <div id="view-registro" class="view">
+    <div class="eyebrow">Webinar en vivo · Gratis</div>
+    <h1>Reserva tu lugar<br>en la clase</h1>
+    <p class="sub">Mañana <strong>__WEBINAR_DATE__</strong> — 1 hora en vivo con Caro. Déjanos tus datos y te abrimos la página para guardar el evento en tu calendario y entrar al grupo VIP.</p>
 
-  <span class="badge">Regalo por registrarte</span>
-  <p class="vip-line">Eres de las <strong>primeras 6,000 personas</strong> que hicieron el diagnóstico: tienes <strong>acceso VIP a los grupos de WhatsApp</strong>, con contenido exclusivo que no llega por correo.</p>
+    <div class="webinar-pill">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+      <span>__WEBINAR_DATE__</span>
+    </div>
 
-  <a class="btn-wa" id="btn-wa" href="#" onclick="return joinWhatsApp(event)">
-    <span class="dot"></span>
-    Entrar al grupo VIP
-  </a>
-  <div class="note">Cupo limitado por grupo — entra ahora para no quedarte fuera.</div>
+    <div class="form-card">
+      <form id="registro-form" novalidate>
+        <div class="field">
+          <label for="nombre">Tu nombre</label>
+          <input id="nombre" type="text" placeholder="Carolina" autocomplete="given-name" required>
+        </div>
+        <div class="field">
+          <label for="email">Tu correo</label>
+          <input id="email" type="email" placeholder="tucorreo@email.com" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="whatsapp">Tu WhatsApp</label>
+          <div class="phone-wrap">
+            <div class="country-select">
+              <input type="hidden" id="country-code" value="+51">
+              <button type="button" class="country-select-btn" id="country-picker-btn" aria-expanded="false" aria-haspopup="listbox" aria-label="Código de país">PE +51</button>
+              <div class="country-select-menu" id="country-picker-menu" role="listbox" aria-label="Código de país">
+                <button type="button" role="option" data-value="+51" data-country="Perú" data-label="PE +51" class="active">PE +51</button>
+                <button type="button" role="option" data-value="+57" data-country="Colombia" data-label="CO +57">CO +57</button>
+                <button type="button" role="option" data-value="+52" data-country="México" data-label="MX +52">MX +52</button>
+                <button type="button" role="option" data-value="+54" data-country="Argentina" data-label="AR +54">AR +54</button>
+                <button type="button" role="option" data-value="+56" data-country="Chile" data-label="CL +56">CL +56</button>
+                <button type="button" role="option" data-value="+593" data-country="Ecuador" data-label="EC +593">EC +593</button>
+                <button type="button" role="option" data-value="+58" data-country="Venezuela" data-label="VE +58">VE +58</button>
+                <button type="button" role="option" data-value="+591" data-country="Bolivia" data-label="BO +591">BO +591</button>
+                <button type="button" role="option" data-value="+595" data-country="Paraguay" data-label="PY +595">PY +595</button>
+                <button type="button" role="option" data-value="+598" data-country="Uruguay" data-label="UY +598">UY +598</button>
+                <button type="button" role="option" data-value="+507" data-country="Panamá" data-label="PA +507">PA +507</button>
+                <button type="button" role="option" data-value="+506" data-country="Costa Rica" data-label="CR +506">CR +506</button>
+                <button type="button" role="option" data-value="+1" data-country="Estados Unidos" data-label="US +1">US +1</button>
+                <button type="button" role="option" data-value="+34" data-country="España" data-label="ES +34">ES +34</button>
+                <button type="button" role="option" data-value="+55" data-country="Brasil" data-label="BR +55">BR +55</button>
+              </div>
+            </div>
+            <input id="whatsapp" type="tel" placeholder="999 000 000" autocomplete="tel-national" inputmode="tel" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" id="btn-registrar" disabled>Registrarme al webinar</button>
+        <p id="form-error" class="form-error"></p>
+      </form>
+      <p class="form-disclaimer">Te enviamos el enlace por correo y WhatsApp. Cero spam — puedes salirte cuando quieras.</p>
+    </div>
+  </div>
+
+  <!-- Vista confirmación -->
+  <div id="view-confirmado" class="view hidden">
+    <div class="eyebrow"><span class="check">✓</span> Registro confirmado</div>
+    <h1 id="confirm-title">Gracias por registrarte<br>al webinar</h1>
+    <p class="sub">Tu lugar está guardado — <strong>__WEBINAR_DATE__, en vivo, 1 hora.</strong></p>
+
+    <span class="badge">Siguiente paso</span>
+    <p class="vip-line">Guarda la clase en tu calendario y entra al <strong>grupo VIP de WhatsApp</strong> para recordatorios y contenido exclusivo.</p>
+
+    <div class="actions">
+      <div class="calendar-group">
+        <a class="btn-cal" id="btn-cal-apple" href="/caro-fitness/gracias-webinar/calendar.ics" target="_top">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+          Agregar a Apple Calendar (iPhone)
+        </a>
+        <a class="btn-cal" id="btn-cal" href="__CALENDAR_URL__" target="_blank" rel="noopener noreferrer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+          Agregar a Google Calendar
+        </a>
+      </div>
+      <a class="btn-wa" id="btn-wa" href="#" onclick="return joinWhatsApp(event)">
+        <span class="dot"></span>
+        Entrar al grupo VIP
+      </a>
+    </div>
+    <div class="note">En iPhone: toca «Apple Calendar» y confirma «Añadir». Cupo limitado en WhatsApp — entra ahora.</div>
+  </div>
 </main>
 
 <footer>
-  <div class="sig">Nos vemos el domingo — Caro</div>
+  <div class="sig" id="footer-sig">Nos vemos el domingo 14 de junio — Caro</div>
   <div class="small">Carolina Manrique · Train Like A Pro</div>
 </footer>
 
 <script>
+const INGEST_PATH = '/api/caro-fitness/ingest';
+const PROGRESS_PATH = '/api/caro-fitness/progress';
+const FORM_SOURCE = 'landing-caro-fitness-diagnostico';
+const SESSION_KEY = 'caro_fitness_session_id';
+const DIAGNOSTICO_KEY = 'caro_fitness_diagnostico_completed';
 const WA_ASSIGN_PATH = '/api/whatsapp-group/caro-fitness/main/assign';
 const WA_POOL_KEY = 'webinar-vip';
 const WA_INVITE_KEY = 'caro_fitness_wa_invite';
 const WA_PHONE_KEY = 'caro_fitness_phone';
 const WHATSAPP_FALLBACK = '__WHATSAPP_GROUP_URL__';
+const CALENDAR_URL = '__CALENDAR_URL__';
+const WEBINAR_LIVE_URL = '__WEBINAR_LIVE_URL__';
 
 let assignedWhatsAppUrl = '';
+let progressTimer = null;
+
+function getSessionId() {
+  try {
+    let id = sessionStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : 'cf-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+      sessionStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  } catch (_) {
+    return 'cf-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  }
+}
+
+const sessionId = getSessionId();
+
+function toStr(v) {
+  return v === undefined || v === null ? '' : String(v);
+}
+
+function isConfirmadoView() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('confirmado') === '1';
+  } catch (_) {
+    return false;
+  }
+}
+
+function showView(mode) {
+  const reg = document.getElementById('view-registro');
+  const conf = document.getElementById('view-confirmado');
+  if (mode === 'confirmado') {
+    reg.classList.add('hidden');
+    conf.classList.remove('hidden');
+    personalizeConfirmacion();
+  } else {
+    reg.classList.remove('hidden');
+    conf.classList.add('hidden');
+  }
+  if (typeof window.postHeightSoon === 'function') window.postHeightSoon();
+}
+
+function personalizeConfirmacion() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const name = (params.get('name') || '').trim();
+    if (name) {
+      document.getElementById('confirm-title').innerHTML =
+        'Gracias' + (name ? ', ' + escapeHtml(name) : '') + '<br>por registrarte al webinar';
+    }
+  } catch (_) {}
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function getPhoneLocal() {
+  return document.getElementById('whatsapp').value.trim();
+}
+
+function getFullPhone() {
+  const local = getPhoneLocal().replace(/\D/g, '');
+  if (!local) return '';
+  const code = getSelectedCountryCode().replace(/\s/g, '');
+  return code + local;
+}
+
+function isValidPhoneLocal(v) {
+  return v.replace(/\D/g, '').length >= 8;
+}
+
+function checkForm() {
+  const nombre = document.getElementById('nombre').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const ok =
+    nombre.length > 1 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+    isValidPhoneLocal(getPhoneLocal());
+  document.getElementById('btn-registrar').disabled = !ok;
+}
+
+function getUtmData() {
+  const params = new URLSearchParams(window.location.search);
+  const utm = {};
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (key) {
+    const value = params.get(key);
+    if (value) utm[key] = value;
+  });
+  return utm;
+}
+
+function syncPhoneData() {
+  const pickerBtn = document.getElementById('country-picker-btn');
+  const countryCodeEl = document.getElementById('country-code');
+  const activeOption = document.querySelector('#country-picker-menu button.active');
+  return {
+    countryCode: countryCodeEl ? countryCodeEl.value : '+51',
+    country: activeOption ? activeOption.getAttribute('data-country') || '' : 'Perú',
+    whatsappLocal: getPhoneLocal(),
+    countryLabel: pickerBtn ? pickerBtn.textContent.trim() : 'PE +51',
+  };
+}
+
+function getSelectedCountryCode() {
+  const el = document.getElementById('country-code');
+  return el ? el.value : '+51';
+}
+
+function initCountryPicker() {
+  const btn = document.getElementById('country-picker-btn');
+  const menu = document.getElementById('country-picker-menu');
+  const hidden = document.getElementById('country-code');
+  if (!btn || !menu || !hidden) return;
+
+  function closeMenu() {
+    menu.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function openMenu() {
+    menu.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+
+  btn.addEventListener('click', function (event) {
+    event.stopPropagation();
+    if (menu.classList.contains('open')) closeMenu();
+    else openMenu();
+    if (typeof window.postHeightSoon === 'function') window.postHeightSoon();
+  });
+
+  menu.querySelectorAll('button[role="option"]').forEach(function (option) {
+    option.addEventListener('click', function () {
+      hidden.value = option.getAttribute('data-value') || '+51';
+      btn.textContent = option.getAttribute('data-label') || option.textContent.trim();
+      menu.querySelectorAll('button[role="option"]').forEach(function (item) {
+        item.classList.toggle('active', item === option);
+      });
+      closeMenu();
+      checkForm();
+      scheduleProgressSave();
+      if (typeof window.postHeightSoon === 'function') window.postHeightSoon();
+    });
+  });
+
+  document.addEventListener('click', function (event) {
+    if (!menu.contains(event.target) && event.target !== btn) closeMenu();
+  });
+}
+
+function getWebinarLiveUrl() {
+  return WEBINAR_LIVE_URL && WEBINAR_LIVE_URL.indexOf('__') === -1 ? WEBINAR_LIVE_URL : '';
+}
+
+function getRegistroContext() {
+  var completoDiagnostico = 'no';
+  try {
+    if (sessionStorage.getItem(DIAGNOSTICO_KEY) === '1') {
+      completoDiagnostico = 'si';
+    }
+  } catch (_) {}
+  return {
+    registro_origen: completoDiagnostico === 'si' ? 'diagnostico' : 'webinar-directo',
+    completo_diagnostico: completoDiagnostico,
+    webinar_registrado: 'si',
+  };
+}
+
+function buildProgressAnswers() {
+  const phoneData = syncPhoneData();
+  const registro = getRegistroContext();
+  return Object.assign(
+    {
+      landing: 'gracias-webinar',
+      event_type: 'webinar',
+      webinar_date: '2026-06-14',
+      webinar_time: '20:00',
+      webinar_timezone: 'America/Lima',
+      webinar_live_url: getWebinarLiveUrl(),
+      country_code: toStr(phoneData.countryCode),
+      country: toStr(phoneData.country),
+      whatsapp_local: toStr(phoneData.whatsappLocal),
+    },
+    registro,
+  );
+}
+
+function buildProgressPayload(overrides) {
+  const nombre = document.getElementById('nombre').value.trim();
+  const email = document.getElementById('email').value.trim();
+  return Object.assign(
+    {
+      sessionId: sessionId,
+      source: FORM_SOURCE,
+      email: email.toLowerCase(),
+      firstName: nombre,
+      phone: getFullPhone(),
+      quizStep: 'webinar-registro',
+      status: 'in_progress',
+      answers: buildProgressAnswers(),
+      utmData: getUtmData(),
+    },
+    overrides || {},
+  );
+}
+
+function saveProgressNow(overrides) {
+  const payload = buildProgressPayload(overrides);
+  const body = JSON.stringify(payload);
+  if (navigator.sendBeacon) {
+    try {
+      navigator.sendBeacon(PROGRESS_PATH, new Blob([body], { type: 'application/json' }));
+      return;
+    } catch (_) {}
+  }
+  fetch(PROGRESS_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body,
+    keepalive: true,
+  }).catch(function () {});
+}
+
+function scheduleProgressSave(overrides) {
+  clearTimeout(progressTimer);
+  progressTimer = setTimeout(function () {
+    saveProgressNow(overrides);
+  }, 400);
+}
+
+async function submitCaroLead(payload) {
+  try {
+    const res = await fetch(INGEST_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      console.error('[Caro] ingest failed', res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[Caro] ingest error', err);
+    return false;
+  }
+}
+
+function buildIngestPayload(nombre, email, phone) {
+  const phoneData = syncPhoneData();
+  const registro = getRegistroContext();
+  return {
+    source: FORM_SOURCE,
+    channel: 'inbound',
+    email: email.trim().toLowerCase(),
+    firstName: nombre.trim(),
+    phone: phone,
+    customFields: Object.assign(
+      {
+        landing: 'gracias-webinar',
+        country_code: toStr(phoneData.countryCode),
+        country: toStr(phoneData.country),
+        whatsapp_local: toStr(phoneData.whatsappLocal),
+        session_id: sessionId,
+        event_type: 'webinar',
+        webinar_date: '2026-06-14',
+        webinar_time: '20:00',
+        webinar_timezone: 'America/Lima',
+        webinar_live_url: getWebinarLiveUrl(),
+        webinar_registered_at: new Date().toISOString(),
+      },
+      registro,
+    ),
+    utmData: getUtmData(),
+  };
+}
+
+function buildConfirmUrl(nombre, phone) {
+  const params = new URLSearchParams({ confirmado: '1' });
+  if (nombre) params.set('name', nombre);
+  if (phone) params.set('phone', phone);
+  const utm = getUtmData();
+  Object.keys(utm).forEach(function (k) { params.set(k, utm[k]); });
+  return '/caro-fitness/gracias-webinar?' + params.toString();
+}
+
+async function submitRegistro(event) {
+  event.preventDefault();
+  const errorEl = document.getElementById('form-error');
+  const btn = document.getElementById('btn-registrar');
+  errorEl.style.display = 'none';
+
+  const nombre = document.getElementById('nombre').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const phone = getFullPhone();
+
+  if (!nombre || nombre.length < 2) {
+    errorEl.textContent = 'Ingresa tu nombre.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errorEl.textContent = 'Ingresa un correo válido.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (!isValidPhoneLocal(getPhoneLocal())) {
+    errorEl.textContent = 'Ingresa un WhatsApp válido.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const defaultLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  const ok = await submitCaroLead(buildIngestPayload(nombre, email, phone));
+  if (!ok) {
+    errorEl.textContent = 'No pudimos guardar tus datos. Revisá tu conexión e intentá de nuevo.';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = defaultLabel;
+    checkForm();
+    return;
+  }
+
+  saveProgressNow({
+    status: 'completed',
+    quizStep: 'webinar-registro',
+    answers: Object.assign(buildProgressAnswers(), { webinar_registered_at: new Date().toISOString() }),
+  });
+
+  try {
+    sessionStorage.setItem(WA_PHONE_KEY, phone);
+  } catch (_) {}
+
+  btn.disabled = false;
+  btn.textContent = defaultLabel;
+  checkForm();
+  window.open(buildConfirmUrl(nombre, phone), '_blank', 'noopener');
+}
 
 function getPhoneFromContext() {
   try {
@@ -213,13 +778,70 @@ async function joinWhatsApp(event) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-  assignWhatsAppGroup().then(function (url) {
-    if (url) {
-      var btn = document.getElementById('btn-wa');
-      if (btn) btn.setAttribute('href', url);
+  const nombreEl = document.getElementById('nombre');
+  const emailEl = document.getElementById('email');
+  const whatsappEl = document.getElementById('whatsapp');
+  const form = document.getElementById('registro-form');
+
+  initCountryPicker();
+
+  [nombreEl, emailEl, whatsappEl].forEach(function (el) {
+    el.addEventListener('input', function () {
+      checkForm();
+      scheduleProgressSave();
+    });
+  });
+  form.addEventListener('submit', submitRegistro);
+  checkForm();
+
+  window.addEventListener('beforeunload', function () {
+    if (!isConfirmadoView()) {
+      const nombre = nombreEl.value.trim();
+      const email = emailEl.value.trim();
+      if (nombre || email || getPhoneLocal()) {
+        saveProgressNow({ status: 'abandoned' });
+      }
     }
   });
+
+  if (isConfirmadoView()) {
+    showView('confirmado');
+    assignWhatsAppGroup().then(function (url) {
+      if (url) {
+        var btn = document.getElementById('btn-wa');
+        if (btn) btn.setAttribute('href', url);
+      }
+    });
+    var calBtn = document.getElementById('btn-cal');
+    if (calBtn && (!CALENDAR_URL || CALENDAR_URL.indexOf('__') !== -1)) {
+      calBtn.style.display = 'none';
+    }
+  } else {
+    showView('registro');
+  }
 });
+</script>
+<script>
+(function(){
+  function inIframe(){try{return window.parent&&window.parent!==window;}catch(_){return true;}}
+  function postHeight(){
+    if(!inIframe())return;
+    try{
+      var h=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);
+      window.parent.postMessage({type:'iframe-height',height:h},'*');
+    }catch(_){}
+  }
+  window.postHeightSoon=function(){
+    postHeight();
+    setTimeout(postHeight,100);
+    setTimeout(postHeight,400);
+  };
+  if(document.readyState==='complete')postHeight();
+  else window.addEventListener('load',postHeight);
+  window.addEventListener('resize',postHeight);
+  if('ResizeObserver' in window){try{new ResizeObserver(postHeight).observe(document.documentElement);}catch(_){}}
+  setTimeout(postHeight,100);setTimeout(postHeight,600);setTimeout(postHeight,1500);
+})();
 </script>
 
 </body>

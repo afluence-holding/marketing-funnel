@@ -1,10 +1,15 @@
 const PRODUCTION_API_URL = 'https://marketing-funnelapi-production.up.railway.app';
 
+/**
+ * Backend base URL for Caro Fitness server routes (ingest, progress).
+ * Defaults to production so `npm run dev:web` works without a local API.
+ * Override with API_URL or NEXT_PUBLIC_API_URL (e.g. http://localhost:3000).
+ */
 export function getCaroFitnessBackendBaseUrl() {
   return (
     process.env.API_URL ??
     process.env.NEXT_PUBLIC_API_URL ??
-    (process.env.NODE_ENV === 'production' ? PRODUCTION_API_URL : 'http://localhost:3000')
+    PRODUCTION_API_URL
   );
 }
 

@@ -47,6 +47,7 @@ const RECETAS_CAMI_SOURCES = new Set([
 ]);
 const CARO_FITNESS_SOURCES = new Set([
   'landing-caro-fitness-diagnostico',
+  'landing-caro-fitness-gracias-webinar',
 ]);
 const MAMA_SIN_CAOS_SOURCES = new Set([
   'landing-mama-sin-caos-diagnostico',
