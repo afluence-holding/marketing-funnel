@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estás dentro · Train Like A Pro</title>
+<meta name="description" content="Gracias por registrarte al webinar de Train Like A Pro. Entra al grupo VIP de WhatsApp.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f4ede5;
+    --espresso: #2a2018;
+    --taupe: #cbbfb0;
+    --taupe-deep: #8a7a6a;
+    --wa: #25d366;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Jost', 'Segoe UI', Arial, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    background: var(--espresso);
+    color: var(--taupe);
+    display: flex; flex-direction: column;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header { padding: clamp(10px, 1.8vh, 16px) 24px 0; text-align: center; }
+  header img { width: clamp(110px, 12vw, 135px); height: auto; }
+
+  main {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    text-align: center;
+    padding: clamp(14px, 2.5vh, 26px) 24px 18px;
+  }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .3em; text-transform: uppercase;
+    color: var(--taupe-deep);
+  }
+  .eyebrow .check {
+    width: 22px; height: 22px; border: 1px solid var(--taupe); border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--taupe); letter-spacing: 0;
+  }
+
+  h1 {
+    font-family: var(--serif); font-style: italic; font-weight: 500;
+    font-size: clamp(32px, 5.5vh, 52px);
+    color: var(--cream); line-height: 1.1;
+    margin-top: clamp(12px, 2vh, 20px);
+  }
+
+  .sub {
+    max-width: 480px;
+    font-size: clamp(14.5px, 1.9vh, 16px);
+    margin-top: clamp(10px, 1.8vh, 16px);
+  }
+  .sub strong { color: var(--cream); font-weight: 600; }
+
+  .badge {
+    display: inline-block;
+    background: var(--taupe); color: var(--espresso);
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: .24em; text-transform: uppercase;
+    padding: 7px 18px; border-radius: 999px;
+    margin-top: clamp(18px, 3vh, 30px);
+  }
+
+  .vip-line {
+    max-width: 500px;
+    font-size: clamp(14.5px, 1.9vh, 16px);
+    margin-top: clamp(10px, 1.6vh, 14px);
+  }
+  .vip-line strong { color: var(--cream); font-weight: 600; }
+
+  .btn-wa {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--cream); color: var(--espresso);
+    font-size: 13.5px; font-weight: 600;
+    letter-spacing: .16em; text-transform: uppercase;
+    padding: clamp(15px, 2.2vh, 19px) clamp(32px, 5vw, 44px);
+    border-radius: 12px; text-decoration: none;
+    margin-top: clamp(20px, 3.2vh, 32px);
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .btn-wa:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0,0,0,.4); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--wa); animation: pulse 1.8s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(37,211,102,.45); }
+    70% { box-shadow: 0 0 0 12px rgba(37,211,102,0); }
+    100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
+  }
+  .note { font-size: 12px; color: var(--taupe-deep); margin-top: clamp(10px, 1.6vh, 16px); }
+
+  footer {
+    text-align: center;
+    padding: 0 24px clamp(14px, 2.5vh, 22px);
+  }
+  footer .sig { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--cream); }
+  footer .small { font-size: 10px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; color: var(--taupe-deep); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/caro-fitness/gracias-webinar/logo-cmanriquet-blanco.png" alt="CMANRIQUET">
+</header>
+
+<main>
+  <div class="eyebrow"><span class="check">✓</span> Registro confirmado</div>
+  <h1>Gracias por registrarte<br>al webinar</h1>
+  <p class="sub">Tu lugar está guardado — <strong>este domingo, en vivo, 1 hora.</strong></p>
+
+  <span class="badge">Regalo por registrarte</span>
+  <p class="vip-line">Eres de las <strong>primeras 6,000 personas</strong> que hicieron el diagnóstico: tienes <strong>acceso VIP a los grupos de WhatsApp</strong>, con contenido exclusivo que no llega por correo.</p>
+
+  <a class="btn-wa" href="__WHATSAPP_GROUP_URL__">
+    <span class="dot"></span>
+    Entrar al grupo VIP
+  </a>
+  <div class="note">Cupo limitado por grupo — entra ahora para no quedarte fuera.</div>
+</main>
+
+<footer>
+  <div class="sig">Nos vemos el domingo — Caro</div>
+  <div class="small">Carolina Manrique · Train Like A Pro</div>
+</footer>
+
+</body>
+</html>
